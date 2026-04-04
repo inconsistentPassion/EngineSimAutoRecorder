@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net6.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>EngineSimRecorder</AssemblyName>
+    <RootNamespace>EngineSimRecorder</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- NAudio: WASAPI loopback capture and WAV writing -->
+    <PackageReference Include="NAudio" Version="2.2.1" />
+    <!-- Tesseract OCR bindings for .NET -->
+    <PackageReference Include="Tesseract" Version="5.2.0" />
+  </ItemGroup>
+
+</Project>
