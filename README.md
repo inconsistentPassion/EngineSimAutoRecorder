@@ -1,8 +1,4 @@
-# MusicTheory
-
----
-
-## Engine Simulator Auto-Recorder
+# Engine Simulator Auto-Recorder
 
 A set of tools that automate engine-audio recording from
 [Engine Simulator](https://github.com/ange-yaghi/engine-sim) by using
