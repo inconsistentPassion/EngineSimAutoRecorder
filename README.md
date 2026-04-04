@@ -7,12 +7,12 @@ to hold the engine at each target RPM while the system audio is captured.
 The resulting WAV files are ready to be imported into FMOD Studio and
 blended for use in Assetto Corsa (or any other FMOD-based game).
 
-Two implementations are provided:
+~~Two~~ One implementations are provided:
 
 | Tool | Language | OCR engine | Audio capture |
 |------|----------|-----------|---------------|
 | `EngineSimRecorder/` | C# / WinForms (.NET 6) | Tesseract 5 | NAudio WASAPI loopback |
-| `python_version/engine_auto_recorder.py` | Python 3.9+ | PaddleOCR | sounddevice loopback |
+| ~~`python_version/engine_auto_recorder.py`~~ | ~~Python 3.9+~~ | ~~PaddleOCR~~ | ~~sounddevice loopback~~ |
 
 ---
 
