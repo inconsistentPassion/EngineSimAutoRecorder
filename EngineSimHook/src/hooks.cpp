@@ -5,24 +5,15 @@
 #include <cmath>
 #include <iostream>
 
-// ── Function pointer types (matching Engine Simulator internals) ──────
+// ── Function pointer types ───────────────────────────────────────────
 
 typedef __int64(__fastcall* IgnitionModuleFn)(__int64 a1, double a2);
 typedef void(__fastcall* SimProcessFn)(__int64 a1, float a2);
-typedef void(__fastcall* SetThrottleFn)(__int64 engineInstance, double throttle);
 
 // ── Original function pointers (populated by MinHook) ────────────────
 
 static IgnitionModuleFn oIgnitionModule = nullptr;
 static SimProcessFn oSimProcess = nullptr;
-static SetThrottleFn oSetThrottlePiston = nullptr;
-static SetThrottleFn oSetThrottleRotary = nullptr;
-
-// ── Function pointers we find via pattern scan (for direct calls) ────
-
-static SetThrottleFn setThrottlePistonAddr = nullptr;
-static SetThrottleFn setThrottleRotaryAddr = nullptr;
-static bool isRotary = false;
 
 // ── RPM conversion (rad/s → RPM) ────────────────────────────────────
 
@@ -31,14 +22,13 @@ static constexpr double toRpm(double rad_s) {
 }
 
 // ── Hook: ignition module ────────────────────────────────────────────
-// This is called every frame. We capture the ignition instance pointer
-// and read RPM from the crankshaft velocity.
+// Called every frame. Captures ignition instance and reads RPM.
 
 __int64 __fastcall ignitionModuleHk(__int64 a1, double a2) {
     if (State::attached.load()) {
         State::ignitionInstance.store(a1);
 
-        // RPM is at: *(double*)(*(QWORD*)(ignitionInstance + 0x60) + 0x30)
+        // RPM at: *(double*)(*(QWORD*)(ignitionInstance + 0x60) + 0x30)
         uintptr_t crankshaftPtr = *(QWORD*)(a1 + 0x60);
         if (crankshaftPtr) {
             double velocity = *(double*)(crankshaftPtr + 0x30);
@@ -50,7 +40,7 @@ __int64 __fastcall ignitionModuleHk(__int64 a1, double a2) {
 }
 
 // ── Hook: sim process (main game tick) ───────────────────────────────
-// We capture the app/simulator/engine instance pointers.
+// Captures instance pointers and applies throttle override.
 
 void __fastcall simProcessHk(__int64 a1, float a2) {
     if (State::attached.load()) {
@@ -63,16 +53,13 @@ void __fastcall simProcessHk(__int64 a1, float a2) {
         if (engInst) State::engineInstance.store(engInst);
 
         // Apply throttle override if active
-        if (State::throttleOverride) {
+        if (State::throttleOverride && engInst) {
             double throttle;
             {
                 std::lock_guard<std::mutex> lock(State::throttleMutex);
                 throttle = State::targetThrottle;
             }
-            if (engInst) {
-                // Throttle is stored at engineInstance + 0x188 (inverted)
-                *(double*)(engInst + 0x188) = 1.0 - throttle;
-            }
+            *(double*)(engInst + 0x188) = 1.0 - throttle;
         }
     }
     oSimProcess(a1, a2);
@@ -90,7 +77,7 @@ void SetupHooks() {
     uintptr_t base = Memory::getBase();
     Memory::WriteLog("Base", base);
 
-    // Ignition module function (same pattern as ES-Studio)
+    // Ignition module function
     uintptr_t ignitionModFunc = Memory::FindPatternIDA(
         "40 53 48 81 EC ? ? ? ? 44 0F 29 54 24 ? 48 8B D9 48 8B 49 60 "
         "44 0F 29 4C 24 ? 45 0F 57 C9 44 0F 29 6C 24 ? 44 0F 28 E9 "
@@ -102,29 +89,13 @@ void SetupHooks() {
         "41 56 41 57 48 8D 68 A1 48 81 EC ? ? ? ? 0F 29 70 C8 0F 29 78 B8 "
         "44 0F 29 40 ? 44");
 
-    // Set throttle (piston engine)
-    uintptr_t setThrottlePistonFunc = Memory::FindPatternIDA(
-        "48 8B 89 ? ? ? ? 48 8B 01 48 FF 60 08");
-
-    // Set throttle (rotary engine)
-    uintptr_t setThrottleRotaryFunc = Memory::FindPatternIDA(
-        "48 8B 89 ? ? ? ? 48 8B 01 48 FF 60 08 CC CC 48 8B 81 ? ? ? ? "
-        "4C 8B C1 48 8B C8 48 8B 10 48 FF 62 10 CC CC CC CC CC CC CC CC "
-        "CC CC CC CC 40 53 48 83 EC 20 48 8B D9 E8 ? ? ? ?");
-
     Memory::WriteLog("Ignition Module", ignitionModFunc);
     Memory::WriteLog("SimProcess", processFunc);
-    Memory::WriteLog("SetThrottlePiston", setThrottlePistonFunc);
-    Memory::WriteLog("SetThrottleRotary", setThrottleRotaryFunc);
 
     if (!ignitionModFunc || !processFunc) {
         std::cout << "[!] Critical pattern not found — wrong Engine Simulator version?\n";
         return;
     }
-
-    // Store direct function pointers for throttle control
-    setThrottlePistonAddr = (SetThrottleFn)setThrottlePistonFunc;
-    setThrottleRotaryAddr = (SetThrottleFn)setThrottleRotaryFunc;
 
     // Install hooks
     if (MH_CreateHook((LPVOID)ignitionModFunc, &ignitionModuleHk,
@@ -151,11 +122,45 @@ void CleanupHooks() {
     std::cout << "[+] Hooks removed\n";
 }
 
-// ── Throttle control (called from pipe thread) ──────────────────────
+// ═══════════════════════════════════════════════════════════════════════
+// Engine control — direct memory writes (from ES-Studio)
+// ═══════════════════════════════════════════════════════════════════════
 
 void ApplyThrottleDirect(double throttle) {
     uintptr_t engInst = State::engineInstance.load();
     if (engInst) {
         *(double*)(engInst + 0x188) = 1.0 - throttle;
     }
+}
+
+void SetDyno(bool enabled) {
+    uintptr_t simInst = State::simulatorInstance.load();
+    if (simInst) {
+        *(bool*)(simInst + 0xE1) = enabled;
+        std::cout << "[+] Dyno " << (enabled ? "enabled" : "disabled") << "\n";
+    }
+}
+
+void SetIgnition(bool enabled) {
+    uintptr_t ignInst = State::ignitionInstance.load();
+    if (ignInst) {
+        *(bool*)(ignInst + 0x50) = enabled;
+        std::cout << "[+] Ignition " << (enabled ? "enabled" : "disabled") << "\n";
+    }
+}
+
+void SetStarter(bool enabled) {
+    uintptr_t simInst = State::simulatorInstance.load();
+    if (simInst) {
+        *(bool*)(simInst + 0x1C0) = enabled;
+        std::cout << "[+] Starter " << (enabled ? "engaged" : "disengaged") << "\n";
+    }
+}
+
+double GetStarterRPM() {
+    uintptr_t simInst = State::simulatorInstance.load();
+    if (simInst) {
+        return toRpm(std::fabs(*(double*)(simInst + 0x1B8)));
+    }
+    return 0.0;
 }

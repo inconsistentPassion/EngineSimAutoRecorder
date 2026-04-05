@@ -5,33 +5,24 @@
 #include <thread>
 #include <atomic>
 
-// Forward declaration from hooks.cpp
+// Forward declarations from hooks.cpp
 void ApplyThrottleDirect(double throttle);
+void SetDyno(bool enabled);
+void SetIgnition(bool enabled);
+void SetStarter(bool enabled);
 
 static std::thread pipeThread;
 static std::atomic<bool> pipeRunning{false};
-
-// ── Pipe server loop ─────────────────────────────────────────────────
-// Creates a named pipe, waits for a client (the C# recorder), then
-// enters a bidirectional loop:
-//   OUT: sends RPM updates every 50ms
-//   IN:  receives throttle / engine commands
 
 static void PipeServerLoop() {
     std::cout << "[+] Pipe server starting on " << PIPE_NAME << "\n";
 
     while (pipeRunning.load()) {
-        // Create pipe instance
         HANDLE hPipe = CreateNamedPipeA(
             PIPE_NAME,
             PIPE_ACCESS_DUPLEX,
             PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_NOWAIT,
-            1,              // max instances
-            PIPE_BUFFER_SIZE,
-            PIPE_BUFFER_SIZE,
-            0,
-            NULL
-        );
+            1, PIPE_BUFFER_SIZE, PIPE_BUFFER_SIZE, 0, NULL);
 
         if (hPipe == INVALID_HANDLE_VALUE) {
             std::cout << "[!] CreateNamedPipe failed: " << GetLastError() << "\n";
@@ -39,7 +30,6 @@ static void PipeServerLoop() {
             continue;
         }
 
-        // Wait for client connection (non-blocking, poll every 100ms)
         while (pipeRunning.load()) {
             BOOL connected = ConnectNamedPipe(hPipe, NULL) ?
                 TRUE : (GetLastError() == ERROR_PIPE_CONNECTED);
@@ -54,7 +44,6 @@ static void PipeServerLoop() {
 
         std::cout << "[+] Client connected to pipe\n";
 
-        // Connected — enter send/receive loop
         DWORD lastRpmSend = 0;
 
         while (pipeRunning.load()) {
@@ -67,15 +56,14 @@ static void PipeServerLoop() {
                 msg.rpm = State::currentRpm.load();
 
                 DWORD written;
-                BOOL ok = WriteFile(hPipe, &msg, sizeof(msg), &written, NULL);
-                if (!ok) {
+                if (!WriteFile(hPipe, &msg, sizeof(msg), &written, NULL)) {
                     std::cout << "[!] Pipe write failed, client disconnected\n";
                     break;
                 }
                 lastRpmSend = now;
             }
 
-            // ── Check for incoming commands ───────────────────────────
+            // ── Read incoming commands ────────────────────────────────
             uint8_t buf[PIPE_BUFFER_SIZE];
             DWORD bytesRead = 0;
             BOOL ok = ReadFile(hPipe, buf, sizeof(buf), &bytesRead, NULL);
@@ -86,15 +74,34 @@ static void PipeServerLoop() {
                 switch (msgType) {
                     case MSG_CMD_THROTTLE: {
                         if (bytesRead >= sizeof(MsgCmdThrottle)) {
-                            MsgCmdThrottle* cmd = (MsgCmdThrottle*)buf;
-                            // Write throttle directly to engine memory
+                            auto* cmd = (MsgCmdThrottle*)buf;
                             ApplyThrottleDirect(cmd->throttle);
-                            // Enable override so game's keyboard input doesn't fight us
                             {
                                 std::lock_guard<std::mutex> lock(State::throttleMutex);
                                 State::targetThrottle = cmd->throttle;
                             }
                             State::throttleOverride = true;
+                        }
+                        break;
+                    }
+                    case MSG_CMD_DYNO: {
+                        if (bytesRead >= sizeof(MsgCmdBool)) {
+                            auto* cmd = (MsgCmdBool*)buf;
+                            SetDyno(cmd->enabled != 0);
+                        }
+                        break;
+                    }
+                    case MSG_CMD_IGNITION: {
+                        if (bytesRead >= sizeof(MsgCmdBool)) {
+                            auto* cmd = (MsgCmdBool*)buf;
+                            SetIgnition(cmd->enabled != 0);
+                        }
+                        break;
+                    }
+                    case MSG_CMD_STARTER: {
+                        if (bytesRead >= sizeof(MsgCmdBool)) {
+                            auto* cmd = (MsgCmdBool*)buf;
+                            SetStarter(cmd->enabled != 0);
                         }
                         break;
                     }
@@ -104,7 +111,7 @@ static void PipeServerLoop() {
                         break;
                     }
                     default:
-                        std::cout << "[!] Unknown message type: 0x"
+                        std::cout << "[!] Unknown msg: 0x"
                                   << std::hex << (int)msgType << std::dec << "\n";
                         break;
                 }
@@ -112,15 +119,13 @@ static void PipeServerLoop() {
             else if (!ok) {
                 DWORD err = GetLastError();
                 if (err == ERROR_BROKEN_PIPE || err == ERROR_NO_DATA) {
-                    // Client disconnected — disable throttle override
                     State::throttleOverride = false;
                     std::cout << "[+] Client disconnected\n";
                     break;
                 }
-                // ERROR_NO_DATA with NOWAIT is normal when no data pending
             }
 
-            Sleep(10); // ~100Hz command poll rate
+            Sleep(10);
         }
 
         DisconnectNamedPipe(hPipe);

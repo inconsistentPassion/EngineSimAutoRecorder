@@ -18,7 +18,7 @@ namespace State {
     // Latest RPM from ignition hook
     extern std::atomic<double> currentRpm;
 
-    // Throttle override (written by pipe thread, read by hook if needed)
+    // Throttle override (written by pipe thread, applied in simProcess hook)
     extern std::mutex throttleMutex;
     extern double targetThrottle;
     extern bool throttleOverride;
@@ -34,7 +34,10 @@ namespace State {
 
 constexpr uint8_t MSG_RPM_UPDATE    = 0x01;
 constexpr uint8_t MSG_CMD_THROTTLE  = 0x10;
-constexpr uint8_t MSG_CMD_KILL      = 0x11;
+constexpr uint8_t MSG_CMD_STARTER   = 0x11;
+constexpr uint8_t MSG_CMD_IGNITION  = 0x12;
+constexpr uint8_t MSG_CMD_DYNO      = 0x13;
+constexpr uint8_t MSG_CMD_KILL      = 0x1F;
 
 struct MsgRpmUpdate {
     uint8_t type;       // MSG_RPM_UPDATE
@@ -44,6 +47,11 @@ struct MsgRpmUpdate {
 struct MsgCmdThrottle {
     uint8_t type;       // MSG_CMD_THROTTLE
     double throttle;    // 0.0 – 1.0
+};
+
+struct MsgCmdBool {
+    uint8_t type;       // MSG_CMD_STARTER / IGNITION / DYNO
+    uint8_t enabled;    // 0 or 1
 };
 
 struct MsgCmdKill {
