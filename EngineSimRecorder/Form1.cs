@@ -32,7 +32,7 @@ namespace EngineSimRecorder
         private void RefreshProcessList()
         {
             cmbProcess.Items.Clear();
-            foreach (var name in new[] { "engine-sim", "engine_sim", "EngineSimulator" })
+            foreach (var name in new[] { "engine-sim-app", "engine-sim", "engine_sim", "EngineSimulator" })
                 foreach (var proc in Process.GetProcessesByName(name))
                     cmbProcess.Items.Add(new ProcessItem(proc));
             if (cmbProcess.Items.Count > 0) cmbProcess.SelectedIndex = 0;
