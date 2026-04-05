@@ -1,135 +1,133 @@
 # Engine Simulator Auto-Recorder
 
-A set of tools that automate engine-audio recording from
-[Engine Simulator](https://github.com/ange-yaghi/engine-sim) by using
-AI-vision (OCR) to read the on-screen RPM counter and a PID controller
-to hold the engine at each target RPM while the system audio is captured.
-The resulting WAV files are ready to be imported into FMOD Studio and
-blended for use in Assetto Corsa (or any other FMOD-based game).
-
-~~Two~~ One implementations are provided:
-
-| Tool | Language | OCR engine | Audio capture |
-|------|----------|-----------|---------------|
-| `EngineSimRecorder/` | C# / WinForms (.NET 6) | Tesseract 5 | NAudio WASAPI loopback |
-| ~~`python_version/engine_auto_recorder.py`~~ | ~~Python 3.9+~~ | ~~PaddleOCR~~ | ~~sounddevice loopback~~ |
+Automates engine-audio recording from [Engine Simulator](https://github.com/ange-yaghi/engine-sim).  
+Reads RPM, holds the engine at each target with a PID controller, and captures system audio via WASAPI.  
+Output WAVs are ready for FMOD Studio / Assetto Corsa (or any FMOD-based game).
 
 ---
 
-### How it works
+## Two modes
+
+| Mode | RPM source | Throttle control | Admin? | Focus? |
+|------|-----------|-----------------|--------|--------|
+| **Injection** | Memory read via DLL hook + named pipe | Memory write to engine struct | Yes | No |
+| **OCR** | PaddleOCR screen capture | `SendInput` W/S key simulation | No | Yes |
+
+Pick one in the UI radio buttons at the top. Both share the same PID controller, recording loop, and output.
+
+### Injection mode (precise)
+
+- Injects `es_hook.dll` into Engine Simulator's process
+- DLL hooks the ignition module (via [MinHook](https://github.com/TsudaKageworker/minhook)) to read RPM directly from memory
+- Byte pattern scanning finds functions at runtime (ES-Studio approach)
+- Throttle, ignition, dyno, starter all controlled via direct memory writes
+- ~50ms update rate, exact float values, works in background
+- Thread-safe hook installation (suspends game threads before patching)
+
+### OCR mode (non-invasive)
+
+- [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) (via [Sdcb.PaddleInference](https://github.com/sdcb/Sdcb.PaddleInference)) reads RPM from a screen region
+- Simulates W/S keypresses for throttle — window must be focused
+- No injection, no admin rights needed
+- ~200ms update rate, depends on OCR accuracy
+
+---
+
+## Architecture
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│  For each target RPM                                             │
-│                                                                  │
-│   1. OCR polls the RPM display every ~200 ms                     │
-│   2. PID controller sends W / S keypresses to adjust throttle   │
-│   3. Once RPM is stable for HOLD_SECONDS → begin recording       │
-│   4. WASAPI / loopback capture saves rpm_<value>.wav             │
-│   5. If RPM drifts during recording → re-stabilise, re-record   │
-└──────────────────────────────────────────────────────────────────┘
+Core/
+  IEngineBackend.cs       ← interface both modes implement
+  PidController.cs        ← shared PID logic
+  RecorderConfig.cs       ← shared config + BackendMode enum
+
+Backends/
+  Injection/
+    InjectionBackend.cs   ← DLL injection + named pipe client
+  Ocr/
+    OcrBackend.cs         ← PaddleOCR + SendInput keystrokes
+
+EngineSimHook/            ← C++ DLL (injection mode only)
+  src/
+    hooks.cpp             ← MinHook-based function hooking
+    pipe.cpp              ← named pipe server
+    memory.cpp            ← byte pattern scanning
+    dllmain.cpp           ← entry point + init thread
+  vendor/minhook/         ← vendored MinHook library
 ```
 
 ---
 
-## C# WinForms version (`EngineSimRecorder/`)
+## Build
 
-### Prerequisites
+### 1. Hook DLL (injection mode only)
 
-| Requirement | Notes |
-|---|---|
-| Windows 10/11 | WASAPI loopback requires Windows |
-| [.NET 6 SDK](https://dotnet.microsoft.com/download/dotnet/6.0) | `dotnet` CLI must be on PATH |
-| [Tesseract tessdata](https://github.com/tesseract-ocr/tessdata) | Download `eng.traineddata` |
-| Engine Simulator (running) | The window must be visible |
-
-NuGet packages are restored automatically on first build:
-
-- **NAudio** 2.2.1 — WASAPI loopback capture
-- **Tesseract** 5.2.0 — OCR bindings
-
-### Install & build
+Requires CMake + MSVC (Visual Studio with C++ workload).
 
 ```bash
-# Clone the repo (if you haven't already)
-git clone https://github.com/inconsistentPassion/MusicTheory.git
-cd MusicTheory/EngineSimRecorder
+cmake -S EngineSimHook -B EngineSimHook/build
+cmake --build EngineSimHook/build --config Release
+```
 
-# Restore packages and build
+Output: `EngineSimHook/bin/es_hook.dll`
+
+### 2. C# Application
+
+Requires [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0).
+
+```bash
+cd EngineSimRecorder
 dotnet restore
 dotnet build -c Release
-
-# Run
 dotnet run -c Release
 ```
 
-### Tuning the OCR coordinates (C# version)
+---
+
+## Usage
+
+### Injection mode
 
 1. Launch Engine Simulator and load your engine.
-2. Use a screen-ruler tool (e.g. [ShareX](https://getsharex.com/) → *Capture region*) to find the pixel
-   bounding box of the RPM readout on your display.
-3. In the application, set **X / Y / W / H** in the *OCR Region* group to those values.
-4. Click **▶ Start** — the live *RPM:* label in the Status bar confirms the OCR is working.
+2. Open the recorder, select **Injection** mode.
+3. Click **Refresh**, pick the process from the dropdown.
+4. Set output folder, target RPMs, PID gains, hold/record times.
+5. Click **▶ Start** — the recorder will:
+   - Inject the DLL
+   - Start the engine (ignition → dyno → starter → wait for RPM > 200)
+   - PID-control to each target RPM
+   - Record WAV while stable
 
-### tessdata setup
+### OCR mode
 
-```
-EngineSimRecorder/
-└── tessdata/
-    └── eng.traineddata   ← download from https://github.com/tesseract-ocr/tessdata
-```
-
-Point the **tessdata folder** field in the UI at this directory (or anywhere
-`eng.traineddata` lives).
-
-### Running the C# tool
-
-1. Set **Output Dir** to where you want WAV files saved.
-2. Set **tessdata folder** (see above).
-3. Set **OCR Region** (X / Y / W / H) to match the RPM counter on screen.
-4. Add your target RPMs to the list (defaults: 800, 1500, 3000, 4500, 6000, 7500).
-5. Adjust **Hold (seconds)** and **RPM Tolerance** as needed.
-6. Click **▶ Start** — the tool will run through every RPM target and produce
-   `rpm_<value>.wav` in your output folder.
+1. Launch Engine Simulator and load your engine.
+2. Select **OCR** mode.
+3. Use a screen ruler (e.g. [ShareX](https://getsharex.com/)) to find the RPM digits bounding box.
+4. Set X/Y/W/H in the OCR Region group.
+5. Click **▶ Start** — the recorder will:
+   - Warm up PaddleOCR
+   - Press Enter to start the engine
+   - OCR-read RPM and PID-control via W/S keys
+   - Record WAV while stable
+6. **Keep the game window focused** — keystrokes go to the focused window.
 
 ---
 
+## PID tuning
 
-### Configuration constants
-
-All settings live at the top of `engine_auto_recorder.py`:
-
-| Constant | Default | Description |
-|---|---|---|
-| `OCR_REGION` | `{left:860, top:45, width:160, height:40}` | Screen region containing RPM digits |
-| `TARGET_RPMS` | `[800,1500,3000,4500,6000,7500]` | RPM values to record |
-| `RPM_TOLERANCE` | `50` | ±RPM band considered stable |
-| `HOLD_SECONDS` | `3.0` | Seconds stable before recording |
-| `RECORD_SECONDS` | `6.0` | Duration of each WAV recording |
-| `AUDIO_DEVICE` | `None` | sounddevice device name/index (None = default) |
-| `OUTPUT_DIR` | `recordings/` | Output folder for WAV files |
-| `KP / KI / KD` | `0.0005 / 0.00001 / 0.0005` | PID gains |
-
----
-
-## PID gain tuning guide
-
-The PID controller converts the error between target RPM and current RPM into
-throttle key-press durations.
+The PID controller converts RPM error into throttle commands.
 
 | Symptom | Fix |
 |---|---|
 | Engine overshoots and hunts | Reduce `Kp` |
-| Engine is too slow to reach target | Increase `Kp` |
+| Too slow to reach target | Increase `Kp` |
 | Steady-state offset remains | Increase `Ki` |
 | Oscillation / jitter | Reduce `Ki` or increase `Kd` |
-| Noisy OCR readings cause spikes | Increase `RPM_TOLERANCE` |
+| Noisy OCR spikes (OCR mode) | Increase `RPM_TOLERANCE` |
 
 ---
 
-## Output files
-
-Each run produces one WAV file per target RPM:
+## Output
 
 ```
 recordings/
@@ -141,30 +139,21 @@ recordings/
 └── rpm_7500.wav
 ```
 
-All files are **44 100 Hz, 2-channel, 16-bit PCM** — ready to be imported
-directly into FMOD Studio.
+All files: **44 100 Hz, stereo, 16-bit PCM** — import directly into FMOD Studio.
 
----
-
-## Using the recordings in FMOD Studio / Assetto Corsa
+### FMOD / Assetto Corsa setup
 
 1. Import WAVs into FMOD Studio.
-2. Create a **parameter** named `RPM` (range 0 → redline).
-3. Assign each sample to its RPM range and enable cross-fading.
-4. Add pitch-shifting automation to the parameter curve for realism.
-5. Build the `.bank` file and drop it into:
-   ```
-   assettocorsa/content/cars/<car_name>/sfx/
-   ```
+2. Create a parameter named `RPM` (range 0 → redline).
+3. Assign each sample to its RPM range, enable cross-fading.
+4. Add pitch-shifting automation for realism.
+5. Build `.bank` → drop into `assettocorsa/content/cars/<car>/sfx/`.
 
 ---
 
-## Troubleshooting
+## Credits
 
-| Problem | Solution |
-|---|---|
-| OCR always reads `???` | Check `OCR_REGION` coordinates; try the `--find-region` helper |
-| No audio recorded | Enable *Stereo Mix* (Windows) or set the correct `AUDIO_DEVICE` |
-| PID never stabilises | Check that Engine Simulator is the focused window; reduce `Kp` |
-| `eng.traineddata` not found | Set the tessdata path in the UI / ensure the file is downloaded |
-| PaddleOCR import error | Re-install: `pip install paddlepaddle paddleocr` |
+- [ES-Studio](https://github.com/inconsistentPassion/ES-Studio) — DLL injection approach, byte patterns, memory offsets
+- [BetterGI](https://github.com/babalae/better-genshin-impact) — PaddleOCR + OpenCV integration pattern
+- [MinHook](https://github.com/TsudaKageworker/minhook) — function hooking library
+- [Sdcb.PaddleInference](https://github.com/sdcb/Sdcb.PaddleInference) — C# PaddleOCR bindings
