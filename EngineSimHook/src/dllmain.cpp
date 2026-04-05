@@ -25,23 +25,25 @@ namespace State {
 // ── Initialization thread (avoid loader lock in DllMain) ─────────────
 
 static void InitThread() {
-    // Wait for the game to fully load
-    Sleep(2000);
+    // Wait for the game to fully initialize its engine instances.
+    // Too short = patterns not found (functions not loaded yet).
+    // Too long = user waits. 3s is a safe middle ground.
+    Sleep(3000);
 
-    // Allocate console for debug output
     AllocConsole();
     FILE* f;
     freopen_s(&f, "CONOUT$", "w", stdout);
 
     std::cout << "=== EngineSimRecorder Hook ===\n";
 
-    // Install function hooks
     SetupHooks();
 
-    // Start named pipe server
-    StartPipeServer();
-
-    std::cout << "[+] Initialization complete\n";
+    if (State::attached.load()) {
+        StartPipeServer();
+        std::cout << "[+] Initialization complete — ready for connections\n";
+    } else {
+        std::cout << "[!] Hook setup failed — pipe server not started\n";
+    }
 }
 
 // ── DLL Entry Point ──────────────────────────────────────────────────
@@ -50,7 +52,6 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved) {
     switch (reason) {
         case DLL_PROCESS_ATTACH: {
             DisableThreadLibraryCalls(hModule);
-            // Spawn init thread to avoid loader lock
             CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)InitThread, NULL, 0, NULL);
             break;
         }

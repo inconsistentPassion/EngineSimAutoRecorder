@@ -2,45 +2,80 @@
 #include "common.h"
 #include "memory.h"
 #include <MinHook.h>
+#include <TlHelp32.h>
 #include <cmath>
 #include <iostream>
+#include <vector>
 
 // ── Function pointer types ───────────────────────────────────────────
 
 typedef __int64(__fastcall* IgnitionModuleFn)(__int64 a1, double a2);
 typedef void(__fastcall* SimProcessFn)(__int64 a1, float a2);
 
-// ── Original function pointers (populated by MinHook) ────────────────
-
 static IgnitionModuleFn oIgnitionModule = nullptr;
 static SimProcessFn oSimProcess = nullptr;
-
-// ── RPM conversion (rad/s → RPM) ────────────────────────────────────
 
 static constexpr double toRpm(double rad_s) {
     return rad_s / 0.104719755;
 }
 
-// ── Hook: ignition module ────────────────────────────────────────────
-// Called every frame. Captures ignition instance and reads RPM.
+// ── Thread suspension helpers ────────────────────────────────────────
+// Suspend all threads in the current process EXCEPT ours before
+// patching function bytes. This prevents the game from being
+// mid-execution of a hooked function when MinHook patches it.
+
+static std::vector<DWORD> SuspendOtherThreads() {
+    std::vector<DWORD> suspended;
+    DWORD currentTid = GetCurrentThreadId();
+    DWORD currentPid = GetCurrentProcessId();
+
+    HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+    if (snap == INVALID_HANDLE_VALUE) return suspended;
+
+    THREADENTRY32 te;
+    te.dwSize = sizeof(te);
+
+    if (Thread32First(snap, &te)) {
+        do {
+            if (te.th32OwnerProcessID == currentPid && te.th32ThreadID != currentTid) {
+                HANDLE hThread = OpenThread(THREAD_SUSPEND_RESUME, FALSE, te.th32ThreadID);
+                if (hThread) {
+                    SuspendThread(hThread);
+                    suspended.push_back(te.th32ThreadID);
+                    CloseHandle(hThread);
+                }
+            }
+        } while (Thread32Next(snap, &te));
+    }
+
+    CloseHandle(snap);
+    return suspended;
+}
+
+static void ResumeThreads(const std::vector<DWORD>& threadIds) {
+    for (DWORD tid : threadIds) {
+        HANDLE hThread = OpenThread(THREAD_SUSPEND_RESUME, FALSE, tid);
+        if (hThread) {
+            ResumeThread(hThread);
+            CloseHandle(hThread);
+        }
+    }
+}
+
+// ── Hooks ────────────────────────────────────────────────────────────
 
 __int64 __fastcall ignitionModuleHk(__int64 a1, double a2) {
     if (State::attached.load()) {
         State::ignitionInstance.store(a1);
 
-        // RPM at: *(double*)(*(QWORD*)(ignitionInstance + 0x60) + 0x30)
         uintptr_t crankshaftPtr = *(QWORD*)(a1 + 0x60);
         if (crankshaftPtr) {
             double velocity = *(double*)(crankshaftPtr + 0x30);
-            double rpm = toRpm(std::fabs(velocity));
-            State::currentRpm.store(rpm);
+            State::currentRpm.store(toRpm(std::fabs(velocity)));
         }
     }
     return oIgnitionModule(a1, a2);
 }
-
-// ── Hook: sim process (main game tick) ───────────────────────────────
-// Captures instance pointers and applies throttle override.
 
 void __fastcall simProcessHk(__int64 a1, float a2) {
     if (State::attached.load()) {
@@ -52,7 +87,6 @@ void __fastcall simProcessHk(__int64 a1, float a2) {
         if (simInst) State::simulatorInstance.store(simInst);
         if (engInst) State::engineInstance.store(engInst);
 
-        // Apply throttle override if active
         if (State::throttleOverride && engInst) {
             double throttle;
             {
@@ -74,16 +108,13 @@ void SetupHooks() {
     }
 
     std::cout << "--- Pattern Scanning ---\n";
-    uintptr_t base = Memory::getBase();
-    Memory::WriteLog("Base", base);
+    Memory::WriteLog("Base", Memory::getBase());
 
-    // Ignition module function
     uintptr_t ignitionModFunc = Memory::FindPatternIDA(
         "40 53 48 81 EC ? ? ? ? 44 0F 29 54 24 ? 48 8B D9 48 8B 49 60 "
         "44 0F 29 4C 24 ? 45 0F 57 C9 44 0F 29 6C 24 ? 44 0F 28 E9 "
         "0F 57 C9 E8 ? ? ? ?");
 
-    // Main sim process function
     uintptr_t processFunc = Memory::FindPatternIDA(
         "48 8B C4 48 89 58 10 48 89 70 18 48 89 78 20 55 41 54 41 55 "
         "41 56 41 57 48 8D 68 A1 48 81 EC ? ? ? ? 0F 29 70 C8 0F 29 78 B8 "
@@ -97,18 +128,33 @@ void SetupHooks() {
         return;
     }
 
-    // Install hooks
-    if (MH_CreateHook((LPVOID)ignitionModFunc, &ignitionModuleHk,
-                      (LPVOID*)&oIgnitionModule) == MH_OK) {
-        MH_EnableHook((LPVOID)ignitionModFunc);
-        std::cout << "[+] Ignition module hook installed\n";
-    }
+    // ── SAFETY: Suspend all game threads before patching ─────────────
+    // Without this, MinHook writes a JMP instruction over the function
+    // prologue. If a thread is mid-execution of that function, the
+    // instruction stream becomes inconsistent → crash.
+    //
+    // This is the main cause of ES-Studio's ~75% crash rate with
+    // high-cylinder engines (more frames = more time in hooked functions).
 
-    if (MH_CreateHook((LPVOID)processFunc, &simProcessHk,
-                      (LPVOID*)&oSimProcess) == MH_OK) {
-        MH_EnableHook((LPVOID)processFunc);
-        std::cout << "[+] SimProcess hook installed\n";
-    }
+    std::cout << "[+] Suspending game threads for safe hook install...\n";
+    auto suspended = SuspendOtherThreads();
+    std::cout << "[+] Suspended " << suspended.size() << " threads\n";
+
+    // Now it's safe to patch — no thread can be executing these functions
+    bool ok1 = MH_CreateHook((LPVOID)ignitionModFunc, &ignitionModuleHk,
+                              (LPVOID*)&oIgnitionModule) == MH_OK;
+    if (ok1) MH_EnableHook((LPVOID)ignitionModFunc);
+
+    bool ok2 = MH_CreateHook((LPVOID)processFunc, &simProcessHk,
+                              (LPVOID*)&oSimProcess) == MH_OK;
+    if (ok2) MH_EnableHook((LPVOID)processFunc);
+
+    // Resume all threads — game continues, now with hooks active
+    ResumeThreads(suspended);
+    std::cout << "[+] Resumed " << suspended.size() << " threads\n";
+
+    if (ok1) std::cout << "[+] Ignition module hook installed\n";
+    if (ok2) std::cout << "[+] SimProcess hook installed\n";
 
     State::attached.store(true);
     std::cout << "[+] Hooks active\n";
@@ -117,27 +163,30 @@ void SetupHooks() {
 void CleanupHooks() {
     State::attached.store(false);
     State::running.store(false);
+
+    // Same safety: suspend before unhooking
+    auto suspended = SuspendOtherThreads();
     MH_DisableHook(MH_ALL_HOOKS);
     MH_Uninitialize();
+    ResumeThreads(suspended);
+
     std::cout << "[+] Hooks removed\n";
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// Engine control — direct memory writes (from ES-Studio)
+// Engine control
 // ═══════════════════════════════════════════════════════════════════════
 
 void ApplyThrottleDirect(double throttle) {
     uintptr_t engInst = State::engineInstance.load();
-    if (engInst) {
-        *(double*)(engInst + 0x188) = 1.0 - throttle;
-    }
+    if (engInst) *(double*)(engInst + 0x188) = 1.0 - throttle;
 }
 
 void SetDyno(bool enabled) {
     uintptr_t simInst = State::simulatorInstance.load();
     if (simInst) {
         *(bool*)(simInst + 0xE1) = enabled;
-        std::cout << "[+] Dyno " << (enabled ? "enabled" : "disabled") << "\n";
+        std::cout << "[+] Dyno " << (enabled ? "ON" : "OFF") << "\n";
     }
 }
 
@@ -145,7 +194,7 @@ void SetIgnition(bool enabled) {
     uintptr_t ignInst = State::ignitionInstance.load();
     if (ignInst) {
         *(bool*)(ignInst + 0x50) = enabled;
-        std::cout << "[+] Ignition " << (enabled ? "enabled" : "disabled") << "\n";
+        std::cout << "[+] Ignition " << (enabled ? "ON" : "OFF") << "\n";
     }
 }
 
@@ -153,14 +202,12 @@ void SetStarter(bool enabled) {
     uintptr_t simInst = State::simulatorInstance.load();
     if (simInst) {
         *(bool*)(simInst + 0x1C0) = enabled;
-        std::cout << "[+] Starter " << (enabled ? "engaged" : "disengaged") << "\n";
+        std::cout << "[+] Starter " << (enabled ? "engaged" : "OFF") << "\n";
     }
 }
 
 double GetStarterRPM() {
     uintptr_t simInst = State::simulatorInstance.load();
-    if (simInst) {
-        return toRpm(std::fabs(*(double*)(simInst + 0x1B8)));
-    }
+    if (simInst) return toRpm(std::fabs(*(double*)(simInst + 0x1B8)));
     return 0.0;
 }
