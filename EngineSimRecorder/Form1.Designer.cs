@@ -6,8 +6,7 @@ namespace EngineSimRecorder
 
         protected override void Dispose(bool disposing)
         {
-            if (disposing && (components != null))
-                components.Dispose();
+            if (disposing && (components != null)) components.Dispose();
             base.Dispose(disposing);
         }
 
@@ -16,10 +15,23 @@ namespace EngineSimRecorder
         private void InitializeComponent()
         {
             this.lblTitle = new System.Windows.Forms.Label();
+            this.grpMode = new System.Windows.Forms.GroupBox();
+            this.rbOcr = new System.Windows.Forms.RadioButton();
+            this.rbInjection = new System.Windows.Forms.RadioButton();
             this.grpProcess = new System.Windows.Forms.GroupBox();
             this.btnRefresh = new System.Windows.Forms.Button();
             this.cmbProcess = new System.Windows.Forms.ComboBox();
             this.lblProcess = new System.Windows.Forms.Label();
+            this.grpOcrRegion = new System.Windows.Forms.GroupBox();
+            this.lblOcrHint = new System.Windows.Forms.Label();
+            this.numOcrH = new System.Windows.Forms.NumericUpDown();
+            this.numOcrW = new System.Windows.Forms.NumericUpDown();
+            this.numOcrY = new System.Windows.Forms.NumericUpDown();
+            this.numOcrX = new System.Windows.Forms.NumericUpDown();
+            this.lblOcrH = new System.Windows.Forms.Label();
+            this.lblOcrW = new System.Windows.Forms.Label();
+            this.lblOcrY = new System.Windows.Forms.Label();
+            this.lblOcrX = new System.Windows.Forms.Label();
             this.grpCapture = new System.Windows.Forms.GroupBox();
             this.btnBrowseOutput = new System.Windows.Forms.Button();
             this.txtOutputDir = new System.Windows.Forms.TextBox();
@@ -50,7 +62,14 @@ namespace EngineSimRecorder
             this.txtLog = new System.Windows.Forms.TextBox();
             this.btnStart = new System.Windows.Forms.Button();
             this.btnStop = new System.Windows.Forms.Button();
+
+            this.grpMode.SuspendLayout();
             this.grpProcess.SuspendLayout();
+            this.grpOcrRegion.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.numOcrH)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numOcrW)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numOcrY)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numOcrX)).BeginInit();
             this.grpCapture.SuspendLayout();
             this.grpRpm.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.numRpmList)).BeginInit();
@@ -71,15 +90,44 @@ namespace EngineSimRecorder
             this.lblTitle.Location = new System.Drawing.Point(12, 9);
             this.lblTitle.Name = "lblTitle";
             this.lblTitle.Size = new System.Drawing.Size(283, 25);
-            this.lblTitle.TabIndex = 0;
             this.lblTitle.Text = "Engine Simulator Auto-Recorder";
+            // 
+            // grpMode
+            // 
+            this.grpMode.Controls.Add(this.rbOcr);
+            this.grpMode.Controls.Add(this.rbInjection);
+            this.grpMode.Location = new System.Drawing.Point(12, 40);
+            this.grpMode.Name = "grpMode";
+            this.grpMode.Size = new System.Drawing.Size(560, 50);
+            this.grpMode.TabIndex = 10;
+            this.grpMode.TabStop = false;
+            this.grpMode.Text = "Mode";
+            // 
+            // rbInjection
+            // 
+            this.rbInjection.AutoSize = true;
+            this.rbInjection.Checked = true;
+            this.rbInjection.Location = new System.Drawing.Point(20, 22);
+            this.rbInjection.Name = "rbInjection";
+            this.rbInjection.Size = new System.Drawing.Size(200, 19);
+            this.rbInjection.Text = "Injection (DLL + Memory) — precise";
+            this.rbInjection.TabIndex = 0;
+            // 
+            // rbOcr
+            // 
+            this.rbOcr.AutoSize = true;
+            this.rbOcr.Location = new System.Drawing.Point(280, 22);
+            this.rbOcr.Name = "rbOcr";
+            this.rbOcr.Size = new System.Drawing.Size(220, 19);
+            this.rbOcr.Text = "OCR (PaddleOCR + Keys) — no admin";
+            this.rbOcr.TabIndex = 1;
             // 
             // grpProcess
             // 
             this.grpProcess.Controls.Add(this.btnRefresh);
             this.grpProcess.Controls.Add(this.cmbProcess);
             this.grpProcess.Controls.Add(this.lblProcess);
-            this.grpProcess.Location = new System.Drawing.Point(12, 40);
+            this.grpProcess.Location = new System.Drawing.Point(12, 98);
             this.grpProcess.Name = "grpProcess";
             this.grpProcess.Size = new System.Drawing.Size(560, 60);
             this.grpProcess.TabIndex = 1;
@@ -90,67 +138,70 @@ namespace EngineSimRecorder
             // 
             this.lblProcess.AutoSize = true;
             this.lblProcess.Location = new System.Drawing.Point(6, 24);
-            this.lblProcess.Name = "lblProcess";
             this.lblProcess.Size = new System.Drawing.Size(52, 15);
-            this.lblProcess.TabIndex = 0;
             this.lblProcess.Text = "Process:";
             // 
             // cmbProcess
             // 
             this.cmbProcess.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cmbProcess.FormattingEnabled = true;
             this.cmbProcess.Location = new System.Drawing.Point(70, 21);
-            this.cmbProcess.Name = "cmbProcess";
             this.cmbProcess.Size = new System.Drawing.Size(390, 23);
-            this.cmbProcess.TabIndex = 1;
+            this.cmbProcess.Name = "cmbProcess";
             // 
             // btnRefresh
             // 
             this.btnRefresh.Location = new System.Drawing.Point(470, 20);
-            this.btnRefresh.Name = "btnRefresh";
             this.btnRefresh.Size = new System.Drawing.Size(75, 25);
-            this.btnRefresh.TabIndex = 2;
             this.btnRefresh.Text = "Refresh";
-            this.btnRefresh.UseVisualStyleBackColor = true;
+            this.btnRefresh.Name = "btnRefresh";
             this.btnRefresh.Click += new System.EventHandler(this.btnRefresh_Click);
+            // 
+            // grpOcrRegion
+            // 
+            this.grpOcrRegion.Controls.Add(this.lblOcrHint);
+            this.grpOcrRegion.Controls.Add(this.numOcrH);
+            this.grpOcrRegion.Controls.Add(this.numOcrW);
+            this.grpOcrRegion.Controls.Add(this.numOcrY);
+            this.grpOcrRegion.Controls.Add(this.numOcrX);
+            this.grpOcrRegion.Controls.Add(this.lblOcrH);
+            this.grpOcrRegion.Controls.Add(this.lblOcrW);
+            this.grpOcrRegion.Controls.Add(this.lblOcrY);
+            this.grpOcrRegion.Controls.Add(this.lblOcrX);
+            this.grpOcrRegion.Location = new System.Drawing.Point(12, 98);
+            this.grpOcrRegion.Name = "grpOcrRegion";
+            this.grpOcrRegion.Size = new System.Drawing.Size(560, 80);
+            this.grpOcrRegion.TabIndex = 11;
+            this.grpOcrRegion.TabStop = false;
+            this.grpOcrRegion.Text = "OCR Region (RPM display, pixels)";
+            this.grpOcrRegion.Visible = false;
+            // 
+            // lblOcrX, numOcrX, etc.
+            // 
+            this.lblOcrX.AutoSize = true; this.lblOcrX.Location = new System.Drawing.Point(6, 28); this.lblOcrX.Text = "X";
+            this.numOcrX.Location = new System.Drawing.Point(24, 25); this.numOcrX.Size = new System.Drawing.Size(80, 23); this.numOcrX.Maximum = 7680; this.numOcrX.Value = 860;
+            this.lblOcrY.AutoSize = true; this.lblOcrY.Location = new System.Drawing.Point(115, 28); this.lblOcrY.Text = "Y";
+            this.numOcrY.Location = new System.Drawing.Point(133, 25); this.numOcrY.Size = new System.Drawing.Size(80, 23); this.numOcrY.Maximum = 4320; this.numOcrY.Value = 45;
+            this.lblOcrW.AutoSize = true; this.lblOcrW.Location = new System.Drawing.Point(224, 28); this.lblOcrW.Text = "W";
+            this.numOcrW.Location = new System.Drawing.Point(245, 25); this.numOcrW.Size = new System.Drawing.Size(80, 23); this.numOcrW.Maximum = 7680; this.numOcrW.Minimum = 10; this.numOcrW.Value = 160;
+            this.lblOcrH.AutoSize = true; this.lblOcrH.Location = new System.Drawing.Point(336, 28); this.lblOcrH.Text = "H";
+            this.numOcrH.Location = new System.Drawing.Point(356, 25); this.numOcrH.Size = new System.Drawing.Size(80, 23); this.numOcrH.Maximum = 4320; this.numOcrH.Minimum = 10; this.numOcrH.Value = 40;
+            this.lblOcrHint.AutoSize = true; this.lblOcrHint.ForeColor = System.Drawing.SystemColors.GrayText;
+            this.lblOcrHint.Location = new System.Drawing.Point(6, 55); this.lblOcrHint.Text = "Use a screen ruler to find the RPM digits bounding box.";
             // 
             // grpCapture
             // 
             this.grpCapture.Controls.Add(this.btnBrowseOutput);
             this.grpCapture.Controls.Add(this.txtOutputDir);
             this.grpCapture.Controls.Add(this.lblOutputDir);
-            this.grpCapture.Location = new System.Drawing.Point(12, 108);
+            this.grpCapture.Location = new System.Drawing.Point(12, 166);
             this.grpCapture.Name = "grpCapture";
             this.grpCapture.Size = new System.Drawing.Size(560, 60);
             this.grpCapture.TabIndex = 2;
             this.grpCapture.TabStop = false;
             this.grpCapture.Text = "Output";
-            // 
-            // lblOutputDir
-            // 
-            this.lblOutputDir.AutoSize = true;
-            this.lblOutputDir.Location = new System.Drawing.Point(6, 24);
-            this.lblOutputDir.Name = "lblOutputDir";
-            this.lblOutputDir.Size = new System.Drawing.Size(62, 15);
-            this.lblOutputDir.TabIndex = 0;
-            this.lblOutputDir.Text = "Output Dir:";
-            // 
-            // txtOutputDir
-            // 
-            this.txtOutputDir.Location = new System.Drawing.Point(80, 21);
-            this.txtOutputDir.Name = "txtOutputDir";
-            this.txtOutputDir.Size = new System.Drawing.Size(380, 23);
-            this.txtOutputDir.TabIndex = 1;
-            this.txtOutputDir.Text = "recordings";
-            // 
-            // btnBrowseOutput
-            // 
-            this.btnBrowseOutput.Location = new System.Drawing.Point(470, 20);
-            this.btnBrowseOutput.Name = "btnBrowseOutput";
-            this.btnBrowseOutput.Size = new System.Drawing.Size(75, 25);
-            this.btnBrowseOutput.TabIndex = 2;
-            this.btnBrowseOutput.Text = "Browse…";
-            this.btnBrowseOutput.UseVisualStyleBackColor = true;
+            this.lblOutputDir.AutoSize = true; this.lblOutputDir.Location = new System.Drawing.Point(6, 24); this.lblOutputDir.Text = "Output Dir:";
+            this.txtOutputDir.Location = new System.Drawing.Point(80, 21); this.txtOutputDir.Size = new System.Drawing.Size(380, 23); this.txtOutputDir.Text = "recordings";
+            this.btnBrowseOutput.Location = new System.Drawing.Point(470, 20); this.btnBrowseOutput.Size = new System.Drawing.Size(75, 25); this.btnBrowseOutput.Text = "Browse…";
             this.btnBrowseOutput.Click += new System.EventHandler(this.btnBrowseOutput_Click);
             // 
             // grpRpm
@@ -166,119 +217,25 @@ namespace EngineSimRecorder
             this.grpRpm.Controls.Add(this.lblHoldSec);
             this.grpRpm.Controls.Add(this.numRpmTol);
             this.grpRpm.Controls.Add(this.lblRpmTol);
-            this.grpRpm.Location = new System.Drawing.Point(12, 176);
+            this.grpRpm.Location = new System.Drawing.Point(12, 234);
             this.grpRpm.Name = "grpRpm";
             this.grpRpm.Size = new System.Drawing.Size(560, 155);
             this.grpRpm.TabIndex = 3;
             this.grpRpm.TabStop = false;
             this.grpRpm.Text = "RPM Targets";
-            // 
-            // lblTargetRpms
-            // 
-            this.lblTargetRpms.AutoSize = true;
-            this.lblTargetRpms.Location = new System.Drawing.Point(6, 22);
-            this.lblTargetRpms.Name = "lblTargetRpms";
-            this.lblTargetRpms.Size = new System.Drawing.Size(80, 15);
-            this.lblTargetRpms.TabIndex = 0;
-            this.lblTargetRpms.Text = "Target RPMs:";
-            // 
-            // lstTargetRpms
-            // 
-            this.lstTargetRpms.FormattingEnabled = true;
-            this.lstTargetRpms.ItemHeight = 15;
-            this.lstTargetRpms.Location = new System.Drawing.Point(6, 40);
-            this.lstTargetRpms.Name = "lstTargetRpms";
-            this.lstTargetRpms.Size = new System.Drawing.Size(180, 109);
-            this.lstTargetRpms.TabIndex = 1;
-            // 
-            // numRpmList
-            // 
-            this.numRpmList.Location = new System.Drawing.Point(200, 40);
-            this.numRpmList.Maximum = new decimal(new int[] { 30000, 0, 0, 0 });
-            this.numRpmList.Minimum = new decimal(new int[] { 100, 0, 0, 0 });
-            this.numRpmList.Name = "numRpmList";
-            this.numRpmList.Size = new System.Drawing.Size(90, 23);
-            this.numRpmList.TabIndex = 2;
-            this.numRpmList.Value = new decimal(new int[] { 1000, 0, 0, 0 });
-            this.numRpmList.Increment = new decimal(new int[] { 500, 0, 0, 0 });
-            // 
-            // btnAddRpm
-            // 
-            this.btnAddRpm.Location = new System.Drawing.Point(300, 40);
-            this.btnAddRpm.Name = "btnAddRpm";
-            this.btnAddRpm.Size = new System.Drawing.Size(60, 25);
-            this.btnAddRpm.TabIndex = 3;
-            this.btnAddRpm.Text = "Add";
-            this.btnAddRpm.UseVisualStyleBackColor = true;
+            this.lblTargetRpms.AutoSize = true; this.lblTargetRpms.Location = new System.Drawing.Point(6, 22); this.lblTargetRpms.Text = "Target RPMs:";
+            this.lstTargetRpms.Location = new System.Drawing.Point(6, 40); this.lstTargetRpms.Size = new System.Drawing.Size(180, 109);
+            this.numRpmList.Location = new System.Drawing.Point(200, 40); this.numRpmList.Size = new System.Drawing.Size(90, 23); this.numRpmList.Maximum = 30000; this.numRpmList.Minimum = 100; this.numRpmList.Value = 1000; this.numRpmList.Increment = 500;
+            this.btnAddRpm.Location = new System.Drawing.Point(300, 40); this.btnAddRpm.Size = new System.Drawing.Size(60, 25); this.btnAddRpm.Text = "Add";
             this.btnAddRpm.Click += new System.EventHandler(this.btnAddRpm_Click);
-            // 
-            // btnRemoveRpm
-            // 
-            this.btnRemoveRpm.Location = new System.Drawing.Point(370, 40);
-            this.btnRemoveRpm.Name = "btnRemoveRpm";
-            this.btnRemoveRpm.Size = new System.Drawing.Size(70, 25);
-            this.btnRemoveRpm.TabIndex = 4;
-            this.btnRemoveRpm.Text = "Remove";
-            this.btnRemoveRpm.UseVisualStyleBackColor = true;
+            this.btnRemoveRpm.Location = new System.Drawing.Point(370, 40); this.btnRemoveRpm.Size = new System.Drawing.Size(70, 25); this.btnRemoveRpm.Text = "Remove";
             this.btnRemoveRpm.Click += new System.EventHandler(this.btnRemoveRpm_Click);
-            // 
-            // lblRpmTol
-            // 
-            this.lblRpmTol.AutoSize = true;
-            this.lblRpmTol.Location = new System.Drawing.Point(200, 80);
-            this.lblRpmTol.Name = "lblRpmTol";
-            this.lblRpmTol.Size = new System.Drawing.Size(88, 15);
-            this.lblRpmTol.TabIndex = 5;
-            this.lblRpmTol.Text = "RPM Tolerance:";
-            // 
-            // numRpmTol
-            // 
-            this.numRpmTol.Location = new System.Drawing.Point(310, 77);
-            this.numRpmTol.Maximum = new decimal(new int[] { 1000, 0, 0, 0 });
-            this.numRpmTol.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
-            this.numRpmTol.Name = "numRpmTol";
-            this.numRpmTol.Size = new System.Drawing.Size(70, 23);
-            this.numRpmTol.TabIndex = 6;
-            this.numRpmTol.Value = new decimal(new int[] { 50, 0, 0, 0 });
-            this.numRpmTol.Increment = new decimal(new int[] { 10, 0, 0, 0 });
-            // 
-            // lblHoldSec
-            // 
-            this.lblHoldSec.AutoSize = true;
-            this.lblHoldSec.Location = new System.Drawing.Point(200, 110);
-            this.lblHoldSec.Name = "lblHoldSec";
-            this.lblHoldSec.Size = new System.Drawing.Size(82, 15);
-            this.lblHoldSec.TabIndex = 7;
-            this.lblHoldSec.Text = "Hold (seconds):";
-            // 
-            // numHoldSec
-            // 
-            this.numHoldSec.Location = new System.Drawing.Point(310, 107);
-            this.numHoldSec.Maximum = new decimal(new int[] { 120, 0, 0, 0 });
-            this.numHoldSec.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
-            this.numHoldSec.Name = "numHoldSec";
-            this.numHoldSec.Size = new System.Drawing.Size(70, 23);
-            this.numHoldSec.TabIndex = 8;
-            this.numHoldSec.Value = new decimal(new int[] { 3, 0, 0, 0 });
-            // 
-            // lblRecordSec
-            // 
-            this.lblRecordSec.AutoSize = true;
-            this.lblRecordSec.Location = new System.Drawing.Point(400, 80);
-            this.lblRecordSec.Name = "lblRecordSec";
-            this.lblRecordSec.Size = new System.Drawing.Size(96, 15);
-            this.lblRecordSec.TabIndex = 9;
-            this.lblRecordSec.Text = "Record (seconds):";
-            // 
-            // numRecordSec
-            // 
-            this.numRecordSec.Location = new System.Drawing.Point(400, 100);
-            this.numRecordSec.Maximum = new decimal(new int[] { 300, 0, 0, 0 });
-            this.numRecordSec.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
-            this.numRecordSec.Name = "numRecordSec";
-            this.numRecordSec.Size = new System.Drawing.Size(70, 23);
-            this.numRecordSec.TabIndex = 10;
-            this.numRecordSec.Value = new decimal(new int[] { 6, 0, 0, 0 });
+            this.lblRpmTol.AutoSize = true; this.lblRpmTol.Location = new System.Drawing.Point(200, 80); this.lblRpmTol.Text = "RPM Tolerance:";
+            this.numRpmTol.Location = new System.Drawing.Point(310, 77); this.numRpmTol.Size = new System.Drawing.Size(70, 23); this.numRpmTol.Maximum = 1000; this.numRpmTol.Minimum = 1; this.numRpmTol.Value = 50; this.numRpmTol.Increment = 10;
+            this.lblHoldSec.AutoSize = true; this.lblHoldSec.Location = new System.Drawing.Point(200, 110); this.lblHoldSec.Text = "Hold (seconds):";
+            this.numHoldSec.Location = new System.Drawing.Point(310, 107); this.numHoldSec.Size = new System.Drawing.Size(70, 23); this.numHoldSec.Maximum = 120; this.numHoldSec.Minimum = 1; this.numHoldSec.Value = 3;
+            this.lblRecordSec.AutoSize = true; this.lblRecordSec.Location = new System.Drawing.Point(400, 80); this.lblRecordSec.Text = "Record (seconds):";
+            this.numRecordSec.Location = new System.Drawing.Point(400, 100); this.numRecordSec.Size = new System.Drawing.Size(70, 23); this.numRecordSec.Maximum = 300; this.numRecordSec.Minimum = 1; this.numRecordSec.Value = 6;
             // 
             // grpPid
             // 
@@ -288,199 +245,103 @@ namespace EngineSimRecorder
             this.grpPid.Controls.Add(this.lblKd);
             this.grpPid.Controls.Add(this.lblKi);
             this.grpPid.Controls.Add(this.lblKp);
-            this.grpPid.Location = new System.Drawing.Point(12, 340);
+            this.grpPid.Location = new System.Drawing.Point(12, 398);
             this.grpPid.Name = "grpPid";
             this.grpPid.Size = new System.Drawing.Size(560, 60);
             this.grpPid.TabIndex = 4;
             this.grpPid.TabStop = false;
             this.grpPid.Text = "PID Controller";
-            // 
-            // lblKp
-            // 
-            this.lblKp.AutoSize = true;
-            this.lblKp.Location = new System.Drawing.Point(6, 27);
-            this.lblKp.Name = "lblKp";
-            this.lblKp.Size = new System.Drawing.Size(20, 15);
-            this.lblKp.TabIndex = 0;
-            this.lblKp.Text = "Kp";
-            // 
-            // numKp
-            // 
-            this.numKp.DecimalPlaces = 4;
-            this.numKp.Increment = new decimal(new int[] { 1, 0, 0, 131072 });
-            this.numKp.Location = new System.Drawing.Point(28, 24);
-            this.numKp.Maximum = new decimal(new int[] { 10, 0, 0, 0 });
-            this.numKp.Name = "numKp";
-            this.numKp.Size = new System.Drawing.Size(100, 23);
-            this.numKp.TabIndex = 1;
-            this.numKp.Value = new decimal(new int[] { 5, 0, 0, 131072 });
-            // 
-            // lblKi
-            // 
-            this.lblKi.AutoSize = true;
-            this.lblKi.Location = new System.Drawing.Point(148, 27);
-            this.lblKi.Name = "lblKi";
-            this.lblKi.Size = new System.Drawing.Size(17, 15);
-            this.lblKi.TabIndex = 2;
-            this.lblKi.Text = "Ki";
-            // 
-            // numKi
-            // 
-            this.numKi.DecimalPlaces = 5;
-            this.numKi.Increment = new decimal(new int[] { 1, 0, 0, 196608 });
-            this.numKi.Location = new System.Drawing.Point(170, 24);
-            this.numKi.Maximum = new decimal(new int[] { 1, 0, 0, 0 });
-            this.numKi.Name = "numKi";
-            this.numKi.Size = new System.Drawing.Size(100, 23);
-            this.numKi.TabIndex = 3;
-            this.numKi.Value = new decimal(new int[] { 1, 0, 0, 327680 });
-            // 
-            // lblKd
-            // 
-            this.lblKd.AutoSize = true;
-            this.lblKd.Location = new System.Drawing.Point(290, 27);
-            this.lblKd.Name = "lblKd";
-            this.lblKd.Size = new System.Drawing.Size(20, 15);
-            this.lblKd.TabIndex = 4;
-            this.lblKd.Text = "Kd";
-            // 
-            // numKd
-            // 
-            this.numKd.DecimalPlaces = 4;
-            this.numKd.Increment = new decimal(new int[] { 1, 0, 0, 131072 });
-            this.numKd.Location = new System.Drawing.Point(312, 24);
-            this.numKd.Maximum = new decimal(new int[] { 5, 0, 0, 0 });
-            this.numKd.Name = "numKd";
-            this.numKd.Size = new System.Drawing.Size(100, 23);
-            this.numKd.TabIndex = 5;
-            this.numKd.Value = new decimal(new int[] { 5, 0, 0, 65536 });
+            this.lblKp.AutoSize = true; this.lblKp.Location = new System.Drawing.Point(6, 27); this.lblKp.Text = "Kp";
+            this.numKp.DecimalPlaces = 4; this.numKp.Increment = 0.01m; this.numKp.Location = new System.Drawing.Point(28, 24); this.numKp.Size = new System.Drawing.Size(100, 23); this.numKp.Maximum = 10; this.numKp.Value = 0.005m;
+            this.lblKi.AutoSize = true; this.lblKi.Location = new System.Drawing.Point(148, 27); this.lblKi.Text = "Ki";
+            this.numKi.DecimalPlaces = 5; this.numKi.Increment = 0.001m; this.numKi.Location = new System.Drawing.Point(170, 24); this.numKi.Size = new System.Drawing.Size(100, 23); this.numKi.Maximum = 1; this.numKi.Value = 0.0001m;
+            this.lblKd.AutoSize = true; this.lblKd.Location = new System.Drawing.Point(290, 27); this.lblKd.Text = "Kd";
+            this.numKd.DecimalPlaces = 4; this.numKd.Increment = 0.01m; this.numKd.Location = new System.Drawing.Point(312, 24); this.numKd.Size = new System.Drawing.Size(100, 23); this.numKd.Maximum = 5; this.numKd.Value = 0.005m;
             // 
             // grpStatus
             // 
             this.grpStatus.Controls.Add(this.pbarProgress);
             this.grpStatus.Controls.Add(this.lblCurrentRpm);
             this.grpStatus.Controls.Add(this.lblStatus);
-            this.grpStatus.Location = new System.Drawing.Point(12, 410);
+            this.grpStatus.Location = new System.Drawing.Point(12, 468);
             this.grpStatus.Name = "grpStatus";
             this.grpStatus.Size = new System.Drawing.Size(560, 70);
             this.grpStatus.TabIndex = 5;
             this.grpStatus.TabStop = false;
             this.grpStatus.Text = "Status";
-            // 
-            // lblStatus
-            // 
-            this.lblStatus.AutoSize = true;
-            this.lblStatus.Location = new System.Drawing.Point(6, 22);
-            this.lblStatus.Name = "lblStatus";
-            this.lblStatus.Size = new System.Drawing.Size(42, 15);
-            this.lblStatus.TabIndex = 0;
-            this.lblStatus.Text = "Idle...";
-            // 
-            // lblCurrentRpm
-            // 
-            this.lblCurrentRpm.AutoSize = true;
-            this.lblCurrentRpm.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            this.lblCurrentRpm.Location = new System.Drawing.Point(400, 22);
-            this.lblCurrentRpm.Name = "lblCurrentRpm";
-            this.lblCurrentRpm.Size = new System.Drawing.Size(70, 15);
-            this.lblCurrentRpm.TabIndex = 1;
-            this.lblCurrentRpm.Text = "RPM: ---";
-            // 
-            // pbarProgress
-            // 
-            this.pbarProgress.Location = new System.Drawing.Point(6, 42);
-            this.pbarProgress.Name = "pbarProgress";
-            this.pbarProgress.Size = new System.Drawing.Size(548, 20);
-            this.pbarProgress.TabIndex = 2;
+            this.lblStatus.AutoSize = true; this.lblStatus.Location = new System.Drawing.Point(6, 22); this.lblStatus.Text = "Idle...";
+            this.lblCurrentRpm.AutoSize = true; this.lblCurrentRpm.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold); this.lblCurrentRpm.Location = new System.Drawing.Point(400, 22); this.lblCurrentRpm.Text = "RPM: ---";
+            this.pbarProgress.Location = new System.Drawing.Point(6, 42); this.pbarProgress.Size = new System.Drawing.Size(548, 20);
             // 
             // txtLog
             // 
-            this.txtLog.BackColor = System.Drawing.Color.Black;
-            this.txtLog.Font = new System.Drawing.Font("Consolas", 8.25F);
-            this.txtLog.ForeColor = System.Drawing.Color.LimeGreen;
-            this.txtLog.Location = new System.Drawing.Point(12, 490);
-            this.txtLog.Multiline = true;
-            this.txtLog.Name = "txtLog";
-            this.txtLog.ReadOnly = true;
-            this.txtLog.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-            this.txtLog.Size = new System.Drawing.Size(560, 120);
-            this.txtLog.TabIndex = 6;
+            this.txtLog.BackColor = System.Drawing.Color.Black; this.txtLog.Font = new System.Drawing.Font("Consolas", 8.25F);
+            this.txtLog.ForeColor = System.Drawing.Color.LimeGreen; this.txtLog.Location = new System.Drawing.Point(12, 548);
+            this.txtLog.Multiline = true; this.txtLog.ReadOnly = true; this.txtLog.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
+            this.txtLog.Size = new System.Drawing.Size(560, 120); this.txtLog.Name = "txtLog";
             // 
             // btnStart
             // 
-            this.btnStart.BackColor = System.Drawing.Color.ForestGreen;
-            this.btnStart.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
-            this.btnStart.ForeColor = System.Drawing.Color.White;
-            this.btnStart.Location = new System.Drawing.Point(12, 620);
-            this.btnStart.Name = "btnStart";
-            this.btnStart.Size = new System.Drawing.Size(120, 36);
-            this.btnStart.TabIndex = 7;
-            this.btnStart.Text = "▶  Start";
-            this.btnStart.UseVisualStyleBackColor = false;
+            this.btnStart.BackColor = System.Drawing.Color.ForestGreen; this.btnStart.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this.btnStart.ForeColor = System.Drawing.Color.White; this.btnStart.Location = new System.Drawing.Point(12, 678);
+            this.btnStart.Size = new System.Drawing.Size(120, 36); this.btnStart.Text = "▶  Start";
             this.btnStart.Click += new System.EventHandler(this.btnStart_Click);
             // 
             // btnStop
             // 
-            this.btnStop.BackColor = System.Drawing.Color.Firebrick;
-            this.btnStop.Enabled = false;
+            this.btnStop.BackColor = System.Drawing.Color.Firebrick; this.btnStop.Enabled = false;
             this.btnStop.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
-            this.btnStop.ForeColor = System.Drawing.Color.White;
-            this.btnStop.Location = new System.Drawing.Point(145, 620);
-            this.btnStop.Name = "btnStop";
-            this.btnStop.Size = new System.Drawing.Size(120, 36);
-            this.btnStop.TabIndex = 8;
-            this.btnStop.Text = "■  Stop";
-            this.btnStop.UseVisualStyleBackColor = false;
+            this.btnStop.ForeColor = System.Drawing.Color.White; this.btnStop.Location = new System.Drawing.Point(145, 678);
+            this.btnStop.Size = new System.Drawing.Size(120, 36); this.btnStop.Text = "■  Stop";
             this.btnStop.Click += new System.EventHandler(this.btnStop_Click);
             // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(584, 668);
-            this.Controls.Add(this.btnStop);
-            this.Controls.Add(this.btnStart);
-            this.Controls.Add(this.txtLog);
-            this.Controls.Add(this.grpStatus);
-            this.Controls.Add(this.grpPid);
-            this.Controls.Add(this.grpRpm);
-            this.Controls.Add(this.grpCapture);
-            this.Controls.Add(this.grpProcess);
-            this.Controls.Add(this.lblTitle);
+            this.ClientSize = new System.Drawing.Size(584, 726);
+            this.Controls.AddRange(new System.Windows.Forms.Control[] {
+                this.btnStop, this.btnStart, this.txtLog, this.grpStatus,
+                this.grpPid, this.grpRpm, this.grpCapture,
+                this.grpOcrRegion, this.grpProcess, this.grpMode, this.lblTitle
+            });
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.MaximizeBox = false;
             this.Name = "Form1";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Engine Simulator Auto-Recorder";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.Form1_FormClosing);
-            this.grpProcess.ResumeLayout(false);
-            this.grpProcess.PerformLayout();
-            this.grpCapture.ResumeLayout(false);
-            this.grpCapture.PerformLayout();
-            this.grpRpm.ResumeLayout(false);
-            this.grpRpm.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.numRpmList)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numRecordSec)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numHoldSec)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numRpmTol)).EndInit();
-            this.grpPid.ResumeLayout(false);
-            this.grpPid.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.numKd)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numKi)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numKp)).EndInit();
-            this.grpStatus.ResumeLayout(false);
-            this.grpStatus.PerformLayout();
-            this.ResumeLayout(false);
-            this.PerformLayout();
+
+            this.grpMode.ResumeLayout(false); this.grpMode.PerformLayout();
+            this.grpProcess.ResumeLayout(false); this.grpProcess.PerformLayout();
+            this.grpOcrRegion.ResumeLayout(false); this.grpOcrRegion.PerformLayout();
+            this.grpCapture.ResumeLayout(false); this.grpCapture.PerformLayout();
+            this.grpRpm.ResumeLayout(false); this.grpRpm.PerformLayout();
+            this.grpPid.ResumeLayout(false); this.grpPid.PerformLayout();
+            this.grpStatus.ResumeLayout(false); this.grpStatus.PerformLayout();
+            this.ResumeLayout(false); this.PerformLayout();
         }
 
         #endregion
 
         private System.Windows.Forms.Label lblTitle;
+        private System.Windows.Forms.GroupBox grpMode;
+        private System.Windows.Forms.RadioButton rbInjection;
+        private System.Windows.Forms.RadioButton rbOcr;
         private System.Windows.Forms.GroupBox grpProcess;
         private System.Windows.Forms.Button btnRefresh;
         private System.Windows.Forms.ComboBox cmbProcess;
         private System.Windows.Forms.Label lblProcess;
+        private System.Windows.Forms.GroupBox grpOcrRegion;
+        private System.Windows.Forms.Label lblOcrHint;
+        private System.Windows.Forms.NumericUpDown numOcrH;
+        private System.Windows.Forms.NumericUpDown numOcrW;
+        private System.Windows.Forms.NumericUpDown numOcrY;
+        private System.Windows.Forms.NumericUpDown numOcrX;
+        private System.Windows.Forms.Label lblOcrH;
+        private System.Windows.Forms.Label lblOcrW;
+        private System.Windows.Forms.Label lblOcrY;
+        private System.Windows.Forms.Label lblOcrX;
         private System.Windows.Forms.GroupBox grpCapture;
         private System.Windows.Forms.Button btnBrowseOutput;
         private System.Windows.Forms.TextBox txtOutputDir;
