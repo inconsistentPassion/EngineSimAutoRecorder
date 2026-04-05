@@ -19,9 +19,15 @@ namespace EngineSimRecorder
         public Form1()
         {
    InitializeComponent();
-      foreach (int rpm in new[] { 1000, 2000, 3000, 4000, 5000, 6000, 7000 })
-             lstTargetRpms.Items.Add(rpm);
-        }
+            if (System.ComponentModel.LicenseManager.UsageMode != System.ComponentModel.LicenseUsageMode.Designtime)
+    {
+    foreach (int rpm in new[] { 1500, 2000, 3000, 4000, 5000, 6000})
+         lstTargetRpms.Items.Add(rpm);
+    }
+
+    // change window title here
+    this.Text = "Engine Sim Recorder 1.0.0";
+ }
 
         // ── UI events ──────────────────────────────────────────────────
 
@@ -81,12 +87,6 @@ MessageBox.Show("Add at least one target RPM.", "No targets",
       OutputDir = outputDir,
       ProcessId = sel.ProcessId,
         TargetRpms = targets,
- RpmTolerance = (int)numRpmTol.Value,
-           HoldSeconds = (int)numHoldSec.Value,
-            RecordSeconds = (int)numRecordSec.Value,
-        Kp = (double)numKp.Value,
-         Ki = (double)numKi.Value,
-                Kd = (double)numKd.Value,
     };
 
        btnStart.Enabled = false;

@@ -29,19 +29,6 @@ namespace EngineSimRecorder
             this.btnRemoveRpm = new System.Windows.Forms.Button();
             this.btnAddRpm = new System.Windows.Forms.Button();
             this.lblTargetRpms = new System.Windows.Forms.Label();
-            this.numRecordSec = new System.Windows.Forms.NumericUpDown();
-            this.lblRecordSec = new System.Windows.Forms.Label();
-            this.numHoldSec = new System.Windows.Forms.NumericUpDown();
-            this.lblHoldSec = new System.Windows.Forms.Label();
-            this.numRpmTol = new System.Windows.Forms.NumericUpDown();
-            this.lblRpmTol = new System.Windows.Forms.Label();
-            this.grpPid = new System.Windows.Forms.GroupBox();
-            this.numKd = new System.Windows.Forms.NumericUpDown();
-            this.numKi = new System.Windows.Forms.NumericUpDown();
-            this.numKp = new System.Windows.Forms.NumericUpDown();
-            this.lblKd = new System.Windows.Forms.Label();
-            this.lblKi = new System.Windows.Forms.Label();
-            this.lblKp = new System.Windows.Forms.Label();
             this.grpStatus = new System.Windows.Forms.GroupBox();
             this.pbarProgress = new System.Windows.Forms.ProgressBar();
             this.lblCurrentRpm = new System.Windows.Forms.Label();
@@ -54,13 +41,6 @@ namespace EngineSimRecorder
             this.grpCapture.SuspendLayout();
             this.grpRpm.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.numRpmList)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numRecordSec)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numHoldSec)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numRpmTol)).BeginInit();
-            this.grpPid.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.numKd)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numKi)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numKp)).BeginInit();
             this.grpStatus.SuspendLayout();
             this.SuspendLayout();
             //
@@ -150,15 +130,9 @@ namespace EngineSimRecorder
             this.grpRpm.Controls.Add(this.btnRemoveRpm);
             this.grpRpm.Controls.Add(this.btnAddRpm);
             this.grpRpm.Controls.Add(this.lblTargetRpms);
-            this.grpRpm.Controls.Add(this.numRecordSec);
-            this.grpRpm.Controls.Add(this.lblRecordSec);
-            this.grpRpm.Controls.Add(this.numHoldSec);
-            this.grpRpm.Controls.Add(this.lblHoldSec);
-            this.grpRpm.Controls.Add(this.numRpmTol);
-            this.grpRpm.Controls.Add(this.lblRpmTol);
             this.grpRpm.Location = new System.Drawing.Point(12, 176);
             this.grpRpm.Name = "grpRpm";
-            this.grpRpm.Size = new System.Drawing.Size(560, 155);
+            this.grpRpm.Size = new System.Drawing.Size(560, 100);
             this.grpRpm.TabIndex = 3;
             this.grpRpm.TabStop = false;
             this.grpRpm.Text = "RPM Targets";
@@ -176,7 +150,7 @@ namespace EngineSimRecorder
             this.lstTargetRpms.ItemHeight = 15;
             this.lstTargetRpms.Location = new System.Drawing.Point(6, 40);
             this.lstTargetRpms.Name = "lstTargetRpms";
-            this.lstTargetRpms.Size = new System.Drawing.Size(180, 109);
+            this.lstTargetRpms.Size = new System.Drawing.Size(180, 49);
             //
             // numRpmList
             //
@@ -204,136 +178,15 @@ namespace EngineSimRecorder
             this.btnRemoveRpm.Text = "Remove";
             this.btnRemoveRpm.Click += new System.EventHandler(this.btnRemoveRpm_Click);
             //
-            // lblRpmTol
-            //
-            this.lblRpmTol.AutoSize = true;
-            this.lblRpmTol.Location = new System.Drawing.Point(200, 80);
-            this.lblRpmTol.Name = "lblRpmTol";
-            this.lblRpmTol.Size = new System.Drawing.Size(88, 15);
-            this.lblRpmTol.Text = "RPM Tolerance:";
-            //
-            // numRpmTol
-            //
-            this.numRpmTol.Increment = 10;
-            this.numRpmTol.Location = new System.Drawing.Point(310, 77);
-            this.numRpmTol.Maximum = 1000;
-            this.numRpmTol.Minimum = 1;
-            this.numRpmTol.Name = "numRpmTol";
-            this.numRpmTol.Size = new System.Drawing.Size(70, 23);
-            this.numRpmTol.Value = 50;
-            //
-            // lblHoldSec
-            //
-            this.lblHoldSec.AutoSize = true;
-            this.lblHoldSec.Location = new System.Drawing.Point(200, 110);
-            this.lblHoldSec.Name = "lblHoldSec";
-            this.lblHoldSec.Size = new System.Drawing.Size(92, 15);
-            this.lblHoldSec.Text = "Hold (seconds):";
-            //
-            // numHoldSec
-            //
-            this.numHoldSec.Location = new System.Drawing.Point(310, 107);
-            this.numHoldSec.Maximum = 120;
-            this.numHoldSec.Minimum = 1;
-            this.numHoldSec.Name = "numHoldSec";
-            this.numHoldSec.Size = new System.Drawing.Size(70, 23);
-            this.numHoldSec.Value = 3;
-            //
-            // lblRecordSec
-            //
-            this.lblRecordSec.AutoSize = true;
-            this.lblRecordSec.Location = new System.Drawing.Point(400, 80);
-            this.lblRecordSec.Name = "lblRecordSec";
-            this.lblRecordSec.Size = new System.Drawing.Size(103, 15);
-            this.lblRecordSec.Text = "Record (seconds):";
-            //
-            // numRecordSec
-            //
-            this.numRecordSec.Location = new System.Drawing.Point(400, 100);
-            this.numRecordSec.Maximum = 300;
-            this.numRecordSec.Minimum = 1;
-            this.numRecordSec.Name = "numRecordSec";
-            this.numRecordSec.Size = new System.Drawing.Size(70, 23);
-            this.numRecordSec.Value = 6;
-            //
-            // grpPid
-            //
-            this.grpPid.Controls.Add(this.numKd);
-            this.grpPid.Controls.Add(this.numKi);
-            this.grpPid.Controls.Add(this.numKp);
-            this.grpPid.Controls.Add(this.lblKd);
-            this.grpPid.Controls.Add(this.lblKi);
-            this.grpPid.Controls.Add(this.lblKp);
-            this.grpPid.Location = new System.Drawing.Point(12, 340);
-            this.grpPid.Name = "grpPid";
-            this.grpPid.Size = new System.Drawing.Size(560, 60);
-            this.grpPid.TabIndex = 4;
-            this.grpPid.TabStop = false;
-            this.grpPid.Text = "PID Controller";
-            //
-            // lblKp
-            //
-            this.lblKp.AutoSize = true;
-            this.lblKp.Location = new System.Drawing.Point(6, 27);
-            this.lblKp.Name = "lblKp";
-            this.lblKp.Size = new System.Drawing.Size(20, 15);
-            this.lblKp.Text = "Kp";
-            //
-            // numKp
-            //
-            this.numKp.DecimalPlaces = 4;
-            this.numKp.Increment = 0.01m;
-            this.numKp.Location = new System.Drawing.Point(28, 24);
-            this.numKp.Maximum = 10;
-            this.numKp.Name = "numKp";
-            this.numKp.Size = new System.Drawing.Size(100, 23);
-            this.numKp.Value = 0.005m;
-            //
-            // lblKi
-            //
-            this.lblKi.AutoSize = true;
-            this.lblKi.Location = new System.Drawing.Point(148, 27);
-            this.lblKi.Name = "lblKi";
-            this.lblKi.Size = new System.Drawing.Size(16, 15);
-            this.lblKi.Text = "Ki";
-            //
-            // numKi
-            //
-            this.numKi.DecimalPlaces = 5;
-            this.numKi.Increment = 0.001m;
-            this.numKi.Location = new System.Drawing.Point(170, 24);
-            this.numKi.Maximum = 1;
-            this.numKi.Name = "numKi";
-            this.numKi.Size = new System.Drawing.Size(100, 23);
-            this.numKi.Value = 0.0001m;
-            //
-            // lblKd
-            //
-            this.lblKd.AutoSize = true;
-            this.lblKd.Location = new System.Drawing.Point(290, 27);
-            this.lblKd.Name = "lblKd";
-            this.lblKd.Size = new System.Drawing.Size(20, 15);
-            this.lblKd.Text = "Kd";
-            //
-            // numKd
-            //
-            this.numKd.DecimalPlaces = 4;
-            this.numKd.Increment = 0.01m;
-            this.numKd.Location = new System.Drawing.Point(312, 24);
-            this.numKd.Maximum = 5;
-            this.numKd.Name = "numKd";
-            this.numKd.Size = new System.Drawing.Size(100, 23);
-            this.numKd.Value = 0.005m;
-            //
             // grpStatus
             //
             this.grpStatus.Controls.Add(this.pbarProgress);
             this.grpStatus.Controls.Add(this.lblCurrentRpm);
             this.grpStatus.Controls.Add(this.lblStatus);
-            this.grpStatus.Location = new System.Drawing.Point(12, 410);
+            this.grpStatus.Location = new System.Drawing.Point(12, 284);
             this.grpStatus.Name = "grpStatus";
             this.grpStatus.Size = new System.Drawing.Size(560, 70);
-            this.grpStatus.TabIndex = 5;
+            this.grpStatus.TabIndex = 4;
             this.grpStatus.TabStop = false;
             this.grpStatus.Text = "Status";
             //
@@ -365,19 +218,19 @@ namespace EngineSimRecorder
             this.txtLog.BackColor = System.Drawing.Color.Black;
             this.txtLog.Font = new System.Drawing.Font("Consolas", 8.25F);
             this.txtLog.ForeColor = System.Drawing.Color.LimeGreen;
-            this.txtLog.Location = new System.Drawing.Point(12, 490);
+            this.txtLog.Location = new System.Drawing.Point(12, 364);
             this.txtLog.Multiline = true;
             this.txtLog.Name = "txtLog";
             this.txtLog.ReadOnly = true;
             this.txtLog.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-            this.txtLog.Size = new System.Drawing.Size(560, 120);
+            this.txtLog.Size = new System.Drawing.Size(560, 150);
             //
             // btnStart
             //
             this.btnStart.BackColor = System.Drawing.Color.ForestGreen;
             this.btnStart.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
             this.btnStart.ForeColor = System.Drawing.Color.White;
-            this.btnStart.Location = new System.Drawing.Point(12, 620);
+            this.btnStart.Location = new System.Drawing.Point(12, 524);
             this.btnStart.Name = "btnStart";
             this.btnStart.Size = new System.Drawing.Size(120, 36);
             this.btnStart.Text = "\u25B6  Start";
@@ -389,7 +242,7 @@ namespace EngineSimRecorder
             this.btnStop.Enabled = false;
             this.btnStop.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
             this.btnStop.ForeColor = System.Drawing.Color.White;
-            this.btnStop.Location = new System.Drawing.Point(145, 620);
+            this.btnStop.Location = new System.Drawing.Point(145, 524);
             this.btnStop.Name = "btnStop";
             this.btnStop.Size = new System.Drawing.Size(120, 36);
             this.btnStop.Text = "\u25A0  Stop";
@@ -399,11 +252,10 @@ namespace EngineSimRecorder
             //
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(584, 670);
+            this.ClientSize = new System.Drawing.Size(584, 572);
             this.Controls.AddRange(new System.Windows.Forms.Control[] {
                 this.btnStop, this.btnStart, this.txtLog, this.grpStatus,
-                this.grpPid, this.grpRpm, this.grpCapture,
-                this.grpProcess, this.lblTitle
+                this.grpRpm, this.grpCapture, this.grpProcess, this.lblTitle
             });
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.MaximizeBox = false;
@@ -415,7 +267,7 @@ namespace EngineSimRecorder
             this.grpProcess.ResumeLayout(false); this.grpProcess.PerformLayout();
             this.grpCapture.ResumeLayout(false); this.grpCapture.PerformLayout();
             this.grpRpm.ResumeLayout(false); this.grpRpm.PerformLayout();
-            this.grpPid.ResumeLayout(false); this.grpPid.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.numRpmList)).EndInit();
             this.grpStatus.ResumeLayout(false); this.grpStatus.PerformLayout();
             this.ResumeLayout(false); this.PerformLayout();
         }
@@ -437,19 +289,6 @@ namespace EngineSimRecorder
         private System.Windows.Forms.Button btnRemoveRpm;
         private System.Windows.Forms.Button btnAddRpm;
         private System.Windows.Forms.Label lblTargetRpms;
-        private System.Windows.Forms.NumericUpDown numRecordSec;
-        private System.Windows.Forms.Label lblRecordSec;
-        private System.Windows.Forms.NumericUpDown numHoldSec;
-        private System.Windows.Forms.Label lblHoldSec;
-        private System.Windows.Forms.NumericUpDown numRpmTol;
-        private System.Windows.Forms.Label lblRpmTol;
-        private System.Windows.Forms.GroupBox grpPid;
-        private System.Windows.Forms.NumericUpDown numKd;
-        private System.Windows.Forms.NumericUpDown numKi;
-        private System.Windows.Forms.NumericUpDown numKp;
-        private System.Windows.Forms.Label lblKd;
-        private System.Windows.Forms.Label lblKi;
-        private System.Windows.Forms.Label lblKp;
         private System.Windows.Forms.GroupBox grpStatus;
         private System.Windows.Forms.ProgressBar pbarProgress;
         private System.Windows.Forms.Label lblCurrentRpm;

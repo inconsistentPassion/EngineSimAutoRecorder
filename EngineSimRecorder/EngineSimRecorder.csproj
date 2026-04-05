@@ -21,7 +21,22 @@
 
   <ItemGroup>
     <!-- Hook DLL (injection mode) — build EngineSimHook first -->
-    <None Include="..\EngineSimHook\bin\$(Configuration)\es_hook.dll" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\EngineSimHook\bin\$(Configuration)\es_hook.dll"
+  Condition="Exists('..\EngineSimHook\bin\$(Configuration)\es_hook.dll')"
+      CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Form1.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Form1.Designer.cs">
+      <DependentUpon>Form1.cs</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <EmbeddedResource Update="Form1.resx">
+      <DependentUpon>Form1.cs</DependentUpon>
+    </EmbeddedResource>
   </ItemGroup>
 
 </Project>
