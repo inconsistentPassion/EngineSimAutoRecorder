@@ -1,13 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using EngineSimRecorder.Backends.Injection;
-using EngineSimRecorder.Backends.Ocr;
 using EngineSimRecorder.Core;
 using NAudio.Wave;
 
@@ -24,25 +22,8 @@ namespace EngineSimRecorder
             foreach (int rpm in new[] { 800, 1500, 3000, 4500, 6000, 7500 })
                 lstTargetRpms.Items.Add(rpm);
 
-            // Wire up mode toggle
-            rbInjection.CheckedChanged += ModeChanged;
-            rbOcr.CheckedChanged += ModeChanged;
-            UpdateModeVisibility();
+
         }
-
-        // ── Mode toggle ───────────────────────────────────────────────
-
-        private void ModeChanged(object? sender, EventArgs e) => UpdateModeVisibility();
-
-        private void UpdateModeVisibility()
-        {
-            bool inj = rbInjection.Checked;
-            grpProcess.Visible = inj;
-            grpOcrRegion.Visible = !inj;
-        }
-
-        private BackendMode SelectedMode =>
-            rbInjection.Checked ? BackendMode.Injection : BackendMode.Ocr;
 
         // ── UI events ──────────────────────────────────────────────────
 
@@ -84,16 +65,13 @@ namespace EngineSimRecorder
             }
 
             int pid = 0;
-            if (rbInjection.Checked)
+            if (cmbProcess.SelectedItem is not ProcessItem sel)
             {
-                if (cmbProcess.SelectedItem is not ProcessItem sel)
-                {
-                    MessageBox.Show("Select an Engine Simulator process.", "No process",
-                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
-                }
-                pid = sel.ProcessId;
+                MessageBox.Show("Select an Engine Simulator process.", "No process",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
             }
+            pid = sel.ProcessId;
 
             string outputDir = txtOutputDir.Text.Trim();
             Directory.CreateDirectory(outputDir);
@@ -105,8 +83,6 @@ namespace EngineSimRecorder
             {
                 OutputDir = outputDir,
                 ProcessId = pid,
-                OcrRegion = new Rectangle((int)numOcrX.Value, (int)numOcrY.Value,
-                                          (int)numOcrW.Value, (int)numOcrH.Value),
                 TargetRpms = targets,
                 RpmTolerance = (int)numRpmTol.Value,
                 HoldSeconds = (int)numHoldSec.Value,
@@ -114,14 +90,11 @@ namespace EngineSimRecorder
                 Kp = (double)numKp.Value,
                 Ki = (double)numKi.Value,
                 Kd = (double)numKd.Value,
-                Mode = SelectedMode,
             };
 
             btnStart.Enabled = false;
             btnStop.Enabled = true;
             btnRefresh.Enabled = false;
-            rbInjection.Enabled = false;
-            rbOcr.Enabled = false;
             pbarProgress.Value = 0;
             pbarProgress.Maximum = targets.Count;
             txtLog.Clear();
@@ -153,7 +126,7 @@ namespace EngineSimRecorder
         private void ResetControls() => BeginInvoke(new Action(() =>
         {
             btnStart.Enabled = true; btnStop.Enabled = false;
-            btnRefresh.Enabled = true; rbInjection.Enabled = true; rbOcr.Enabled = true;
+            btnRefresh.Enabled = true;
             lblStatus.Text = "Done.";
         }));
 
@@ -164,10 +137,8 @@ namespace EngineSimRecorder
             IEngineBackend? backend = null;
             try
             {
-                // Create backend based on mode
-                backend = cfg.Mode == BackendMode.Injection
-                    ? new InjectionBackend()
-                    : new OcrBackend();
+                // Create backend
+                backend = new InjectionBackend();
 
                 Log($"Mode: {backend.Name}");
 

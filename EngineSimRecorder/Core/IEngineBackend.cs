@@ -7,7 +7,6 @@ namespace EngineSimRecorder.Core
     /// Abstraction for reading RPM and controlling the engine.
     ///
     /// InjectionBackend: DLL hook → memory read RPM, memory write throttle.
-    /// OcrBackend:       PaddleOCR → screen capture RPM, SendInput → W/S keys.
     /// </summary>
     public interface IEngineBackend : IDisposable
     {

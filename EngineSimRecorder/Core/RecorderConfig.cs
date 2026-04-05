@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Drawing;
 
 namespace EngineSimRecorder.Core
 {
@@ -8,7 +7,6 @@ namespace EngineSimRecorder.Core
         public string OutputDir { get; set; } = "recordings";
         public int ProcessId { get; set; }
         public string ProcessName { get; set; } = "";
-        public Rectangle OcrRegion { get; set; } = new(860, 45, 160, 40);
         public List<int> TargetRpms { get; set; } = new();
         public int RpmTolerance { get; set; } = 50;
         public int HoldSeconds { get; set; } = 3;
@@ -22,9 +20,6 @@ namespace EngineSimRecorder.Core
     public enum BackendMode
     {
         /// <summary>DLL injection + memory read/write. Precise, requires admin.</summary>
-        Injection,
-
-        /// <summary>OCR + SendInput keystrokes. Non-invasive, no admin needed.</summary>
-        Ocr
+        Injection
     }
 }

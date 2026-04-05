@@ -6,14 +6,9 @@
 
 An automated tool that records engine audio from [Engine Simulator](https://github.com/ange-yaghi/engine-sim). It reads RPM, holds the engine at target RPMs with a PID controller, and captures system audio as WAV files for use in FMOD/Assetto Corsa.
 
-## Current state (2026-04-05)
+## Current state (2026-04-06)
 
 ### Completed
-
-- **Dual-mode architecture** with shared core and interchangeable backends:
-  - `IEngineBackend` interface — `ReadRpm()`, `SetThrottle()`, `StartEngine()`, `StopEngine()`
-  - `PidController` — shared, stateful PID logic
-  - `RecorderConfig` — unified config with `BackendMode` enum
 
 - **Injection backend** (DLL + memory):
   - C++ hook DLL using MinHook (vendored)
@@ -24,13 +19,7 @@ An automated tool that records engine audio from [Engine Simulator](https://gith
   - Thread-safe hook installation (suspends game threads before patching) — fixes ES-Studio's ~75% crash rate
   - Engine startup sequence: ignition ON → dyno ON → starter ON → wait RPM>200 → starter OFF
 
-- **OCR backend** (PaddleOCR + keystrokes):
-  - PaddleOCR via Sdcb.PaddleInference (V4 model, MKL-DNN)
-  - SendInput W/S key simulation for throttle
-  - Enter key to start engine
-  - No admin rights, no injection
-
-- **UI**: WinForms with mode toggle radio buttons, process selector (injection) or OCR region (OCR)
+- **UI**: WinForms with process selector, output dir, RPM targets, PID tuning, progress/log
 
 - **Recording**: NAudio WASAPI loopback, 44100Hz stereo 16-bit PCM
 
@@ -38,15 +27,11 @@ An automated tool that records engine audio from [Engine Simulator](https://gith
 
 - .NET 8 (C#), WinForms
 - NAudio 2.2.1
-- Sdcb.PaddleOCR 1.3.4 + Sdcb.PaddleInference 2.5.0.1
-- OpenCvSharp4 4.9.0
 - C++20 (hook DLL), CMake, MinHook (vendored)
 
 ### Known issues
 
 - Byte patterns in `hooks.cpp` are for current Engine Simulator version — may break on game updates
-- OCR throttle mode is less precise (key hold duration vs exact float)
-- OCR mode requires focused window
 - No auto-detection of rotary vs piston engine (piston assumed)
 - Injection DLL must be built separately with CMake + MSVC before C# build
 
@@ -58,8 +43,7 @@ An automated tool that records engine audio from [Engine Simulator](https://gith
 4. **Multi-engine presets** — save/load RPM lists + PID gains per car/engine
 5. **Progressive RPM sweep** — continuous recording while RPM ramps up/down, not just discrete targets
 6. **Pattern update mechanism** — auto-download new byte patterns when ES-Studio updates them
-7. **Better OCR throttle** — use gear-based throttle mapping or direct OCR of throttle position gauge
-8. **Live RPM graph** — show RPM vs time in the UI during recording
+7. **Live RPM graph** — show RPM vs time in the UI during recording
 
 ## File map
 
@@ -67,20 +51,18 @@ An automated tool that records engine audio from [Engine Simulator](https://gith
 EngineSimAutoRecorder/
 ├── README.md
 ├── STATUS.md                          ← this file
-├── EngineSimRecorder.csproj           ← .NET 8, WinForms
-├── Form1.cs                           ← main UI + recording loop
-├── Form1.Designer.cs                  ← WinForms designer
-├── Program.cs
 ├── EngineSimRecorder/
+│   ├── EngineSimRecorder.csproj       ← .NET 8, WinForms
+│   ├── Form1.cs                       ← main UI + recording loop
+│   ├── Form1.Designer.cs              ← WinForms designer
+│   ├── Program.cs
 │   ├── Core/
 │   │   ├── IEngineBackend.cs
 │   │   ├── PidController.cs
 │   │   └── RecorderConfig.cs
 │   └── Backends/
-│       ├── Injection/
-│       │   └── InjectionBackend.cs
-│       └── Ocr/
-│           └── OcrBackend.cs
+│       └── Injection/
+│           └── InjectionBackend.cs
 └── EngineSimHook/                     ← C++ DLL (injection mode)
     ├── CMakeLists.txt
     ├── src/
@@ -99,5 +81,5 @@ EngineSimAutoRecorder/
 
 - Read this file first
 - Check `git log --oneline` for recent changes
-- Both backends implement `IEngineBackend` — new modes can be added as new classes
+- Backend implements `IEngineBackend` — new modes can be added as new classes
 - Hook DLL byte patterns: check if Engine Simulator updated; if so, re-scan with IDA/Ghidra or check ES-Studio for updated patterns
