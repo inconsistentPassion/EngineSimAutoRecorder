@@ -17,9 +17,6 @@ namespace EngineSimRecorder
         {
             this.lblTitle = new System.Windows.Forms.Label();
             this.grpCapture = new System.Windows.Forms.GroupBox();
-            this.btnBrowseTess = new System.Windows.Forms.Button();
-            this.txtTessData = new System.Windows.Forms.TextBox();
-            this.lblTessData = new System.Windows.Forms.Label();
             this.btnBrowseOutput = new System.Windows.Forms.Button();
             this.txtOutputDir = new System.Windows.Forms.TextBox();
             this.lblOutputDir = new System.Windows.Forms.Label();
@@ -86,15 +83,12 @@ namespace EngineSimRecorder
             // 
             // grpCapture
             // 
-            this.grpCapture.Controls.Add(this.btnBrowseTess);
-            this.grpCapture.Controls.Add(this.txtTessData);
-            this.grpCapture.Controls.Add(this.lblTessData);
             this.grpCapture.Controls.Add(this.btnBrowseOutput);
             this.grpCapture.Controls.Add(this.txtOutputDir);
             this.grpCapture.Controls.Add(this.lblOutputDir);
             this.grpCapture.Location = new System.Drawing.Point(12, 40);
             this.grpCapture.Name = "grpCapture";
-            this.grpCapture.Size = new System.Drawing.Size(560, 90);
+            this.grpCapture.Size = new System.Drawing.Size(560, 60);
             this.grpCapture.TabIndex = 1;
             this.grpCapture.TabStop = false;
             this.grpCapture.Text = "Capture Settings";
@@ -126,33 +120,6 @@ namespace EngineSimRecorder
             this.btnBrowseOutput.UseVisualStyleBackColor = true;
             this.btnBrowseOutput.Click += new System.EventHandler(this.btnBrowseOutput_Click);
             // 
-            // lblTessData
-            // 
-            this.lblTessData.AutoSize = true;
-            this.lblTessData.Location = new System.Drawing.Point(6, 58);
-            this.lblTessData.Name = "lblTessData";
-            this.lblTessData.Size = new System.Drawing.Size(93, 15);
-            this.lblTessData.TabIndex = 3;
-            this.lblTessData.Text = "tessdata folder:";
-            // 
-            // txtTessData
-            // 
-            this.txtTessData.Location = new System.Drawing.Point(100, 55);
-            this.txtTessData.Name = "txtTessData";
-            this.txtTessData.Size = new System.Drawing.Size(360, 23);
-            this.txtTessData.TabIndex = 4;
-            this.txtTessData.Text = "tessdata";
-            // 
-            // btnBrowseTess
-            // 
-            this.btnBrowseTess.Location = new System.Drawing.Point(470, 54);
-            this.btnBrowseTess.Name = "btnBrowseTess";
-            this.btnBrowseTess.Size = new System.Drawing.Size(75, 25);
-            this.btnBrowseTess.TabIndex = 5;
-            this.btnBrowseTess.Text = "Browse…";
-            this.btnBrowseTess.UseVisualStyleBackColor = true;
-            this.btnBrowseTess.Click += new System.EventHandler(this.btnBrowseTess_Click);
-            // 
             // grpOcr
             // 
             this.grpOcr.Controls.Add(this.lblOcrRegionHint);
@@ -164,7 +131,7 @@ namespace EngineSimRecorder
             this.grpOcr.Controls.Add(this.lblOcrW);
             this.grpOcr.Controls.Add(this.lblOcrY);
             this.grpOcr.Controls.Add(this.lblOcrX);
-            this.grpOcr.Location = new System.Drawing.Point(12, 140);
+            this.grpOcr.Location = new System.Drawing.Point(12, 108);
             this.grpOcr.Name = "grpOcr";
             this.grpOcr.Size = new System.Drawing.Size(560, 80);
             this.grpOcr.TabIndex = 2;
@@ -266,7 +233,7 @@ namespace EngineSimRecorder
             this.grpRpm.Controls.Add(this.lblHoldSec);
             this.grpRpm.Controls.Add(this.numRpmTol);
             this.grpRpm.Controls.Add(this.lblRpmTol);
-            this.grpRpm.Location = new System.Drawing.Point(12, 230);
+            this.grpRpm.Location = new System.Drawing.Point(12, 198);
             this.grpRpm.Name = "grpRpm";
             this.grpRpm.Size = new System.Drawing.Size(560, 150);
             this.grpRpm.TabIndex = 3;
@@ -369,7 +336,7 @@ namespace EngineSimRecorder
             this.grpPid.Controls.Add(this.lblKd);
             this.grpPid.Controls.Add(this.lblKi);
             this.grpPid.Controls.Add(this.lblKp);
-            this.grpPid.Location = new System.Drawing.Point(12, 390);
+            this.grpPid.Location = new System.Drawing.Point(12, 358);
             this.grpPid.Name = "grpPid";
             this.grpPid.Size = new System.Drawing.Size(560, 60);
             this.grpPid.TabIndex = 4;
@@ -441,7 +408,7 @@ namespace EngineSimRecorder
             this.grpStatus.Controls.Add(this.pbarProgress);
             this.grpStatus.Controls.Add(this.lblCurrentRpm);
             this.grpStatus.Controls.Add(this.lblStatus);
-            this.grpStatus.Location = new System.Drawing.Point(12, 460);
+            this.grpStatus.Location = new System.Drawing.Point(12, 428);
             this.grpStatus.Name = "grpStatus";
             this.grpStatus.Size = new System.Drawing.Size(560, 70);
             this.grpStatus.TabIndex = 5;
@@ -479,7 +446,7 @@ namespace EngineSimRecorder
             this.txtLog.BackColor = System.Drawing.Color.Black;
             this.txtLog.Font = new System.Drawing.Font("Consolas", 8.25F);
             this.txtLog.ForeColor = System.Drawing.Color.LimeGreen;
-            this.txtLog.Location = new System.Drawing.Point(12, 540);
+            this.txtLog.Location = new System.Drawing.Point(12, 508);
             this.txtLog.Multiline = true;
             this.txtLog.Name = "txtLog";
             this.txtLog.ReadOnly = true;
@@ -492,7 +459,7 @@ namespace EngineSimRecorder
             this.btnStart.BackColor = System.Drawing.Color.ForestGreen;
             this.btnStart.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
             this.btnStart.ForeColor = System.Drawing.Color.White;
-            this.btnStart.Location = new System.Drawing.Point(12, 670);
+            this.btnStart.Location = new System.Drawing.Point(12, 638);
             this.btnStart.Name = "btnStart";
             this.btnStart.Size = new System.Drawing.Size(120, 36);
             this.btnStart.TabIndex = 7;
@@ -506,7 +473,7 @@ namespace EngineSimRecorder
             this.btnStop.Enabled = false;
             this.btnStop.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
             this.btnStop.ForeColor = System.Drawing.Color.White;
-            this.btnStop.Location = new System.Drawing.Point(145, 670);
+            this.btnStop.Location = new System.Drawing.Point(145, 638);
             this.btnStop.Name = "btnStop";
             this.btnStop.Size = new System.Drawing.Size(120, 36);
             this.btnStop.TabIndex = 8;
@@ -518,7 +485,7 @@ namespace EngineSimRecorder
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(584, 718);
+            this.ClientSize = new System.Drawing.Size(584, 686);
             this.Controls.Add(this.btnStop);
             this.Controls.Add(this.btnStart);
             this.Controls.Add(this.txtLog);
@@ -562,9 +529,6 @@ namespace EngineSimRecorder
 
         private System.Windows.Forms.Label lblTitle;
         private System.Windows.Forms.GroupBox grpCapture;
-        private System.Windows.Forms.Button btnBrowseTess;
-        private System.Windows.Forms.TextBox txtTessData;
-        private System.Windows.Forms.Label lblTessData;
         private System.Windows.Forms.Button btnBrowseOutput;
         private System.Windows.Forms.TextBox txtOutputDir;
         private System.Windows.Forms.Label lblOutputDir;

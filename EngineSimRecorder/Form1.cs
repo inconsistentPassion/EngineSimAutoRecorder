@@ -9,7 +9,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using NAudio.Wave;
-using Tesseract;
+using OpenCvSharp;
+using OpenCvSharp.Extensions;
+using Sdcb.PaddleOCR;
+using Sdcb.PaddleOCR.Models;
+using Sdcb.PaddleOCR.Models.LocalV4;
+using Sdcb.PaddleInference;
 
 namespace EngineSimRecorder
 {
@@ -22,7 +27,7 @@ namespace EngineSimRecorder
     ///      (W = throttle up, S = throttle down) to hold the engine at that RPM.
     ///   3. Once the RPM is stable for the configured hold time, a WASAPI-loopback
     ///      recording is captured and saved as a WAV file.
-    ///   4. Tesseract OCR reads the RPM value from a configurable screen region.
+    ///   4. PaddleOCR reads the RPM value from a configurable screen region.
     /// </summary>
     public partial class Form1 : Form
     {
@@ -98,13 +103,6 @@ namespace EngineSimRecorder
                 txtOutputDir.Text = dlg.SelectedPath;
         }
 
-        private void btnBrowseTess_Click(object sender, EventArgs e)
-        {
-            using var dlg = new FolderBrowserDialog { Description = "Select tessdata folder (contains eng.traineddata)" };
-            if (dlg.ShowDialog() == DialogResult.OK)
-                txtTessData.Text = dlg.SelectedPath;
-        }
-
         private void btnAddRpm_Click(object sender, EventArgs e)
         {
             int rpm = (int)numRpmList.Value;
@@ -127,14 +125,6 @@ namespace EngineSimRecorder
             }
 
             string outputDir = txtOutputDir.Text.Trim();
-            string tessData = txtTessData.Text.Trim();
-
-            if (!Directory.Exists(tessData))
-            {
-                MessageBox.Show($"tessdata folder not found:\n{tessData}", "Missing tessdata", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
-            }
-
             Directory.CreateDirectory(outputDir);
 
             var targets = new List<int>();
@@ -144,7 +134,6 @@ namespace EngineSimRecorder
             var cfg = new RecorderConfig
             {
                 OutputDir = outputDir,
-                TessDataPath = tessData,
                 OcrRegion = new Rectangle((int)numOcrX.Value, (int)numOcrY.Value,
                                           (int)numOcrW.Value, (int)numOcrH.Value),
                 TargetRpms = targets,
@@ -213,9 +202,15 @@ namespace EngineSimRecorder
         {
             try
             {
-                using var tess = new TesseractEngine(cfg.TessDataPath, "eng", EngineMode.Default);
-                // Restrict Tesseract to digits only for speed
-                tess.SetVariable("tessedit_char_whitelist", "0123456789");
+                // Initialize PaddleOCR — models auto-download on first use
+                // FullV4 includes detection + recognition for best accuracy
+                FullOcrModel model = LocalFullModels.ChineseV4;
+                using var all = new PaddleOcrAll(model, PaddleDevice.Mkldnn())
+                {
+                    AllowRotateDetection = false,
+                    Enable180Classification = false,
+                };
+                Log("PaddleOCR initialized (V4 model, MKL-DNN backend).");
 
                 for (int i = 0; i < cfg.TargetRpms.Count; i++)
                 {
@@ -225,13 +220,13 @@ namespace EngineSimRecorder
                     Log($"── Target {i + 1}/{cfg.TargetRpms.Count}: {targetRpm} RPM ──");
                     SetStatus($"Approaching {targetRpm} RPM…");
 
-                    HoldRpm(tess, cfg, targetRpm, ct);
+                    HoldRpm(all, cfg, targetRpm, ct);
                     if (ct.IsCancellationRequested) break;
 
                     string wavPath = Path.Combine(cfg.OutputDir, $"rpm_{targetRpm}.wav");
                     Log($"Recording → {wavPath}");
                     SetStatus($"Recording at {targetRpm} RPM…");
-                    RecordWasapi(wavPath, cfg, tess, targetRpm, ct);
+                    RecordWasapi(wavPath, cfg, all, targetRpm, ct);
                     IncProgress();
                     Log($"Saved: {wavPath}");
                 }
@@ -253,7 +248,7 @@ namespace EngineSimRecorder
         }
 
         // ── PID-based RPM holding ─────────────────────────────────────────────
-        private void HoldRpm(TesseractEngine tess, RecorderConfig cfg, int targetRpm, CancellationToken ct)
+        private void HoldRpm(PaddleOcrAll ocr, RecorderConfig cfg, int targetRpm, CancellationToken ct)
         {
             double integral = 0;
             double prevError = 0;
@@ -263,7 +258,7 @@ namespace EngineSimRecorder
 
             while (!ct.IsCancellationRequested)
             {
-                int currentRpm = ReadRpm(tess, cfg.OcrRegion);
+                int currentRpm = ReadRpm(ocr, cfg.OcrRegion);
                 SetRpm($"RPM: {(currentRpm < 0 ? "???" : currentRpm.ToString())}");
 
                 if (currentRpm < 0)
@@ -323,8 +318,8 @@ namespace EngineSimRecorder
             SendInput(1, new[] { up }, Marshal.SizeOf<INPUT>());
         }
 
-        // ── Tesseract OCR: read RPM from screen ───────────────────────────────
-        private static int ReadRpm(TesseractEngine tess, Rectangle region)
+        // ── PaddleOCR: read RPM from screen ──────────────────────────────────
+        private static int ReadRpm(PaddleOcrAll ocr, Rectangle region)
         {
             try
             {
@@ -332,11 +327,14 @@ namespace EngineSimRecorder
                 using (var g = Graphics.FromImage(bmp))
                     g.CopyFromScreen(region.Location, Point.Empty, region.Size);
 
-                // Pre-process: grayscale + threshold for better OCR accuracy
-                using var processed = PreProcess(bmp);
-                using var pix = BitmapToPix(processed);
-                using var page = tess.Process(pix);
-                string text = page.GetText().Trim();
+                // Convert Bitmap → OpenCV Mat for PaddleOCR
+                using var mat = BitmapConverter.ToMat(bmp);
+
+                // Run full OCR pipeline (detect → recognize)
+                PaddleOcrResult result = ocr.Run(mat);
+
+                string text = result.Text?.Trim() ?? "";
+                // Extract digits only (RPM is always numeric)
                 text = Regex.Replace(text, @"\D", "");
                 return text.Length > 0 ? int.Parse(text) : -1;
             }
@@ -346,63 +344,9 @@ namespace EngineSimRecorder
             }
         }
 
-        private static Bitmap PreProcess(Bitmap src)
-        {
-            var dst = new Bitmap(src.Width, src.Height, PixelFormat.Format32bppArgb);
-
-            var srcData = src.LockBits(
-                new Rectangle(0, 0, src.Width, src.Height),
-                ImageLockMode.ReadOnly,
-                PixelFormat.Format32bppArgb);
-            var dstData = dst.LockBits(
-                new Rectangle(0, 0, dst.Width, dst.Height),
-                ImageLockMode.WriteOnly,
-                PixelFormat.Format32bppArgb);
-
-            try
-            {
-                int byteCount = srcData.Stride * src.Height;
-                byte[] srcPixels = new byte[byteCount];
-                byte[] dstPixels = new byte[byteCount];
-                Marshal.Copy(srcData.Scan0, srcPixels, 0, byteCount);
-
-                // BGRA layout: B=0, G=1, R=2, A=3
-                for (int i = 0; i < byteCount; i += 4)
-                {
-                    byte b = srcPixels[i];
-                    byte g = srcPixels[i + 1];
-                    byte r = srcPixels[i + 2];
-                    // Luminance-weighted grayscale, then hard-threshold → binary
-                    int gray = (int)(r * 0.299 + g * 0.587 + b * 0.114);
-                    byte binary = (byte)(gray > 128 ? 255 : 0);
-                    dstPixels[i] = binary;
-                    dstPixels[i + 1] = binary;
-                    dstPixels[i + 2] = binary;
-                    dstPixels[i + 3] = 255;
-                }
-
-                Marshal.Copy(dstPixels, 0, dstData.Scan0, byteCount);
-            }
-            finally
-            {
-                src.UnlockBits(srcData);
-                dst.UnlockBits(dstData);
-            }
-
-            return dst;
-        }
-
-        private static Pix BitmapToPix(Bitmap bmp)
-        {
-            using var ms = new MemoryStream();
-            bmp.Save(ms, ImageFormat.Png);
-            ms.Position = 0;
-            return Pix.LoadFromMemory(ms.ToArray());
-        }
-
         // ── WASAPI loopback recording ─────────────────────────────────────────
         private void RecordWasapi(string outputPath, RecorderConfig cfg,
-                                   TesseractEngine tess, int targetRpm, CancellationToken ct)
+                                   PaddleOcrAll ocr, int targetRpm, CancellationToken ct)
         {
             using var capture = new WasapiLoopbackCapture();
             capture.WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(44100, 2);
@@ -428,12 +372,12 @@ namespace EngineSimRecorder
                 double elapsed = (DateTime.UtcNow - startTime).TotalSeconds;
                 if (elapsed >= cfg.HoldSeconds) break;
 
-                int currentRpm = ReadRpm(tess, cfg.OcrRegion);
+                int currentRpm = ReadRpm(ocr, cfg.OcrRegion);
                 SetRpm($"RPM: {(currentRpm < 0 ? "???" : currentRpm.ToString())}");
                 if (currentRpm >= 0 && Math.Abs(currentRpm - targetRpm) > cfg.RpmTolerance * 2)
                 {
                     Log($"RPM drifted to {currentRpm} – rebalancing…");
-                    HoldRpm(tess, cfg, targetRpm, ct);
+                    HoldRpm(ocr, cfg, targetRpm, ct);
                     // Restart the hold timer
                     startTime = DateTime.UtcNow;
                 }
@@ -449,7 +393,6 @@ namespace EngineSimRecorder
         private sealed class RecorderConfig
         {
             public string OutputDir { get; set; } = "recordings";
-            public string TessDataPath { get; set; } = "tessdata";
             public Rectangle OcrRegion { get; set; } = new Rectangle(860, 45, 160, 40);
             public List<int> TargetRpms { get; set; } = new();
             public int RpmTolerance { get; set; } = 50;
