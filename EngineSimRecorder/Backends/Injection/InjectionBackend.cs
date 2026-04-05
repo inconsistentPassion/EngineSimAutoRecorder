@@ -47,7 +47,8 @@ namespace EngineSimRecorder.Backends.Injection
         public bool Initialize(RecorderConfig cfg, Action<string> log, CancellationToken ct)
         {
             _log = log;
-            string dllPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "es_hook.dll");
+            string dllPath = FindDll("es_hook.dll");
+            if (dllPath == null) { log("DLL not found: es_hook.dll — build EngineSimHook first."); return false; }
             log($"Injecting {dllPath}...");
             if (!InjectDll(cfg.ProcessId, dllPath)) return false;
 
@@ -119,6 +120,18 @@ namespace EngineSimRecorder.Backends.Injection
         }
 
         // ── Helpers ───────────────────────────────────────────────────
+
+        private static string? FindDll(string name)
+        {
+            string[] candidates = {
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, name),  // output dir
+                Path.Combine(Environment.CurrentDirectory, name),           // project root
+                Path.Combine(Environment.CurrentDirectory, "bin", name),    // project root/bin
+            };
+            foreach (var p in candidates)
+                if (File.Exists(p)) return p;
+            return null;
+        }
 
         private bool InjectDll(int pid, string dllPath)
         {
