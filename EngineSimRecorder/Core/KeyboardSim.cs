@@ -48,6 +48,12 @@ namespace EngineSimRecorder.Core
         [DllImport("user32.dll")]
         private static extern bool EnumChildWindows(IntPtr hWndParent, EnumWindowsProc lpEnumFunc, IntPtr lParam);
 
+        [DllImport("user32.dll")]
+        private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+        private const int SW_MINIMIZE = 6;
+        private const int SW_RESTORE = 9;
+
         private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 
         private const uint WM_KEYDOWN = 0x0100;
@@ -179,6 +185,19 @@ namespace EngineSimRecorder.Core
         {
             if (previousHwnd != IntPtr.Zero)
                 SetForegroundWindow(previousHwnd);
+        }
+
+        /// <summary>Minimize the window to the taskbar.</summary>
+        public static void MinimizeWindow(IntPtr hwnd)
+        {
+            ShowWindow(hwnd, SW_MINIMIZE);
+        }
+
+        /// <summary>Restore a minimized window.</summary>
+        public static void RestoreWindow(IntPtr hwnd)
+        {
+            ShowWindow(hwnd, SW_RESTORE);
+            SetForegroundWindow(hwnd);
         }
     }
 }

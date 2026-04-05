@@ -15,6 +15,9 @@ namespace EngineSimRecorder
     {
         private CancellationTokenSource? _cts;
         private Task? _workerTask;
+        private System.Windows.Forms.Timer? _focusMonitor;
+        private IntPtr _engineSimHwnd = IntPtr.Zero;
+        private bool _focusWarned = false;
 
         public Form1()
         {
@@ -158,6 +161,21 @@ namespace EngineSimRecorder
                 }
 
                 IntPtr hwnd = backend.Hwnd;
+                _engineSimHwnd = hwnd;
+
+                // ── Hide Engine Sim window (minimize to taskbar) ──
+                Log("Hiding Engine Sim window...");
+                KeyboardSim.MinimizeWindow(hwnd);
+                Log("Engine Sim minimized — input still works via PostMessage.");
+
+                // ── Start focus monitor ──
+                _focusWarned = false;
+                BeginInvoke(new Action(() =>
+                {
+                    _focusMonitor = new System.Windows.Forms.Timer { Interval = 1000 };
+                    _focusMonitor.Tick += FocusMonitor_Tick;
+                    _focusMonitor.Start();
+                }));
 
                 // ── Step 1: Turn on ignition (press A) ──
                 Log("=== STEP 1: Ignition ===");
@@ -290,7 +308,20 @@ namespace EngineSimRecorder
             finally
             {
                 try { backend?.SetThrottle(0); } catch { }
+                // Restore Engine Sim window
+                if (_engineSimHwnd != IntPtr.Zero)
+                {
+                    try { KeyboardSim.RestoreWindow(_engineSimHwnd); } catch { }
+                }
                 backend?.Dispose();
+                BeginInvoke(new Action(() =>
+                {
+                    _focusMonitor?.Stop();
+                    _focusMonitor?.Dispose();
+                    _focusMonitor = null;
+                    lblStatus.ForeColor = SystemColors.ControlText;
+                }));
+                _engineSimHwnd = IntPtr.Zero;
                 ResetControls();
             }
         }
@@ -380,6 +411,38 @@ namespace EngineSimRecorder
         private void Form1_Load(object sender, EventArgs e)
         {
 
+        }
+
+        // ── Focus monitoring ──────────────────────────────────────────
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern IntPtr GetForegroundWindow();
+
+        private void FocusMonitor_Tick(object? sender, EventArgs e)
+        {
+            if (_engineSimHwnd == IntPtr.Zero) return;
+
+            IntPtr focused = GetForegroundWindow();
+            bool recorderFocused = (focused == this.Handle);
+            bool simFocused = (focused == _engineSimHwnd);
+
+            if (!recorderFocused && !simFocused)
+            {
+                if (!_focusWarned)
+                {
+                    _focusWarned = true;
+                    lblStatus.ForeColor = Color.OrangeRed;
+                    Log("⚠ WARNING: Neither Engine Sim nor this window is focused. Click this window or Engine Sim to keep input working.");
+                }
+            }
+            else
+            {
+                if (_focusWarned)
+                {
+                    _focusWarned = false;
+                    lblStatus.ForeColor = SystemColors.ControlText;
+                }
+            }
         }
     }
 }
