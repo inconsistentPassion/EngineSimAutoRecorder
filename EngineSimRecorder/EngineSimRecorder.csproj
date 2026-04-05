@@ -19,11 +19,23 @@
 
   </ItemGroup>
 
+  <!-- Auto-build es_hook.dll via CMake before C# compilation -->
+  <PropertyGroup>
+    <EngineSimHookBuildDir>$(MSBuildThisFileDirectory)..\EngineSimHook\build</EngineSimHookBuildDir>
+    <EngineSimHookDll>$(MSBuildThisFileDirectory)..\EngineSimHook\bin\$(Configuration)\es_hook.dll</EngineSimHookDll>
+  </PropertyGroup>
+
+  <Target Name="BuildEngineSimHook" BeforeTargets="BeforeBuild"
+          Inputs="..\EngineSimHook\CMakeLists.txt;..\EngineSimHook\src\dllmain.cpp;..\EngineSimHook\src\hooks.cpp;..\EngineSimHook\src\memory.cpp;..\EngineSimHook\src\pipe.cpp"
+          Outputs="$(EngineSimHookDll)">
+    <Message Importance="high" Text="=== Building es_hook.dll via CMake ===" />
+    <Exec Command="cmake -S &quot;$(MSBuildThisFileDirectory)..\EngineSimHook&quot; -B &quot;$(EngineSimHookBuildDir)&quot; -G &quot;Visual Studio 17 2022&quot; -A x64" />
+    <Exec Command="cmake --build &quot;$(EngineSimHookBuildDir)&quot; --config $(Configuration)" />
+    <Message Importance="high" Text="=== es_hook.dll built successfully ===" />
+  </Target>
+
   <ItemGroup>
-    <!-- Hook DLL (injection mode) — build EngineSimHook first -->
-    <None Include="..\EngineSimHook\bin\$(Configuration)\es_hook.dll"
-  Condition="Exists('..\EngineSimHook\bin\$(Configuration)\es_hook.dll')"
-      CopyToOutputDirectory="PreserveNewest" />
+    <None Include="$(EngineSimHookDll)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
