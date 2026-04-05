@@ -206,7 +206,7 @@ namespace EngineSimRecorder
             while (!ct.IsCancellationRequested)
             {
                 double? rpm = backend.ReadRpm();
-                if (!rpm.HasValue) { Thread.Sleep(loopMs, ct); continue; }
+                if (!rpm.HasValue) { ct.WaitHandle.WaitOne(loopMs); continue; }
 
                 SetRpm($"RPM: {rpm.Value:F0}");
 
@@ -225,7 +225,7 @@ namespace EngineSimRecorder
                 }
                 else { wasStable = false; stableStart = DateTime.MinValue; }
 
-                Thread.Sleep(loopMs, ct);
+                ct.WaitHandle.WaitOne(loopMs);
             }
         }
 
@@ -270,12 +270,12 @@ namespace EngineSimRecorder
                                 backend.SetThrottle(Math.Clamp(out_, 0, 1));
                                 if (Math.Abs(err) <= cfg.RpmTolerance) break;
                             }
-                            Thread.Sleep(loopMs, ct);
+                            ct.WaitHandle.WaitOne(loopMs);
                         }
                         start = DateTime.UtcNow;
                     }
                 }
-                Thread.Sleep(50, ct);
+                ct.WaitHandle.WaitOne(50);
             }
 
             capture.StopRecording();

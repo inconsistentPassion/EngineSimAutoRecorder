@@ -52,7 +52,7 @@ namespace EngineSimRecorder.Backends.Injection
             if (!InjectDll(cfg.ProcessId, dllPath)) return false;
 
             log("Waiting for hook initialization...");
-            Thread.Sleep(3000, ct);
+            ct.WaitHandle.WaitOne(3000);
             return ConnectPipe();
         }
 
@@ -79,9 +79,9 @@ namespace EngineSimRecorder.Backends.Injection
         {
             log("Starting engine (injection mode)...");
             SendBoolCmd(MSG_CMD_IGNITION, true); log("Ignition ON");
-            Thread.Sleep(500, ct);
+            ct.WaitHandle.WaitOne(500);
             SendBoolCmd(MSG_CMD_DYNO, true); log("Dyno ON");
-            Thread.Sleep(500, ct);
+            ct.WaitHandle.WaitOne(500);
             SendBoolCmd(MSG_CMD_STARTER, true); log("Starter engaged");
 
             var sw = Stopwatch.StartNew();
@@ -98,11 +98,11 @@ namespace EngineSimRecorder.Backends.Injection
                     log("Warning: engine didn't start in 15s");
                     break;
                 }
-                Thread.Sleep(100, ct);
+                ct.WaitHandle.WaitOne(100);
             }
 
             SendBoolCmd(MSG_CMD_STARTER, false); log("Starter disengaged");
-            Thread.Sleep(500, ct);
+            ct.WaitHandle.WaitOne(500);
         }
 
         public void StopEngine()
