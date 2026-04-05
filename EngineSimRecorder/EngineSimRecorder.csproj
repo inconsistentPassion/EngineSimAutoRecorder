@@ -21,7 +21,7 @@
 
   <ItemGroup>
     <!-- Hook DLL (injection mode) — build EngineSimHook first -->
-    <None Include="..\EngineSimHook\bin\es_hook.dll" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\EngineSimHook\bin\es_hook.dll')" />
+    <None Include="..\EngineSimHook\bin\$(Configuration)\es_hook.dll" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
