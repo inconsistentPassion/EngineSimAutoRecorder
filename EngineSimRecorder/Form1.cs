@@ -106,6 +106,11 @@ namespace EngineSimRecorder
         private void btnStop_Click(object sender, EventArgs e) => _cts?.Cancel();
         private void Form1_FormClosing(object sender, FormClosingEventArgs e) => _cts?.Cancel();
 
+        private void chkStayOnTop_CheckedChanged(object sender, EventArgs e)
+        {
+            this.TopMost = chkStayOnTop.Checked;
+        }
+
         // ── UI helpers ─────────────────────────────────────────────────
 
         private void Log(string msg)
@@ -163,10 +168,9 @@ namespace EngineSimRecorder
                 IntPtr hwnd = backend.Hwnd;
                 _engineSimHwnd = hwnd;
 
-                // ── Hide Engine Sim window (minimize to taskbar) ──
-                Log("Hiding Engine Sim window...");
-                KeyboardSim.MinimizeWindow(hwnd);
-                Log("Engine Sim minimized — input still works via PostMessage.");
+                // ── Force focus on Engine Sim ──
+                Log("Focusing Engine Sim window...");
+                KeyboardSim.FocusWindow(hwnd);
 
                 // ── Start focus monitor ──
                 _focusWarned = false;
@@ -308,11 +312,6 @@ namespace EngineSimRecorder
             finally
             {
                 try { backend?.SetThrottle(0); } catch { }
-                // Restore Engine Sim window
-                if (_engineSimHwnd != IntPtr.Zero)
-                {
-                    try { KeyboardSim.RestoreWindow(_engineSimHwnd); } catch { }
-                }
                 backend?.Dispose();
                 BeginInvoke(new Action(() =>
                 {

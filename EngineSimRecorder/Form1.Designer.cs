@@ -36,6 +36,7 @@
             txtLog = new TextBox();
             btnStart = new Button();
             btnStop = new Button();
+            chkStayOnTop = new CheckBox();
             grpProcess.SuspendLayout();
             grpCapture.SuspendLayout();
             grpRpm.SuspendLayout();
@@ -293,11 +294,24 @@
             btnStop.UseVisualStyleBackColor = false;
             btnStop.Click += btnStop_Click;
             // 
+            // chkStayOnTop
+            // 
+            chkStayOnTop.AutoSize = true;
+            chkStayOnTop.Location = new Point(300, 885);
+            chkStayOnTop.Margin = new Padding(4, 5, 4, 5);
+            chkStayOnTop.Name = "chkStayOnTop";
+            chkStayOnTop.Size = new Size(212, 29);
+            chkStayOnTop.TabIndex = 6;
+            chkStayOnTop.Text = "Stay on Top";
+            chkStayOnTop.UseVisualStyleBackColor = true;
+            chkStayOnTop.CheckedChanged += chkStayOnTop_CheckedChanged;
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(10F, 25F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(834, 953);
+            Controls.Add(chkStayOnTop);
             Controls.Add(btnStop);
             Controls.Add(btnStart);
             Controls.Add(txtLog);
@@ -351,5 +365,6 @@
         private System.Windows.Forms.TextBox txtLog;
         private System.Windows.Forms.Button btnStart;
         private System.Windows.Forms.Button btnStop;
+        private System.Windows.Forms.CheckBox chkStayOnTop;
     }
 }

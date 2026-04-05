@@ -1,7 +1,6 @@
 #include "common.h"
 #include "hooks.h"
 #include "pipe.h"
-#include <iostream>
 #include <thread>
 
 // ── State definitions ────────────────────────────────────────────────
@@ -30,19 +29,10 @@ static void InitThread() {
     // Too long = user waits. 3s is a safe middle ground.
     Sleep(3000);
 
-    AllocConsole();
-    FILE* f;
-    freopen_s(&f, "CONOUT$", "w", stdout);
-
-    std::cout << "=== EngineSimRecorder Hook ===\n";
-
     SetupHooks();
 
     if (State::attached.load()) {
         StartPipeServer();
-        std::cout << "[+] Initialization complete — ready for connections\n";
-    } else {
-        std::cout << "[!] Hook setup failed — pipe server not started\n";
     }
 }
 
