@@ -1,20 +1,15 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
-using System.Drawing.Imaging;
 using System.IO;
+using System.IO.Pipes;
 using System.Runtime.InteropServices;
-using System.Text.RegularExpressions;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using NAudio.Wave;
-using OpenCvSharp;
-using OpenCvSharp.Extensions;
-using Sdcb.PaddleOCR;
-using Sdcb.PaddleOCR.Models;
-using Sdcb.PaddleOCR.Models.LocalV4;
-using Sdcb.PaddleInference;
 
 namespace EngineSimRecorder
 {
@@ -22,80 +17,91 @@ namespace EngineSimRecorder
     /// Engine Simulator Auto-Recorder
     ///
     /// Workflow:
-    ///   1. A background task loops through each target RPM.
-    ///   2. For every RPM target the PID controller synthesises keystrokes
-    ///      (W = throttle up, S = throttle down) to hold the engine at that RPM.
-    ///   3. Once the RPM is stable for the configured hold time, a WASAPI-loopback
-    ///      recording is captured and saved as a WAV file.
-    ///   4. PaddleOCR reads the RPM value from a configurable screen region.
+    ///   1. Inject es_hook.dll into the Engine Simulator process.
+    ///   2. The DLL hooks the ignition module to read RPM from memory
+    ///      and starts a named pipe server.
+    ///   3. This GUI connects to the pipe, receives RPM updates, and
+    ///      runs a PID controller to hold each target RPM.
+    ///   4. WASAPI loopback captures audio while RPM is stable.
     /// </summary>
     public partial class Form1 : Form
     {
-        // ── Win32 SendInput helpers ──────────────────────────────────────────
-        [DllImport("user32.dll")]
-        private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
+        // ── Win32 P/Invoke for DLL injection ───────────────────────────
 
-        [DllImport("user32.dll")]
-        private static extern IntPtr GetForegroundWindow();
+        [DllImport("kernel32.dll")]
+        private static extern IntPtr OpenProcess(uint dwDesiredAccess, bool bInheritHandle, int dwProcessId);
 
-        [StructLayout(LayoutKind.Sequential)]
-        private struct INPUT
-        {
-            public uint type;
-            public INPUTUNION u;
-        }
+        [DllImport("kernel32.dll", CharSet = CharSet.Ansi, SetLastError = true)]
+        private static extern IntPtr GetProcAddress(IntPtr hModule, string procName);
 
-        [StructLayout(LayoutKind.Explicit)]
-        private struct INPUTUNION
-        {
-            [FieldOffset(0)] public MOUSEINPUT mi;
-            [FieldOffset(0)] public KEYBDINPUT ki;
-            [FieldOffset(0)] public HARDWAREINPUT hi;
-        }
+        [DllImport("kernel32.dll", CharSet = CharSet.Auto)]
+        private static extern IntPtr GetModuleHandle(string lpModuleName);
 
-        [StructLayout(LayoutKind.Sequential)]
-        private struct MOUSEINPUT
-        {
-            public int dx, dy, mouseData, dwFlags, time;
-            public IntPtr dwExtraInfo;
-        }
+        [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
+        private static extern IntPtr VirtualAllocEx(IntPtr hProcess, IntPtr lpAddress, uint dwSize, uint flAllocationType, uint flProtect);
 
-        [StructLayout(LayoutKind.Sequential)]
-        private struct KEYBDINPUT
-        {
-            public ushort wVk;
-            public ushort wScan;
-            public uint dwFlags;
-            public uint time;
-            public IntPtr dwExtraInfo;
-        }
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool WriteProcessMemory(IntPtr hProcess, IntPtr lpBaseAddress, byte[] lpBuffer, uint nSize, out int lpNumberOfBytesWritten);
 
-        [StructLayout(LayoutKind.Sequential)]
-        private struct HARDWAREINPUT
-        {
-            public uint uMsg;
-            public ushort wParamL, wParamH;
-        }
+        [DllImport("kernel32.dll")]
+        private static extern IntPtr CreateRemoteThread(IntPtr hProcess, IntPtr lpThreadAttributes, uint dwStackSize,
+            IntPtr lpStartAddress, IntPtr lpParameter, uint dwCreationFlags, out IntPtr lpThreadId);
 
-        private const uint INPUT_KEYBOARD = 1;
-        private const uint KEYEVENTF_KEYUP = 2;
-        private const ushort VK_W = 0x57;
-        private const ushort VK_S = 0x53;
+        [DllImport("kernel32.dll")]
+        private static extern uint WaitForSingleObject(IntPtr hHandle, uint dwMilliseconds);
 
-        // ── State ────────────────────────────────────────────────────────────
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool VirtualFreeEx(IntPtr hProcess, IntPtr lpAddress, uint dwSize, uint dwFreeType);
+
+        [DllImport("kernel32.dll")]
+        private static extern bool CloseHandle(IntPtr handle);
+
+        private const uint PROCESS_ALL_ACCESS = 0x001F0FFF;
+        private const uint MEM_COMMIT_RESERVE = 0x00003000;
+        private const uint PAGE_READWRITE = 4;
+
+        // ── Pipe protocol (must match C++ DLL) ────────────────────────
+
+        private const byte MSG_RPM_UPDATE = 0x01;
+        private const byte MSG_CMD_THROTTLE = 0x10;
+        private const byte MSG_CMD_KILL = 0x11;
+
+        private const string PIPE_NAME = "es-recorder-pipe";
+        private const int RPM_STRUCT_SIZE = 9;  // 1 byte type + 8 byte double
+
+        // ── State ─────────────────────────────────────────────────────
+
         private CancellationTokenSource? _cts;
         private Task? _workerTask;
 
-        // ── Constructor ──────────────────────────────────────────────────────
+        // ── Constructor ───────────────────────────────────────────────
+
         public Form1()
         {
             InitializeComponent();
-            // Populate default RPM targets
             foreach (int rpm in new[] { 800, 1500, 3000, 4500, 6000, 7500 })
                 lstTargetRpms.Items.Add(rpm);
         }
 
-        // ── UI event handlers ────────────────────────────────────────────────
+        // ── UI event handlers ─────────────────────────────────────────
+
+        private void btnRefresh_Click(object sender, EventArgs e)
+        {
+            RefreshProcessList();
+        }
+
+        private void RefreshProcessList()
+        {
+            cmbProcess.Items.Clear();
+            foreach (var proc in Process.GetProcessesByName("engine-sim"))
+                cmbProcess.Items.Add(new ProcessItem(proc));
+            foreach (var proc in Process.GetProcessesByName("engine_sim"))
+                cmbProcess.Items.Add(new ProcessItem(proc));
+
+            if (cmbProcess.Items.Count > 0)
+                cmbProcess.SelectedIndex = 0;
+        }
+
         private void btnBrowseOutput_Click(object sender, EventArgs e)
         {
             using var dlg = new FolderBrowserDialog { Description = "Select output folder for WAV recordings" };
@@ -120,7 +126,15 @@ namespace EngineSimRecorder
         {
             if (lstTargetRpms.Items.Count == 0)
             {
-                MessageBox.Show("Add at least one target RPM before starting.", "No targets", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Add at least one target RPM before starting.", "No targets",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            if (cmbProcess.SelectedItem is not ProcessItem selected)
+            {
+                MessageBox.Show("Select an Engine Simulator process first.", "No process",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -134,11 +148,11 @@ namespace EngineSimRecorder
             var cfg = new RecorderConfig
             {
                 OutputDir = outputDir,
-                OcrRegion = new Rectangle((int)numOcrX.Value, (int)numOcrY.Value,
-                                          (int)numOcrW.Value, (int)numOcrH.Value),
+                ProcessId = selected.ProcessId,
                 TargetRpms = targets,
                 RpmTolerance = (int)numRpmTol.Value,
                 HoldSeconds = (int)numHoldSec.Value,
+                RecordSeconds = (int)numRecordSec.Value,
                 Kp = (double)numKp.Value,
                 Ki = (double)numKi.Value,
                 Kd = (double)numKd.Value,
@@ -146,6 +160,7 @@ namespace EngineSimRecorder
 
             btnStart.Enabled = false;
             btnStop.Enabled = true;
+            btnRefresh.Enabled = false;
             pbarProgress.Value = 0;
             pbarProgress.Maximum = targets.Count;
             txtLog.Clear();
@@ -164,12 +179,13 @@ namespace EngineSimRecorder
             _cts?.Cancel();
         }
 
-        // ── Thread-safe UI helpers ────────────────────────────────────────────
+        // ── Thread-safe UI helpers ─────────────────────────────────────
+
         private void Log(string message)
         {
             string line = $"[{DateTime.Now:HH:mm:ss}] {message}";
             if (InvokeRequired)
-                Invoke(new Action(() => AppendLog(line)));
+                BeginInvoke(new Action(() => AppendLog(line)));
             else
                 AppendLog(line);
         }
@@ -181,37 +197,158 @@ namespace EngineSimRecorder
         }
 
         private void SetStatus(string text) =>
-            Invoke(new Action(() => lblStatus.Text = text));
+            BeginInvoke(new Action(() => lblStatus.Text = text));
 
         private void SetRpm(string text) =>
-            Invoke(new Action(() => lblCurrentRpm.Text = text));
+            BeginInvoke(new Action(() => lblCurrentRpm.Text = text));
 
         private void IncProgress() =>
-            Invoke(new Action(() => pbarProgress.Value = Math.Min(pbarProgress.Value + 1, pbarProgress.Maximum)));
+            BeginInvoke(new Action(() => pbarProgress.Value = Math.Min(pbarProgress.Value + 1, pbarProgress.Maximum)));
 
         private void ResetControls() =>
-            Invoke(new Action(() =>
+            BeginInvoke(new Action(() =>
             {
                 btnStart.Enabled = true;
                 btnStop.Enabled = false;
+                btnRefresh.Enabled = true;
                 lblStatus.Text = "Done.";
             }));
 
-        // ── Main worker ───────────────────────────────────────────────────────
+        // ── DLL injection ──────────────────────────────────────────────
+
+        private bool InjectDll(int pid, string dllPath)
+        {
+            string fullDllPath = Path.GetFullPath(dllPath);
+            if (!File.Exists(fullDllPath))
+            {
+                Log($"DLL not found: {fullDllPath}");
+                return false;
+            }
+
+            IntPtr hProc = OpenProcess(PROCESS_ALL_ACCESS, false, pid);
+            if (hProc == IntPtr.Zero)
+            {
+                Log("Failed to open process (run as admin?)");
+                return false;
+            }
+
+            IntPtr loadLibAddr = GetProcAddress(GetModuleHandle("kernel32.dll"), "LoadLibraryA");
+
+            byte[] pathBytes = Encoding.ASCII.GetBytes(fullDllPath);
+            IntPtr allocatedMem = VirtualAllocEx(hProc, IntPtr.Zero, (uint)pathBytes.Length, MEM_COMMIT_RESERVE, PAGE_READWRITE);
+
+            WriteProcessMemory(hProc, allocatedMem, pathBytes, (uint)pathBytes.Length, out _);
+
+            IntPtr threadId;
+            IntPtr threadHandle = CreateRemoteThread(hProc, IntPtr.Zero, 0, loadLibAddr, allocatedMem, 0, out threadId);
+            if (threadHandle == IntPtr.Zero)
+            {
+                Log("Failed to create remote thread");
+                CloseHandle(hProc);
+                return false;
+            }
+
+            WaitForSingleObject(threadHandle, 5000);
+            VirtualFreeEx(hProc, allocatedMem, (uint)pathBytes.Length, 0x8000); // MEM_RELEASE
+            CloseHandle(hProc);
+
+            Log($"DLL injected into PID {pid}");
+            return true;
+        }
+
+        // ── Pipe communication ─────────────────────────────────────────
+
+        private NamedPipeClientStream? _pipe;
+
+        private bool ConnectPipe(int timeoutMs = 10000)
+        {
+            try
+            {
+                _pipe = new NamedPipeClientStream(".", PIPE_NAME, PipeDirection.InOut);
+                _pipe.Connect(timeoutMs);
+                _pipe.ReadMode = PipeTransmissionMode.Byte;
+                Log("Connected to hook pipe");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Log($"Pipe connection failed: {ex.Message}");
+                return false;
+            }
+        }
+
+        private double? ReadRpmFromPipe()
+        {
+            if (_pipe == null || !_pipe.IsConnected) return null;
+
+            try
+            {
+                byte[] buf = new byte[RPM_STRUCT_SIZE];
+                int bytesRead = _pipe.Read(buf, 0, buf.Length);
+
+                if (bytesRead >= RPM_STRUCT_SIZE && buf[0] == MSG_RPM_UPDATE)
+                {
+                    double rpm = BitConverter.ToDouble(buf, 1);
+                    return rpm;
+                }
+            }
+            catch (TimeoutException) { }
+            catch (IOException) { }
+
+            return null;
+        }
+
+        private void SendThrottleCommand(double throttle)
+        {
+            if (_pipe == null || !_pipe.IsConnected) return;
+
+            try
+            {
+                byte[] msg = new byte[9];
+                msg[0] = MSG_CMD_THROTTLE;
+                BitConverter.GetBytes(throttle).CopyTo(msg, 1);
+                _pipe.Write(msg, 0, msg.Length);
+                _pipe.Flush();
+            }
+            catch (IOException) { }
+        }
+
+        private void DisconnectPipe()
+        {
+            try
+            {
+                _pipe?.Dispose();
+                _pipe = null;
+            }
+            catch { }
+        }
+
+        // ── Main worker ───────────────────────────────────────────────
+
         private void RunAsync(RecorderConfig cfg, CancellationToken ct)
         {
             try
             {
-                // Initialize PaddleOCR — models auto-download on first use
-                // FullV4 includes detection + recognition for best accuracy
-                FullOcrModel model = LocalFullModels.ChineseV4;
-                using var all = new PaddleOcrAll(model, PaddleDevice.Mkldnn())
+                // 1. Inject the hook DLL
+                string dllPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "es_hook.dll");
+                Log($"Injecting {dllPath}...");
+                if (!InjectDll(cfg.ProcessId, dllPath))
                 {
-                    AllowRotateDetection = false,
-                    Enable180Classification = false,
-                };
-                Log("PaddleOCR initialized (V4 model, MKL-DNN backend).");
+                    Log("Injection failed — aborting.");
+                    return;
+                }
 
+                // 2. Wait for DLL to initialize, then connect to pipe
+                Log("Waiting for hook to initialize...");
+                Thread.Sleep(3000);
+
+                if (!ConnectPipe())
+                {
+                    Log("Could not connect to hook pipe — aborting.");
+                    return;
+                }
+
+                // 3. Process each RPM target
                 for (int i = 0; i < cfg.TargetRpms.Count; i++)
                 {
                     if (ct.IsCancellationRequested) break;
@@ -220,16 +357,19 @@ namespace EngineSimRecorder
                     Log($"── Target {i + 1}/{cfg.TargetRpms.Count}: {targetRpm} RPM ──");
                     SetStatus($"Approaching {targetRpm} RPM…");
 
-                    HoldRpm(all, cfg, targetRpm, ct);
+                    HoldRpm(cfg, targetRpm, ct);
                     if (ct.IsCancellationRequested) break;
 
                     string wavPath = Path.Combine(cfg.OutputDir, $"rpm_{targetRpm}.wav");
                     Log($"Recording → {wavPath}");
                     SetStatus($"Recording at {targetRpm} RPM…");
-                    RecordWasapi(wavPath, cfg, all, targetRpm, ct);
+                    RecordWasapi(wavPath, cfg, targetRpm, ct);
                     IncProgress();
                     Log($"Saved: {wavPath}");
                 }
+
+                // 4. Release throttle override
+                SendThrottleCommand(0.0);
             }
             catch (OperationCanceledException)
             {
@@ -238,34 +378,37 @@ namespace EngineSimRecorder
             catch (Exception ex)
             {
                 Log($"ERROR: {ex.Message}");
-                Invoke(new Action(() =>
+                BeginInvoke(new Action(() =>
                     MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)));
             }
             finally
             {
+                DisconnectPipe();
                 ResetControls();
             }
         }
 
-        // ── PID-based RPM holding ─────────────────────────────────────────────
-        private void HoldRpm(PaddleOcrAll ocr, RecorderConfig cfg, int targetRpm, CancellationToken ct)
+        // ── PID-based RPM holding ─────────────────────────────────────
+
+        private void HoldRpm(RecorderConfig cfg, int targetRpm, CancellationToken ct)
         {
             double integral = 0;
             double prevError = 0;
-            const int loopMs = 200; // OCR polling interval
+            const int loopMs = 50; // 20Hz PID loop
             DateTime stableStart = DateTime.MinValue;
             bool wasStable = false;
 
             while (!ct.IsCancellationRequested)
             {
-                int currentRpm = ReadRpm(ocr, cfg.OcrRegion);
-                SetRpm($"RPM: {(currentRpm < 0 ? "???" : currentRpm.ToString())}");
-
-                if (currentRpm < 0)
+                double? rpm = ReadRpmFromPipe();
+                if (!rpm.HasValue)
                 {
                     Thread.Sleep(loopMs);
                     continue;
                 }
+
+                int currentRpm = (int)rpm.Value;
+                SetRpm($"RPM: {currentRpm}");
 
                 double error = targetRpm - currentRpm;
                 integral += error * (loopMs / 1000.0);
@@ -273,8 +416,9 @@ namespace EngineSimRecorder
                 prevError = error;
                 double output = cfg.Kp * error + cfg.Ki * integral + cfg.Kd * derivative;
 
-                // Map PID output to throttle keystrokes
-                ApplyThrottle(output);
+                // Clamp output to 0-1 throttle range
+                double throttle = Math.Clamp(output, 0.0, 1.0);
+                SendThrottleCommand(throttle);
 
                 bool stable = Math.Abs(error) <= cfg.RpmTolerance;
                 if (stable)
@@ -295,58 +439,10 @@ namespace EngineSimRecorder
             }
         }
 
-        // ── Throttle control via SendInput ────────────────────────────────────
-        private static void ApplyThrottle(double pidOutput)
-        {
-            // pidOutput > 0 → need more throttle (press W)
-            // pidOutput < 0 → need less throttle (press S)
-            int holdMs = (int)Math.Min(Math.Abs(pidOutput) * 0.5, 200);
-            if (holdMs < 10) return;
+        // ── WASAPI loopback recording ─────────────────────────────────
 
-            ushort key = pidOutput > 0 ? VK_W : VK_S;
-            PressKey(key, holdMs);
-        }
-
-        private static void PressKey(ushort vk, int durationMs)
-        {
-            var down = new INPUT { type = INPUT_KEYBOARD };
-            down.u.ki = new KEYBDINPUT { wVk = vk };
-            SendInput(1, new[] { down }, Marshal.SizeOf<INPUT>());
-            Thread.Sleep(durationMs);
-            var up = new INPUT { type = INPUT_KEYBOARD };
-            up.u.ki = new KEYBDINPUT { wVk = vk, dwFlags = KEYEVENTF_KEYUP };
-            SendInput(1, new[] { up }, Marshal.SizeOf<INPUT>());
-        }
-
-        // ── PaddleOCR: read RPM from screen ──────────────────────────────────
-        private static int ReadRpm(PaddleOcrAll ocr, Rectangle region)
-        {
-            try
-            {
-                using var bmp = new Bitmap(region.Width, region.Height, PixelFormat.Format32bppArgb);
-                using (var g = Graphics.FromImage(bmp))
-                    g.CopyFromScreen(region.Location, Point.Empty, region.Size);
-
-                // Convert Bitmap → OpenCV Mat for PaddleOCR
-                using var mat = BitmapConverter.ToMat(bmp);
-
-                // Run full OCR pipeline (detect → recognize)
-                PaddleOcrResult result = ocr.Run(mat);
-
-                string text = result.Text?.Trim() ?? "";
-                // Extract digits only (RPM is always numeric)
-                text = Regex.Replace(text, @"\D", "");
-                return text.Length > 0 ? int.Parse(text) : -1;
-            }
-            catch
-            {
-                return -1;
-            }
-        }
-
-        // ── WASAPI loopback recording ─────────────────────────────────────────
         private void RecordWasapi(string outputPath, RecorderConfig cfg,
-                                   PaddleOcrAll ocr, int targetRpm, CancellationToken ct)
+                                   int targetRpm, CancellationToken ct)
         {
             using var capture = new WasapiLoopbackCapture();
             capture.WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(44100, 2);
@@ -364,42 +460,62 @@ namespace EngineSimRecorder
             capture.RecordingStopped += (s, e) => recordingEnd.Set();
 
             capture.StartRecording();
-            Log($"WASAPI capture started (hold {cfg.HoldSeconds}s)");
+            Log($"WASAPI capture started ({cfg.RecordSeconds}s)");
 
-            // Keep recording while stable; abort if RPM drifts badly
             while (!ct.IsCancellationRequested)
             {
                 double elapsed = (DateTime.UtcNow - startTime).TotalSeconds;
-                if (elapsed >= cfg.HoldSeconds) break;
+                if (elapsed >= cfg.RecordSeconds) break;
 
-                int currentRpm = ReadRpm(ocr, cfg.OcrRegion);
-                SetRpm($"RPM: {(currentRpm < 0 ? "???" : currentRpm.ToString())}");
-                if (currentRpm >= 0 && Math.Abs(currentRpm - targetRpm) > cfg.RpmTolerance * 2)
+                double? rpm = ReadRpmFromPipe();
+                if (rpm.HasValue)
                 {
-                    Log($"RPM drifted to {currentRpm} – rebalancing…");
-                    HoldRpm(ocr, cfg, targetRpm, ct);
-                    // Restart the hold timer
-                    startTime = DateTime.UtcNow;
+                    int currentRpm = (int)rpm.Value;
+                    SetRpm($"RPM: {currentRpm}");
+                    if (Math.Abs(currentRpm - targetRpm) > cfg.RpmTolerance * 2)
+                    {
+                        Log($"RPM drifted to {currentRpm} – rebalancing…");
+                        HoldRpm(cfg, targetRpm, ct);
+                        startTime = DateTime.UtcNow;
+                    }
                 }
 
-                Thread.Sleep(200);
+                Thread.Sleep(50);
             }
 
             capture.StopRecording();
             recordingEnd.Wait(TimeSpan.FromSeconds(5));
         }
 
-        // ── Config DTO ────────────────────────────────────────────────────────
+        // ── Config DTO ────────────────────────────────────────────────
+
         private sealed class RecorderConfig
         {
             public string OutputDir { get; set; } = "recordings";
-            public Rectangle OcrRegion { get; set; } = new Rectangle(860, 45, 160, 40);
+            public int ProcessId { get; set; }
             public List<int> TargetRpms { get; set; } = new();
             public int RpmTolerance { get; set; } = 50;
             public int HoldSeconds { get; set; } = 5;
-            public double Kp { get; set; } = 0.0005;
-            public double Ki { get; set; } = 0.00001;
-            public double Kd { get; set; } = 0.0005;
+            public int RecordSeconds { get; set; } = 6;
+            public double Kp { get; set; } = 0.005;
+            public double Ki { get; set; } = 0.0001;
+            public double Kd { get; set; } = 0.005;
+        }
+
+        // ── Process list item ─────────────────────────────────────────
+
+        private sealed class ProcessItem
+        {
+            public int ProcessId { get; }
+            public string DisplayName { get; }
+
+            public ProcessItem(Process proc)
+            {
+                ProcessId = proc.Id;
+                DisplayName = $"{proc.ProcessName} (PID {proc.Id})";
+            }
+
+            public override string ToString() => DisplayName;
         }
     }
 }

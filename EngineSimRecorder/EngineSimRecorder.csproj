@@ -9,18 +9,17 @@
     <AssemblyName>EngineSimRecorder</AssemblyName>
     <RootNamespace>EngineSimRecorder</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
     <!-- NAudio: WASAPI loopback capture and WAV writing -->
     <PackageReference Include="NAudio" Version="2.2.1" />
-    <!-- PaddleOCR via Sdcb.PaddleInference (same engine as BetterGI, NuGet-wrapped) -->
-    <PackageReference Include="OpenCvSharp4" Version="4.9.0.20240103" />
-    <PackageReference Include="OpenCvSharp4.runtime.win" Version="4.9.0.20240103" />
-    <PackageReference Include="Sdcb.PaddleOCR" Version="1.3.4" />
-    <PackageReference Include="Sdcb.PaddleOCR.Models.LocalV4" Version="1.3.4" />
-    <PackageReference Include="Sdcb.PaddleInference" Version="2.5.0.1" />
-    <PackageReference Include="Sdcb.PaddleInference.runtime.win64.mkl" Version="2.5.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Copy the hook DLL to output -->
+    <None Include="..\EngineSimHook\bin\es_hook.dll" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

@@ -16,26 +16,22 @@ namespace EngineSimRecorder
         private void InitializeComponent()
         {
             this.lblTitle = new System.Windows.Forms.Label();
+            this.grpProcess = new System.Windows.Forms.GroupBox();
+            this.btnRefresh = new System.Windows.Forms.Button();
+            this.cmbProcess = new System.Windows.Forms.ComboBox();
+            this.lblProcess = new System.Windows.Forms.Label();
             this.grpCapture = new System.Windows.Forms.GroupBox();
             this.btnBrowseOutput = new System.Windows.Forms.Button();
             this.txtOutputDir = new System.Windows.Forms.TextBox();
             this.lblOutputDir = new System.Windows.Forms.Label();
-            this.grpOcr = new System.Windows.Forms.GroupBox();
-            this.lblOcrRegionHint = new System.Windows.Forms.Label();
-            this.numOcrH = new System.Windows.Forms.NumericUpDown();
-            this.numOcrW = new System.Windows.Forms.NumericUpDown();
-            this.numOcrY = new System.Windows.Forms.NumericUpDown();
-            this.numOcrX = new System.Windows.Forms.NumericUpDown();
-            this.lblOcrH = new System.Windows.Forms.Label();
-            this.lblOcrW = new System.Windows.Forms.Label();
-            this.lblOcrY = new System.Windows.Forms.Label();
-            this.lblOcrX = new System.Windows.Forms.Label();
             this.grpRpm = new System.Windows.Forms.GroupBox();
             this.numRpmList = new System.Windows.Forms.NumericUpDown();
             this.lstTargetRpms = new System.Windows.Forms.ListBox();
             this.btnRemoveRpm = new System.Windows.Forms.Button();
             this.btnAddRpm = new System.Windows.Forms.Button();
             this.lblTargetRpms = new System.Windows.Forms.Label();
+            this.numRecordSec = new System.Windows.Forms.NumericUpDown();
+            this.lblRecordSec = new System.Windows.Forms.Label();
             this.numHoldSec = new System.Windows.Forms.NumericUpDown();
             this.lblHoldSec = new System.Windows.Forms.Label();
             this.numRpmTol = new System.Windows.Forms.NumericUpDown();
@@ -54,14 +50,11 @@ namespace EngineSimRecorder
             this.txtLog = new System.Windows.Forms.TextBox();
             this.btnStart = new System.Windows.Forms.Button();
             this.btnStop = new System.Windows.Forms.Button();
+            this.grpProcess.SuspendLayout();
             this.grpCapture.SuspendLayout();
-            this.grpOcr.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.numOcrH)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numOcrW)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numOcrY)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numOcrX)).BeginInit();
             this.grpRpm.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.numRpmList)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numRecordSec)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numHoldSec)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numRpmTol)).BeginInit();
             this.grpPid.SuspendLayout();
@@ -81,17 +74,57 @@ namespace EngineSimRecorder
             this.lblTitle.TabIndex = 0;
             this.lblTitle.Text = "Engine Simulator Auto-Recorder";
             // 
+            // grpProcess
+            // 
+            this.grpProcess.Controls.Add(this.btnRefresh);
+            this.grpProcess.Controls.Add(this.cmbProcess);
+            this.grpProcess.Controls.Add(this.lblProcess);
+            this.grpProcess.Location = new System.Drawing.Point(12, 40);
+            this.grpProcess.Name = "grpProcess";
+            this.grpProcess.Size = new System.Drawing.Size(560, 60);
+            this.grpProcess.TabIndex = 1;
+            this.grpProcess.TabStop = false;
+            this.grpProcess.Text = "Engine Simulator Process";
+            // 
+            // lblProcess
+            // 
+            this.lblProcess.AutoSize = true;
+            this.lblProcess.Location = new System.Drawing.Point(6, 24);
+            this.lblProcess.Name = "lblProcess";
+            this.lblProcess.Size = new System.Drawing.Size(52, 15);
+            this.lblProcess.TabIndex = 0;
+            this.lblProcess.Text = "Process:";
+            // 
+            // cmbProcess
+            // 
+            this.cmbProcess.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cmbProcess.FormattingEnabled = true;
+            this.cmbProcess.Location = new System.Drawing.Point(70, 21);
+            this.cmbProcess.Name = "cmbProcess";
+            this.cmbProcess.Size = new System.Drawing.Size(390, 23);
+            this.cmbProcess.TabIndex = 1;
+            // 
+            // btnRefresh
+            // 
+            this.btnRefresh.Location = new System.Drawing.Point(470, 20);
+            this.btnRefresh.Name = "btnRefresh";
+            this.btnRefresh.Size = new System.Drawing.Size(75, 25);
+            this.btnRefresh.TabIndex = 2;
+            this.btnRefresh.Text = "Refresh";
+            this.btnRefresh.UseVisualStyleBackColor = true;
+            this.btnRefresh.Click += new System.EventHandler(this.btnRefresh_Click);
+            // 
             // grpCapture
             // 
             this.grpCapture.Controls.Add(this.btnBrowseOutput);
             this.grpCapture.Controls.Add(this.txtOutputDir);
             this.grpCapture.Controls.Add(this.lblOutputDir);
-            this.grpCapture.Location = new System.Drawing.Point(12, 40);
+            this.grpCapture.Location = new System.Drawing.Point(12, 108);
             this.grpCapture.Name = "grpCapture";
             this.grpCapture.Size = new System.Drawing.Size(560, 60);
-            this.grpCapture.TabIndex = 1;
+            this.grpCapture.TabIndex = 2;
             this.grpCapture.TabStop = false;
-            this.grpCapture.Text = "Capture Settings";
+            this.grpCapture.Text = "Output";
             // 
             // lblOutputDir
             // 
@@ -104,9 +137,9 @@ namespace EngineSimRecorder
             // 
             // txtOutputDir
             // 
-            this.txtOutputDir.Location = new System.Drawing.Point(100, 21);
+            this.txtOutputDir.Location = new System.Drawing.Point(80, 21);
             this.txtOutputDir.Name = "txtOutputDir";
-            this.txtOutputDir.Size = new System.Drawing.Size(360, 23);
+            this.txtOutputDir.Size = new System.Drawing.Size(380, 23);
             this.txtOutputDir.TabIndex = 1;
             this.txtOutputDir.Text = "recordings";
             // 
@@ -120,108 +153,6 @@ namespace EngineSimRecorder
             this.btnBrowseOutput.UseVisualStyleBackColor = true;
             this.btnBrowseOutput.Click += new System.EventHandler(this.btnBrowseOutput_Click);
             // 
-            // grpOcr
-            // 
-            this.grpOcr.Controls.Add(this.lblOcrRegionHint);
-            this.grpOcr.Controls.Add(this.numOcrH);
-            this.grpOcr.Controls.Add(this.numOcrW);
-            this.grpOcr.Controls.Add(this.numOcrY);
-            this.grpOcr.Controls.Add(this.numOcrX);
-            this.grpOcr.Controls.Add(this.lblOcrH);
-            this.grpOcr.Controls.Add(this.lblOcrW);
-            this.grpOcr.Controls.Add(this.lblOcrY);
-            this.grpOcr.Controls.Add(this.lblOcrX);
-            this.grpOcr.Location = new System.Drawing.Point(12, 108);
-            this.grpOcr.Name = "grpOcr";
-            this.grpOcr.Size = new System.Drawing.Size(560, 80);
-            this.grpOcr.TabIndex = 2;
-            this.grpOcr.TabStop = false;
-            this.grpOcr.Text = "OCR Region (RPM display area, pixels)";
-            // 
-            // lblOcrX
-            // 
-            this.lblOcrX.AutoSize = true;
-            this.lblOcrX.Location = new System.Drawing.Point(6, 28);
-            this.lblOcrX.Name = "lblOcrX";
-            this.lblOcrX.Size = new System.Drawing.Size(14, 15);
-            this.lblOcrX.TabIndex = 0;
-            this.lblOcrX.Text = "X";
-            // 
-            // numOcrX
-            // 
-            this.numOcrX.Location = new System.Drawing.Point(24, 25);
-            this.numOcrX.Maximum = new decimal(new int[] { 7680, 0, 0, 0 });
-            this.numOcrX.Name = "numOcrX";
-            this.numOcrX.Size = new System.Drawing.Size(80, 23);
-            this.numOcrX.TabIndex = 1;
-            this.numOcrX.Value = new decimal(new int[] { 860, 0, 0, 0 });
-            // 
-            // lblOcrY
-            // 
-            this.lblOcrY.AutoSize = true;
-            this.lblOcrY.Location = new System.Drawing.Point(115, 28);
-            this.lblOcrY.Name = "lblOcrY";
-            this.lblOcrY.Size = new System.Drawing.Size(14, 15);
-            this.lblOcrY.TabIndex = 2;
-            this.lblOcrY.Text = "Y";
-            // 
-            // numOcrY
-            // 
-            this.numOcrY.Location = new System.Drawing.Point(133, 25);
-            this.numOcrY.Maximum = new decimal(new int[] { 4320, 0, 0, 0 });
-            this.numOcrY.Name = "numOcrY";
-            this.numOcrY.Size = new System.Drawing.Size(80, 23);
-            this.numOcrY.TabIndex = 3;
-            this.numOcrY.Value = new decimal(new int[] { 45, 0, 0, 0 });
-            // 
-            // lblOcrW
-            // 
-            this.lblOcrW.AutoSize = true;
-            this.lblOcrW.Location = new System.Drawing.Point(224, 28);
-            this.lblOcrW.Name = "lblOcrW";
-            this.lblOcrW.Size = new System.Drawing.Size(17, 15);
-            this.lblOcrW.TabIndex = 4;
-            this.lblOcrW.Text = "W";
-            // 
-            // numOcrW
-            // 
-            this.numOcrW.Location = new System.Drawing.Point(245, 25);
-            this.numOcrW.Maximum = new decimal(new int[] { 7680, 0, 0, 0 });
-            this.numOcrW.Minimum = new decimal(new int[] { 10, 0, 0, 0 });
-            this.numOcrW.Name = "numOcrW";
-            this.numOcrW.Size = new System.Drawing.Size(80, 23);
-            this.numOcrW.TabIndex = 5;
-            this.numOcrW.Value = new decimal(new int[] { 160, 0, 0, 0 });
-            // 
-            // lblOcrH
-            // 
-            this.lblOcrH.AutoSize = true;
-            this.lblOcrH.Location = new System.Drawing.Point(336, 28);
-            this.lblOcrH.Name = "lblOcrH";
-            this.lblOcrH.Size = new System.Drawing.Size(16, 15);
-            this.lblOcrH.TabIndex = 6;
-            this.lblOcrH.Text = "H";
-            // 
-            // numOcrH
-            // 
-            this.numOcrH.Location = new System.Drawing.Point(356, 25);
-            this.numOcrH.Maximum = new decimal(new int[] { 4320, 0, 0, 0 });
-            this.numOcrH.Minimum = new decimal(new int[] { 10, 0, 0, 0 });
-            this.numOcrH.Name = "numOcrH";
-            this.numOcrH.Size = new System.Drawing.Size(80, 23);
-            this.numOcrH.TabIndex = 7;
-            this.numOcrH.Value = new decimal(new int[] { 40, 0, 0, 0 });
-            // 
-            // lblOcrRegionHint
-            // 
-            this.lblOcrRegionHint.AutoSize = true;
-            this.lblOcrRegionHint.ForeColor = System.Drawing.SystemColors.GrayText;
-            this.lblOcrRegionHint.Location = new System.Drawing.Point(6, 55);
-            this.lblOcrRegionHint.Name = "lblOcrRegionHint";
-            this.lblOcrRegionHint.Size = new System.Drawing.Size(441, 15);
-            this.lblOcrRegionHint.TabIndex = 8;
-            this.lblOcrRegionHint.Text = "Hint: use a screen ruler or the Coordinate Finder button to locate the RPM digits.";
-            // 
             // grpRpm
             // 
             this.grpRpm.Controls.Add(this.numRpmList);
@@ -229,13 +160,15 @@ namespace EngineSimRecorder
             this.grpRpm.Controls.Add(this.btnRemoveRpm);
             this.grpRpm.Controls.Add(this.btnAddRpm);
             this.grpRpm.Controls.Add(this.lblTargetRpms);
+            this.grpRpm.Controls.Add(this.numRecordSec);
+            this.grpRpm.Controls.Add(this.lblRecordSec);
             this.grpRpm.Controls.Add(this.numHoldSec);
             this.grpRpm.Controls.Add(this.lblHoldSec);
             this.grpRpm.Controls.Add(this.numRpmTol);
             this.grpRpm.Controls.Add(this.lblRpmTol);
-            this.grpRpm.Location = new System.Drawing.Point(12, 198);
+            this.grpRpm.Location = new System.Drawing.Point(12, 176);
             this.grpRpm.Name = "grpRpm";
-            this.grpRpm.Size = new System.Drawing.Size(560, 150);
+            this.grpRpm.Size = new System.Drawing.Size(560, 155);
             this.grpRpm.TabIndex = 3;
             this.grpRpm.TabStop = false;
             this.grpRpm.Text = "RPM Targets";
@@ -255,7 +188,7 @@ namespace EngineSimRecorder
             this.lstTargetRpms.ItemHeight = 15;
             this.lstTargetRpms.Location = new System.Drawing.Point(6, 40);
             this.lstTargetRpms.Name = "lstTargetRpms";
-            this.lstTargetRpms.Size = new System.Drawing.Size(180, 99);
+            this.lstTargetRpms.Size = new System.Drawing.Size(180, 109);
             this.lstTargetRpms.TabIndex = 1;
             // 
             // numRpmList
@@ -300,9 +233,9 @@ namespace EngineSimRecorder
             // 
             // numRpmTol
             // 
-            this.numRpmTol.Location = new System.Drawing.Point(300, 77);
+            this.numRpmTol.Location = new System.Drawing.Point(310, 77);
             this.numRpmTol.Maximum = new decimal(new int[] { 1000, 0, 0, 0 });
-            this.numRpmTol.Minimum = new decimal(new int[] { 10, 0, 0, 0 });
+            this.numRpmTol.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
             this.numRpmTol.Name = "numRpmTol";
             this.numRpmTol.Size = new System.Drawing.Size(70, 23);
             this.numRpmTol.TabIndex = 6;
@@ -312,7 +245,7 @@ namespace EngineSimRecorder
             // lblHoldSec
             // 
             this.lblHoldSec.AutoSize = true;
-            this.lblHoldSec.Location = new System.Drawing.Point(200, 115);
+            this.lblHoldSec.Location = new System.Drawing.Point(200, 110);
             this.lblHoldSec.Name = "lblHoldSec";
             this.lblHoldSec.Size = new System.Drawing.Size(82, 15);
             this.lblHoldSec.TabIndex = 7;
@@ -320,13 +253,32 @@ namespace EngineSimRecorder
             // 
             // numHoldSec
             // 
-            this.numHoldSec.Location = new System.Drawing.Point(300, 112);
+            this.numHoldSec.Location = new System.Drawing.Point(310, 107);
             this.numHoldSec.Maximum = new decimal(new int[] { 120, 0, 0, 0 });
             this.numHoldSec.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
             this.numHoldSec.Name = "numHoldSec";
             this.numHoldSec.Size = new System.Drawing.Size(70, 23);
             this.numHoldSec.TabIndex = 8;
-            this.numHoldSec.Value = new decimal(new int[] { 5, 0, 0, 0 });
+            this.numHoldSec.Value = new decimal(new int[] { 3, 0, 0, 0 });
+            // 
+            // lblRecordSec
+            // 
+            this.lblRecordSec.AutoSize = true;
+            this.lblRecordSec.Location = new System.Drawing.Point(400, 80);
+            this.lblRecordSec.Name = "lblRecordSec";
+            this.lblRecordSec.Size = new System.Drawing.Size(96, 15);
+            this.lblRecordSec.TabIndex = 9;
+            this.lblRecordSec.Text = "Record (seconds):";
+            // 
+            // numRecordSec
+            // 
+            this.numRecordSec.Location = new System.Drawing.Point(400, 100);
+            this.numRecordSec.Maximum = new decimal(new int[] { 300, 0, 0, 0 });
+            this.numRecordSec.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
+            this.numRecordSec.Name = "numRecordSec";
+            this.numRecordSec.Size = new System.Drawing.Size(70, 23);
+            this.numRecordSec.TabIndex = 10;
+            this.numRecordSec.Value = new decimal(new int[] { 6, 0, 0, 0 });
             // 
             // grpPid
             // 
@@ -336,7 +288,7 @@ namespace EngineSimRecorder
             this.grpPid.Controls.Add(this.lblKd);
             this.grpPid.Controls.Add(this.lblKi);
             this.grpPid.Controls.Add(this.lblKp);
-            this.grpPid.Location = new System.Drawing.Point(12, 358);
+            this.grpPid.Location = new System.Drawing.Point(12, 340);
             this.grpPid.Name = "grpPid";
             this.grpPid.Size = new System.Drawing.Size(560, 60);
             this.grpPid.TabIndex = 4;
@@ -408,7 +360,7 @@ namespace EngineSimRecorder
             this.grpStatus.Controls.Add(this.pbarProgress);
             this.grpStatus.Controls.Add(this.lblCurrentRpm);
             this.grpStatus.Controls.Add(this.lblStatus);
-            this.grpStatus.Location = new System.Drawing.Point(12, 428);
+            this.grpStatus.Location = new System.Drawing.Point(12, 410);
             this.grpStatus.Name = "grpStatus";
             this.grpStatus.Size = new System.Drawing.Size(560, 70);
             this.grpStatus.TabIndex = 5;
@@ -446,7 +398,7 @@ namespace EngineSimRecorder
             this.txtLog.BackColor = System.Drawing.Color.Black;
             this.txtLog.Font = new System.Drawing.Font("Consolas", 8.25F);
             this.txtLog.ForeColor = System.Drawing.Color.LimeGreen;
-            this.txtLog.Location = new System.Drawing.Point(12, 508);
+            this.txtLog.Location = new System.Drawing.Point(12, 490);
             this.txtLog.Multiline = true;
             this.txtLog.Name = "txtLog";
             this.txtLog.ReadOnly = true;
@@ -459,7 +411,7 @@ namespace EngineSimRecorder
             this.btnStart.BackColor = System.Drawing.Color.ForestGreen;
             this.btnStart.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
             this.btnStart.ForeColor = System.Drawing.Color.White;
-            this.btnStart.Location = new System.Drawing.Point(12, 638);
+            this.btnStart.Location = new System.Drawing.Point(12, 620);
             this.btnStart.Name = "btnStart";
             this.btnStart.Size = new System.Drawing.Size(120, 36);
             this.btnStart.TabIndex = 7;
@@ -473,7 +425,7 @@ namespace EngineSimRecorder
             this.btnStop.Enabled = false;
             this.btnStop.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
             this.btnStop.ForeColor = System.Drawing.Color.White;
-            this.btnStop.Location = new System.Drawing.Point(145, 638);
+            this.btnStop.Location = new System.Drawing.Point(145, 620);
             this.btnStop.Name = "btnStop";
             this.btnStop.Size = new System.Drawing.Size(120, 36);
             this.btnStop.TabIndex = 8;
@@ -485,15 +437,15 @@ namespace EngineSimRecorder
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(584, 686);
+            this.ClientSize = new System.Drawing.Size(584, 668);
             this.Controls.Add(this.btnStop);
             this.Controls.Add(this.btnStart);
             this.Controls.Add(this.txtLog);
             this.Controls.Add(this.grpStatus);
             this.Controls.Add(this.grpPid);
             this.Controls.Add(this.grpRpm);
-            this.Controls.Add(this.grpOcr);
             this.Controls.Add(this.grpCapture);
+            this.Controls.Add(this.grpProcess);
             this.Controls.Add(this.lblTitle);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.MaximizeBox = false;
@@ -501,17 +453,14 @@ namespace EngineSimRecorder
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Engine Simulator Auto-Recorder";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.Form1_FormClosing);
+            this.grpProcess.ResumeLayout(false);
+            this.grpProcess.PerformLayout();
             this.grpCapture.ResumeLayout(false);
             this.grpCapture.PerformLayout();
-            this.grpOcr.ResumeLayout(false);
-            this.grpOcr.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.numOcrH)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numOcrW)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numOcrY)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numOcrX)).EndInit();
             this.grpRpm.ResumeLayout(false);
             this.grpRpm.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.numRpmList)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numRecordSec)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.numHoldSec)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.numRpmTol)).EndInit();
             this.grpPid.ResumeLayout(false);
@@ -528,26 +477,22 @@ namespace EngineSimRecorder
         #endregion
 
         private System.Windows.Forms.Label lblTitle;
+        private System.Windows.Forms.GroupBox grpProcess;
+        private System.Windows.Forms.Button btnRefresh;
+        private System.Windows.Forms.ComboBox cmbProcess;
+        private System.Windows.Forms.Label lblProcess;
         private System.Windows.Forms.GroupBox grpCapture;
         private System.Windows.Forms.Button btnBrowseOutput;
         private System.Windows.Forms.TextBox txtOutputDir;
         private System.Windows.Forms.Label lblOutputDir;
-        private System.Windows.Forms.GroupBox grpOcr;
-        private System.Windows.Forms.Label lblOcrRegionHint;
-        private System.Windows.Forms.NumericUpDown numOcrH;
-        private System.Windows.Forms.NumericUpDown numOcrW;
-        private System.Windows.Forms.NumericUpDown numOcrY;
-        private System.Windows.Forms.NumericUpDown numOcrX;
-        private System.Windows.Forms.Label lblOcrH;
-        private System.Windows.Forms.Label lblOcrW;
-        private System.Windows.Forms.Label lblOcrY;
-        private System.Windows.Forms.Label lblOcrX;
         private System.Windows.Forms.GroupBox grpRpm;
         private System.Windows.Forms.NumericUpDown numRpmList;
         private System.Windows.Forms.ListBox lstTargetRpms;
         private System.Windows.Forms.Button btnRemoveRpm;
         private System.Windows.Forms.Button btnAddRpm;
         private System.Windows.Forms.Label lblTargetRpms;
+        private System.Windows.Forms.NumericUpDown numRecordSec;
+        private System.Windows.Forms.Label lblRecordSec;
         private System.Windows.Forms.NumericUpDown numHoldSec;
         private System.Windows.Forms.Label lblHoldSec;
         private System.Windows.Forms.NumericUpDown numRpmTol;
