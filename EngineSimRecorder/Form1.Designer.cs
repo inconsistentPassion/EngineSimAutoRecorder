@@ -371,6 +371,7 @@ namespace EngineSimRecorder
             lstTargetRpms.Size = new Size(490, 129);
             lstTargetRpms.TabIndex = 1;
             lstTargetRpms.DoubleClick += btnEditRpm_Click;
+            lstTargetRpms.SelectedIndexChanged += lstTargetRpms_SelectedIndexChanged;
             // 
             // btnAddRpm
             // 

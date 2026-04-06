@@ -106,38 +106,13 @@ namespace EngineSimRecorder
         {
             if (lstTargetRpms.SelectedItem is not int selected) return;
             int index = lstTargetRpms.SelectedIndex;
+            lstTargetRpms.Items[index] = (int)numRpmList.Value;
+        }
 
-            using var form = new Form
-            {
-                Text = "Edit RPM",
-                Size = new Size(300, 160),
-                FormBorderStyle = FormBorderStyle.FixedDialog,
-                StartPosition = FormStartPosition.CenterParent,
-                MaximizeBox = false,
-                MinimizeBox = false,
-            };
-            var lbl = new Label { Text = "RPM:", Location = new Point(15, 20), AutoSize = true };
-            var nud = new NumericUpDown
-            {
-                Minimum = 100, Maximum = 30000, Increment = 500,
-                Value = selected, Location = new Point(60, 18), Width = 200,
-            };
-            var ok = new Button
-            {
-                Text = "OK", DialogResult = DialogResult.OK,
-                Location = new Point(60, 60), Size = new Size(80, 35),
-            };
-            var cancel = new Button
-            {
-                Text = "Cancel", DialogResult = DialogResult.Cancel,
-                Location = new Point(160, 60), Size = new Size(80, 35),
-            };
-            form.Controls.AddRange(new Control[] { lbl, nud, ok, cancel });
-            form.AcceptButton = ok;
-            form.CancelButton = cancel;
-
-            if (form.ShowDialog(this) == DialogResult.OK)
-                lstTargetRpms.Items[index] = (int)nud.Value;
+        private void lstTargetRpms_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (lstTargetRpms.SelectedItem is int selected)
+                numRpmList.Value = selected;
         }
 
         private void btnStart_Click(object sender, EventArgs e)
