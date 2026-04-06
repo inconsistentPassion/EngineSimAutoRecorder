@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1e1e2e"/>
+      <stop offset="100%" stop-color="#14141f"/>
+    </linearGradient>
+    <linearGradient id="arcGreen" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%" stop-color="#4ade80"/>
+      <stop offset="100%" stop-color="#22c55e"/>
+    </linearGradient>
+    <linearGradient id="arcYellow" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#facc15"/>
+      <stop offset="100%" stop-color="#eab308"/>
+    </linearGradient>
+    <linearGradient id="arcRed" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f87171"/>
+      <stop offset="100%" stop-color="#ef4444"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="recGlow">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="96" fill="url(#bgGrad)"/>
+
+  <!-- Outer ring -->
+  <circle cx="256" cy="268" r="185" fill="none" stroke="#2a2a3d" stroke-width="18"/>
+
+  <!-- Tick marks -->
+  <g stroke="#3a3a52" stroke-width="4" stroke-linecap="round">
+    <!-- Major ticks every 30 degrees, from 210° to 330° (bottom-left to bottom-right arc, top half) -->
+    <!-- 210° (7 o'clock) -->
+    <line x1="163.5" y1="368" x2="178" y2="356"/>
+    <!-- 240° -->
+    <line x1="117" y1="298" x2="135" y2="298"/>
+    <!-- 270° (12 o'clock) -->
+    <line x1="106" y1="218" x2="124" y2="218"/>
+    <!-- 300° -->
+    <line x1="163" y1="168" x2="178" y2="180"/>
+    <!-- 330° (5 o'clock) -->
+    <line x1="242" y1="143" x2="256" y2="158"/>
+  </g>
+  <g stroke="#50506a" stroke-width="2" stroke-linecap="round">
+    <!-- Minor ticks -->
+    <line x1="133" y1="338" x2="148" y2="329"/>
+    <line x1="103" y1="258" x2="121" y2="258"/>
+    <line x1="133" y1="180" x2="148" y2="189"/>
+    <line x1="195" y1="148" x2="205" y2="164"/>
+    <line x1="249" y1="133" x2="256" y2="150"/>
+    <line x1="303" y1="148" x2="307" y2="164"/>
+    <line x1="355" y1="189" x2="345" y2="180"/>
+    <line x1="385" y1="258" x2="367" y2="258"/>
+    <line x1="355" y1="329" x2="345" y2="338"/>
+  </g>
+
+  <!-- Arc segments (270° sweep, from 225° to 315° on screen) -->
+  <!-- Green segment: lower portion -->
+  <path d="M 147.2 342.4 A 170 170 0 0 1 91 218"
+        fill="none" stroke="url(#arcGreen)" stroke-width="14" stroke-linecap="round" filter="url(#glow)" opacity="0.85"/>
+  <!-- Yellow segment: middle -->
+  <path d="M 91 218 A 170 170 0 0 1 147.2 138.6"
+        fill="none" stroke="url(#arcYellow)" stroke-width="14" stroke-linecap="round" filter="url(#glow)" opacity="0.85"/>
+  <!-- Red segment: upper portion -->
+  <path d="M 147.2 138.6 A 170 170 0 0 1 321 138.6"
+        fill="none" stroke="url(#arcRed)" stroke-width="14" stroke-linecap="round" filter="url(#glow)" opacity="0.85"/>
+
+  <!-- Right side arcs (mirrored) -->
+  <path d="M 321 138.6 A 170 170 0 0 1 364.8 218"
+        fill="none" stroke="url(#arcRed)" stroke-width="14" stroke-linecap="round" filter="url(#glow)" opacity="0.85"/>
+  <path d="M 364.8 218 A 170 170 0 0 1 341 310"
+        fill="none" stroke="url(#arcYellow)" stroke-width="14" stroke-linecap="round" filter="url(#glow)" opacity="0.85"/>
+
+  <!-- Needle -->
+  <g transform="rotate(-55, 256, 268)" filter="url(#glow)">
+    <polygon points="256,128 249,260 256,268 263,260" fill="#f0f0f0" opacity="0.9"/>
+    <circle cx="256" cy="268" r="8" fill="#f0f0f0"/>
+  </g>
+
+  <!-- Center hub -->
+  <circle cx="256" cy="268" r="18" fill="#1e1e2e" stroke="#3a3a52" stroke-width="3"/>
+
+  <!-- Recording dot -->
+  <circle cx="256" cy="268" r="10" fill="#ef4444" filter="url(#recGlow)"/>
+  <circle cx="256" cy="268" r="10" fill="#ef4444"/>
+
+  <!-- Sound wave arcs at bottom-right -->
+  <g transform="translate(340, 360)" stroke="#4ade80" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.7">
+    <path d="M 0 -18 A 18 18 0 0 1 0 18"/>
+    <path d="M 10 -28 A 28 28 0 0 1 10 28"/>
+    <path d="M 20 -38 A 38 38 0 0 1 20 38"/>
+  </g>
+
+  <!-- "REC" text -->
+  <text x="256" y="430" text-anchor="middle" font-family="Segoe UI, sans-serif"
+        font-size="36" font-weight="700" fill="#80809a" letter-spacing="6">REC</text>
+</svg>
