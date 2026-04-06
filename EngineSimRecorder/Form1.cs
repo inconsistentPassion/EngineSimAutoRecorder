@@ -19,6 +19,7 @@ namespace EngineSimRecorder
         private System.Windows.Forms.Timer? _focusMonitor;
         private IntPtr _engineSimHwnd = IntPtr.Zero;
         private bool _focusWarned = false;
+        private AppSettings _settings = new();
 
         public Form1()
         {
@@ -36,7 +37,6 @@ namespace EngineSimRecorder
                     lstTargetRpms.Items.Add(rpm);
             }
 
-            // change window title here
             this.Text = "Engine Sim Recorder 1.0.0";
         }
 
@@ -132,6 +132,8 @@ namespace EngineSimRecorder
                 TargetRpms = targets,
                 CustomName = txtCarName.Text.Trim(),
                 CustomPrefix = GetPrefix(),
+                SampleRate = cmbSampleRate.SelectedIndex == 1 ? 48000 : 44100,
+                Channels = cmbChannels.SelectedIndex == 1 ? 1 : 2,
             };
 
             btnStart.Enabled = false;
@@ -146,11 +148,109 @@ namespace EngineSimRecorder
         }
 
         private void btnStop_Click(object sender, EventArgs e) => _cts?.Cancel();
-        private void Form1_FormClosing(object sender, FormClosingEventArgs e) => _cts?.Cancel();
 
         private void chkStayOnTop_CheckedChanged(object sender, EventArgs e)
         {
             this.TopMost = chkStayOnTop.Checked;
+        }
+
+        // ── Theme ──────────────────────────────────────────────────────
+
+        private void ThemeChanged(object? sender, EventArgs e)
+        {
+            string theme;
+            if (rbThemeDark.Checked) theme = "dark";
+            else if (rbThemeLight.Checked) theme = "light";
+            else
+            {
+                // Detect system theme from registry
+                try
+                {
+                    using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
+                        @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
+                    int val = (int)(key?.GetValue("AppsUseLightTheme") ?? 1);
+                    theme = val == 0 ? "dark" : "light";
+                }
+                catch { theme = "light"; }
+            }
+            ApplyTheme(theme);
+        }
+
+        private void ApplyTheme(string theme)
+        {
+            bool dark = theme == "dark";
+
+            Color bg = dark ? Color.FromArgb(30, 30, 30) : SystemColors.Window;
+            Color fg = dark ? Color.FromArgb(230, 230, 230) : SystemColors.ControlText;
+            Color groupBoxBg = dark ? Color.FromArgb(37, 37, 38) : SystemColors.Control;
+            Color inputBg = dark ? Color.FromArgb(45, 45, 48) : SystemColors.Window;
+            Color tabBg = dark ? Color.FromArgb(37, 37, 38) : SystemColors.Control;
+
+            this.BackColor = bg;
+            this.ForeColor = fg;
+
+            ApplyThemeToControls(this.Controls, bg, fg, groupBoxBg, inputBg, tabBg, dark);
+
+            // Console log colors
+            txtLog.BackColor = dark ? Color.FromArgb(20, 20, 20) : Color.White;
+            txtLog.ForeColor = dark ? Color.FromArgb(0, 255, 0) : Color.FromArgb(0, 100, 0);
+        }
+
+        private void ApplyThemeToControls(Control.ControlCollection controls,
+            Color bg, Color fg, Color groupBoxBg, Color inputBg, Color tabBg, bool dark)
+        {
+            foreach (Control c in controls)
+            {
+                if (c is TabControl tc)
+                {
+                    tc.BackColor = tabBg;
+                    foreach (TabPage tp in tc.TabPages)
+                    {
+                        tp.BackColor = bg;
+                        tp.ForeColor = fg;
+                        ApplyThemeToControls(tp.Controls, bg, fg, groupBoxBg, inputBg, tabBg, dark);
+                    }
+                }
+                else if (c is GroupBox gb)
+                {
+                    gb.BackColor = groupBoxBg;
+                    gb.ForeColor = fg;
+                    ApplyThemeToControls(gb.Controls, bg, fg, groupBoxBg, inputBg, tabBg, dark);
+                }
+                else if (c is TextBox tb && tb != txtLog)
+                {
+                    tb.BackColor = inputBg;
+                    tb.ForeColor = fg;
+                }
+                else if (c is ComboBox cb)
+                {
+                    cb.BackColor = inputBg;
+                    cb.ForeColor = fg;
+                }
+                else if (c is NumericUpDown nud)
+                {
+                    nud.BackColor = inputBg;
+                    nud.ForeColor = fg;
+                }
+                else if (c is ListBox lb)
+                {
+                    lb.BackColor = inputBg;
+                    lb.ForeColor = fg;
+                }
+                else if (c is Button btn)
+                {
+                    // Keep Start/Stop colors, theme the rest
+                    if (btn != btnStart && btn != btnStop)
+                    {
+                        btn.BackColor = dark ? Color.FromArgb(60, 60, 60) : SystemColors.Control;
+                        btn.ForeColor = fg;
+                    }
+                }
+                else if (c is CheckBox || c is RadioButton || c is Label)
+                {
+                    c.ForeColor = fg;
+                }
+            }
         }
 
         // ── UI helpers ─────────────────────────────────────────────────
@@ -301,7 +401,7 @@ namespace EngineSimRecorder
                     string loadPath = Path.Combine(cfg.OutputDir, loadFile);
                     SetStatus($"Recording {target} RPM (load)...");
                     Log($"Recording LOAD for {cfg.RecordSeconds}s -> {loadPath}");
-                    RecordAudio(backend, loadPath, cfg.RecordSeconds, ct);
+                    RecordAudio(backend, loadPath, cfg, ct);
                     if (ct.IsCancellationRequested) break;
                     Log($"Saved: {loadPath}");
 
@@ -315,7 +415,7 @@ namespace EngineSimRecorder
                     string noloadPath = Path.Combine(cfg.OutputDir, noloadFile);
                     SetStatus($"Recording {target} RPM (no load)...");
                     Log($"Recording NO-LOAD for {cfg.RecordSeconds}s -> {noloadPath}");
-                    RecordAudio(backend, noloadPath, cfg.RecordSeconds, ct);
+                    RecordAudio(backend, noloadPath, cfg, ct);
                     if (ct.IsCancellationRequested) break;
                     Log($"Saved: {noloadPath}");
 
@@ -413,10 +513,10 @@ namespace EngineSimRecorder
         // Shows RPM in the UI while recording.
 
         private void RecordAudio(KeyboardBackend backend, string outputPath,
-               int seconds, CancellationToken ct)
+               RecorderConfig cfg, CancellationToken ct)
         {
             using var capture = new WasapiLoopbackCapture();
-            capture.WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(44100, 2);
+            capture.WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(cfg.SampleRate, cfg.Channels);
             using var writer = new WaveFileWriter(outputPath, capture.WaveFormat);
             var done = new ManualResetEventSlim(false);
 
@@ -432,7 +532,7 @@ namespace EngineSimRecorder
             while (!ct.IsCancellationRequested)
             {
                 double elapsed = (DateTime.UtcNow - start).TotalSeconds;
-                if (elapsed >= seconds) break;
+                if (elapsed >= cfg.RecordSeconds) break;
 
                 double? rpm = backend.ReadRpm();
                 if (rpm.HasValue)
@@ -467,7 +567,32 @@ namespace EngineSimRecorder
 
         private void Form1_Load(object sender, EventArgs e)
         {
+            _settings = AppSettings.Load();
 
+            // Apply audio settings to UI
+            cmbSampleRate.SelectedIndex = _settings.SampleRate == 48000 ? 1 : 0;
+            cmbChannels.SelectedIndex = _settings.Channels == 1 ? 1 : 0;
+
+            // Apply theme
+            switch (_settings.Theme)
+            {
+                case "dark": rbThemeDark.Checked = true; break;
+                case "light": rbThemeLight.Checked = true; break;
+                default: rbThemeSystem.Checked = true; break;
+            }
+        }
+
+        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            _cts?.Cancel();
+
+            // Save settings
+            _settings.SampleRate = cmbSampleRate.SelectedIndex == 1 ? 48000 : 44100;
+            _settings.Channels = cmbChannels.SelectedIndex == 1 ? 1 : 2;
+            if (rbThemeDark.Checked) _settings.Theme = "dark";
+            else if (rbThemeLight.Checked) _settings.Theme = "light";
+            else _settings.Theme = "system";
+            _settings.Save();
         }
 
         // ── Focus monitoring ──────────────────────────────────────────
