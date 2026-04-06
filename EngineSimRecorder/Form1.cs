@@ -377,33 +377,18 @@ namespace EngineSimRecorder
 
         // ── Wait for RPM to reach target ──────────────────────────────
         // Throttle is already being held by the caller.
-        // Releases throttle early (at ~90% of target) so RPM coasts
-        // into the target instead of overshooting.
+        // Just monitors RPM until it's close enough.
 
         private void WaitForRpm(KeyboardBackend backend, RecorderConfig cfg,
           int targetRpm, CancellationToken ct)
         {
             var sw = Stopwatch.StartNew();
-            bool throttleReleased = false;
-
-            // Release throttle when RPM reaches this % of target — lets it coast in
-            double earlyReleaseThreshold = targetRpm * 0.90;
-
             while (!ct.IsCancellationRequested)
             {
                 double? rpm = backend.ReadRpm();
                 if (rpm.HasValue)
                 {
                     SetRpm($"RPM: {rpm.Value:F0}");
-
-                    // Early throttle release — let RPM coast to target
-                    if (!throttleReleased && rpm.Value >= earlyReleaseThreshold)
-                    {
-                        backend.SetThrottle(0);
-                        throttleReleased = true;
-                        Log($"Released throttle at {rpm.Value:F0} RPM, coasting to {targetRpm}...");
-                    }
-
                     if (rpm.Value >= targetRpm - cfg.RpmTolerance)
                     {
                         Log($"Reached {rpm.Value:F0} RPM (target: {targetRpm})");
