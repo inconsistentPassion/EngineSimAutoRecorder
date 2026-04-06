@@ -58,6 +58,7 @@ namespace EngineSimRecorder
             btnPreset8k = new Button();
             btnSortRpm = new Button();
             btnClearRpm = new Button();
+            btnEditRpm = new Button();
             ctxRpm = new ContextMenuStrip();
             ctxRpmRemove = new ToolStripMenuItem();
 
@@ -269,6 +270,7 @@ namespace EngineSimRecorder
             grpRpm.Controls.Add(btnAddRpm);
             grpRpm.Controls.Add(btnSortRpm);
             grpRpm.Controls.Add(btnClearRpm);
+            grpRpm.Controls.Add(btnEditRpm);
             grpRpm.Controls.Add(lblTargetRpms);
             grpRpm.Location = new Point(17, 320);
             grpRpm.Name = "grpRpm";
@@ -368,6 +370,7 @@ namespace EngineSimRecorder
             lstTargetRpms.Name = "lstTargetRpms";
             lstTargetRpms.Size = new Size(490, 129);
             lstTargetRpms.TabIndex = 1;
+            lstTargetRpms.DoubleClick += btnEditRpm_Click;
             // 
             // btnAddRpm
             // 
@@ -404,6 +407,16 @@ namespace EngineSimRecorder
             btnClearRpm.TabIndex = 6;
             btnClearRpm.Text = "Clear All";
             btnClearRpm.Click += btnClearRpm_Click;
+            // 
+            // btnEditRpm
+            // 
+            btnEditRpm.Location = new Point(510, 160);
+            btnEditRpm.Name = "btnEditRpm";
+            btnEditRpm.Size = new Size(129, 38);
+            btnEditRpm.TabIndex = 18;
+            btnEditRpm.Text = "Edit";
+            btnEditRpm.Click += btnEditRpm_Click;
+            //
             // 
             // lblTargetRpms
             // 
@@ -690,6 +703,7 @@ namespace EngineSimRecorder
         private System.Windows.Forms.Button btnPreset8k;
         private System.Windows.Forms.Button btnSortRpm;
         private System.Windows.Forms.Button btnClearRpm;
+        private System.Windows.Forms.Button btnEditRpm;
         private System.Windows.Forms.ContextMenuStrip ctxRpm;
         private System.Windows.Forms.ToolStripMenuItem ctxRpmRemove;
 
