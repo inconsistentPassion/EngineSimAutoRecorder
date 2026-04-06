@@ -106,6 +106,7 @@ dotnet build -c Release
 | **Clear All** | Remove all RPM targets |
 | **Stay on Top** | Keep the recorder window above all others |
 | **Status** | Current RPM, progress bar, and log output |
+<img width="656" height="914" alt="Screenshot 2026-04-05 214150" src="https://github.com/user-attachments/assets/a1f4bfa1-346c-4c7c-bea2-e1dfc76aa3dc" />
 
 ### RPM list management
 
