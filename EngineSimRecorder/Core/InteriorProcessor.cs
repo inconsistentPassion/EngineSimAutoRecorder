@@ -152,7 +152,7 @@ namespace EngineSimRecorder.Core
             }
         }
 
-        private static float Compress(float input, ref float envelope)
+        private float Compress(float input, ref float envelope)
         {
             float abs = Math.Abs(input);
             // Peak detector with asymmetric attack/release
