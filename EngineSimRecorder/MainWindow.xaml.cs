@@ -20,6 +20,9 @@ namespace EngineSimRecorder
         private CancellationTokenSource? _cts;
         private Task? _workerTask;
         private DispatcherTimer? _focusMonitor;
+        private DispatcherTimer? _progressTimer;
+        private Stopwatch? _progressSw;
+        private double _progressEstSec;
         private IntPtr _engineSimHwnd = IntPtr.Zero;
         private bool _focusWarned = false;
         private AppSettings _settings = new();
@@ -164,8 +167,15 @@ namespace EngineSimRecorder
             btnStop.IsEnabled = true;
             pbarProgress.BeginAnimation(ProgressBar.ValueProperty, null);
             pbarProgress.Value = 0;
-            pbarProgress.Maximum = targets.Count;
+            pbarProgress.Maximum = 1;
             txtLog.Text = "";
+
+            // Estimate total duration: startup ~3s + per-target (~4s RPM wait + hold + 2x recording + settle)
+            _progressEstSec = 3.0 + targets.Count * (4.0 + 0.5 + 2 * cfg.RecordSeconds + 2.0 + 0.3);
+            _progressSw = Stopwatch.StartNew();
+            _progressTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(80) };
+            _progressTimer.Tick += ProgressTimer_Tick;
+            _progressTimer.Start();
 
             _cts = new CancellationTokenSource();
             _workerTask = Task.Run(() => RunAsync(cfg, _cts.Token));
@@ -192,17 +202,29 @@ namespace EngineSimRecorder
 
         private void SetStatus(string t) => Dispatcher.BeginInvoke(() => lblStatus.Text = t);
         private void SetRpm(string t) => Dispatcher.BeginInvoke(() => lblCurrentRpm.Text = t);
-        private void IncProgress() => Dispatcher.BeginInvoke(() =>
+
+        private void ProgressTimer_Tick(object? sender, EventArgs e)
         {
-          double target = Math.Min(pbarProgress.Value + 1, pbarProgress.Maximum);
-        var anim = new DoubleAnimation(
-  target,
-          new Duration(TimeSpan.FromMilliseconds(400)),
-                FillBehavior.HoldEnd);
-        anim.EasingFunction = new CubicEase
-        { EasingMode = EasingMode.EaseOut };
-         pbarProgress.BeginAnimation(ProgressBar.ValueProperty, anim);
-        });
+            if (_progressSw == null) return;
+            double fraction = Math.Min(_progressSw.Elapsed.TotalSeconds / _progressEstSec, 0.98);
+            var anim = new System.Windows.Media.Animation.DoubleAnimation(
+                fraction,
+                new System.Windows.Duration(TimeSpan.FromMilliseconds(80)));
+            pbarProgress.BeginAnimation(ProgressBar.ValueProperty, anim);
+        }
+
+        private void StopProgressTimer()
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                _progressTimer?.Stop();
+                _progressTimer = null;
+                // Snap to 100%
+                pbarProgress.BeginAnimation(ProgressBar.ValueProperty, null);
+                pbarProgress.Value = 1;
+            });
+        }
+
         private void ResetControls() => Dispatcher.BeginInvoke(() =>
         {
             btnStart.IsEnabled = true;
@@ -340,7 +362,6 @@ namespace EngineSimRecorder
                     if (ct.IsCancellationRequested) break;
                     Log($"Saved: {noloadPath}");
 
-                    IncProgress();
                     Log($"Target {target} RPM complete!");
 
                     if (i < cfg.TargetRpms.Count - 1)
@@ -385,6 +406,7 @@ namespace EngineSimRecorder
                     _focusMonitor = null;
                 });
                 _engineSimHwnd = IntPtr.Zero;
+                StopProgressTimer();
                 ResetControls();
             }
         }
