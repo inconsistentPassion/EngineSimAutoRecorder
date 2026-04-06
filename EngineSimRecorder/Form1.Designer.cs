@@ -40,6 +40,8 @@
             chkStayOnTop = new CheckBox();
             lblCarName = new Label();
             txtCarName = new TextBox();
+            lblPrefix = new Label();
+            txtPrefix = new TextBox();
             btnPreset1k = new Button();
             btnPreset2k = new Button();
             btnPreset3k = new Button();
@@ -115,6 +117,8 @@
             // 
             // grpCapture
             // 
+            grpCapture.Controls.Add(lblPrefix);
+            grpCapture.Controls.Add(txtPrefix);
             grpCapture.Controls.Add(lblCarName);
             grpCapture.Controls.Add(txtCarName);
             grpCapture.Controls.Add(btnOpenOutput);
@@ -125,7 +129,7 @@
             grpCapture.Margin = new Padding(4, 5, 4, 5);
             grpCapture.Name = "grpCapture";
             grpCapture.Padding = new Padding(4, 5, 4, 5);
-            grpCapture.Size = new Size(800, 140);
+            grpCapture.Size = new Size(800, 180);
             grpCapture.TabIndex = 2;
             grpCapture.TabStop = false;
             grpCapture.Text = "Output";
@@ -189,6 +193,25 @@
             txtCarName.TabIndex = 4;
             txtCarName.PlaceholderText = "e.g. supra_mk4";
             // 
+            // lblPrefix
+            // 
+            lblPrefix.AutoSize = true;
+            lblPrefix.Location = new Point(9, 122);
+            lblPrefix.Margin = new Padding(4, 0, 4, 0);
+            lblPrefix.Name = "lblPrefix";
+            lblPrefix.Size = new Size(64, 25);
+            lblPrefix.TabIndex = 7;
+            lblPrefix.Text = "Prefix:";
+            // 
+            // txtPrefix
+            // 
+            txtPrefix.Location = new Point(114, 119);
+            txtPrefix.Margin = new Padding(4, 5, 4, 5);
+            txtPrefix.Name = "txtPrefix";
+            txtPrefix.Size = new Size(478, 31);
+            txtPrefix.TabIndex = 6;
+            txtPrefix.PlaceholderText = "e.g. ext_ (prepended to filename)";
+            // 
             // ctxRpm
             // 
             ctxRpm.Items.AddRange(new ToolStripItem[] { ctxRpmRemove });
@@ -219,7 +242,7 @@
             grpRpm.Controls.Add(btnSortRpm);
             grpRpm.Controls.Add(btnClearRpm);
             grpRpm.Controls.Add(lblTargetRpms);
-            grpRpm.Location = new Point(17, 333);
+            grpRpm.Location = new Point(17, 373);
             grpRpm.Margin = new Padding(4, 5, 4, 5);
             grpRpm.Name = "grpRpm";
             grpRpm.Padding = new Padding(4, 5, 4, 5);
@@ -384,7 +407,7 @@
             grpStatus.Controls.Add(pbarProgress);
             grpStatus.Controls.Add(lblCurrentRpm);
             grpStatus.Controls.Add(lblStatus);
-            grpStatus.Location = new Point(17, 586);
+            grpStatus.Location = new Point(17, 626);
             grpStatus.Margin = new Padding(4, 5, 4, 5);
             grpStatus.Name = "grpStatus";
             grpStatus.Padding = new Padding(4, 5, 4, 5);
@@ -427,7 +450,7 @@
             txtLog.BackColor = Color.Black;
             txtLog.Font = new Font("Consolas", 8.25F);
             txtLog.ForeColor = Color.LimeGreen;
-            txtLog.Location = new Point(17, 720);
+            txtLog.Location = new Point(17, 760);
             txtLog.Margin = new Padding(4, 5, 4, 5);
             txtLog.Multiline = true;
             txtLog.Name = "txtLog";
@@ -441,7 +464,7 @@
             btnStart.BackColor = Color.ForestGreen;
             btnStart.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             btnStart.ForeColor = Color.White;
-            btnStart.Location = new Point(17, 986);
+            btnStart.Location = new Point(17, 1026);
             btnStart.Margin = new Padding(4, 5, 4, 5);
             btnStart.Name = "btnStart";
             btnStart.Size = new Size(264, 60);
@@ -456,7 +479,7 @@
             btnStop.Enabled = false;
             btnStop.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             btnStop.ForeColor = Color.White;
-            btnStop.Location = new Point(303, 986);
+            btnStop.Location = new Point(303, 1026);
             btnStop.Margin = new Padding(4, 5, 4, 5);
             btnStop.Name = "btnStop";
             btnStop.Size = new Size(264, 60);
@@ -468,7 +491,7 @@
             // chkStayOnTop
             // 
             chkStayOnTop.AutoSize = true;
-            chkStayOnTop.Location = new Point(686, 1017);
+            chkStayOnTop.Location = new Point(686, 1057);
             chkStayOnTop.Margin = new Padding(4, 5, 4, 5);
             chkStayOnTop.Name = "chkStayOnTop";
             chkStayOnTop.Size = new Size(131, 29);
@@ -481,7 +504,7 @@
             // 
             AutoScaleDimensions = new SizeF(10F, 25F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(834, 1066);
+            ClientSize = new Size(834, 1106);
             Controls.Add(chkStayOnTop);
             Controls.Add(btnStop);
             Controls.Add(btnStart);
@@ -540,6 +563,8 @@
         private System.Windows.Forms.CheckBox chkStayOnTop;
         private System.Windows.Forms.Label lblCarName;
         private System.Windows.Forms.TextBox txtCarName;
+        private System.Windows.Forms.Label lblPrefix;
+        private System.Windows.Forms.TextBox txtPrefix;
         private System.Windows.Forms.Button btnPreset1k;
         private System.Windows.Forms.Button btnPreset2k;
         private System.Windows.Forms.Button btnPreset3k;

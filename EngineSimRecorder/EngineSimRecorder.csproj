@@ -9,6 +9,7 @@
     <AssemblyName>EngineSimRecorder</AssemblyName>
     <RootNamespace>EngineSimRecorder</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>icon.ico</ApplicationIcon>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
   </PropertyGroup>

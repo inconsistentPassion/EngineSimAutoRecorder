@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -22,6 +23,9 @@ namespace EngineSimRecorder
         public Form1()
         {
             InitializeComponent();
+            // Set application icon
+            string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "icon.ico");
+            if (File.Exists(iconPath)) this.Icon = new Icon(iconPath);
             if (System.ComponentModel.LicenseManager.UsageMode != System.ComponentModel.LicenseUsageMode.Designtime)
             {
                 foreach (int rpm in new[] { 1500, 2000, 3000, 4000, 5000, 6000 })
@@ -123,6 +127,7 @@ namespace EngineSimRecorder
                 ProcessId = sel.ProcessId,
                 TargetRpms = targets,
                 CustomName = txtCarName.Text.Trim(),
+                CustomPrefix = txtPrefix.Text.Trim(),
             };
 
             btnStart.Enabled = false;
@@ -265,7 +270,8 @@ namespace EngineSimRecorder
                 ct.WaitHandle.WaitOne(300);
 
                 // ── Step 4: For each target RPM ──
-                string namePrefix = string.IsNullOrWhiteSpace(cfg.CustomName) ? null : cfg.CustomName;
+                string prefix = cfg.CustomPrefix ?? "";
+                string carName = cfg.CustomName ?? "";
                 for (int i = 0; i < cfg.TargetRpms.Count; i++)
                 {
                     if (ct.IsCancellationRequested) break;
@@ -286,7 +292,8 @@ namespace EngineSimRecorder
                     ct.WaitHandle.WaitOne(300);
 
                     // ── 4c: Record LOAD (R still held, H holding RPM) ──
-                    string loadFile = namePrefix != null ? $"{namePrefix}_on_{target}.wav" : $"{target}_on.wav";
+                    string baseName = string.IsNullOrEmpty(carName) ? target.ToString() : $"{prefix}{carName}_{target}";
+                    string loadFile = $"{baseName}_on.wav";
                     string loadPath = Path.Combine(cfg.OutputDir, loadFile);
                     SetStatus($"Recording {target} RPM (load)...");
                     Log($"Recording LOAD for {cfg.RecordSeconds}s -> {loadPath}");
@@ -300,7 +307,7 @@ namespace EngineSimRecorder
                     Log("Waiting 2s for engine to settle...");
                     ct.WaitHandle.WaitOne(2000); // 2 second gap
 
-                    string noloadFile = namePrefix != null ? $"{namePrefix}_off_{target}.wav" : $"{target}_off.wav";
+                    string noloadFile = $"{baseName}_off.wav";
                     string noloadPath = Path.Combine(cfg.OutputDir, noloadFile);
                     SetStatus($"Recording {target} RPM (no load)...");
                     Log($"Recording NO-LOAD for {cfg.RecordSeconds}s -> {noloadPath}");

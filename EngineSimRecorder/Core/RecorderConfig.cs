@@ -8,6 +8,7 @@ namespace EngineSimRecorder.Core
         public int ProcessId { get; set; }
         public string ProcessName { get; set; } = "";
         public string CustomName { get; set; } = "";
+        public string CustomPrefix { get; set; } = "";
         public List<int> TargetRpms { get; set; } = new();
         public int RpmTolerance { get; set; } = 50;
         public int HoldSeconds { get; set; } = 5;
