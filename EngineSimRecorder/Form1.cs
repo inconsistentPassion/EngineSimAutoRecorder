@@ -100,6 +100,7 @@ namespace EngineSimRecorder
                 OutputDir = outputDir,
                 ProcessId = sel.ProcessId,
                 TargetRpms = targets,
+                CustomName = txtCarName.Text.Trim(),
             };
 
             btnStart.Enabled = false;
@@ -242,6 +243,7 @@ namespace EngineSimRecorder
                 ct.WaitHandle.WaitOne(300);
 
                 // ── Step 4: For each target RPM ──
+                string namePrefix = string.IsNullOrWhiteSpace(cfg.CustomName) ? null : cfg.CustomName;
                 for (int i = 0; i < cfg.TargetRpms.Count; i++)
                 {
                     if (ct.IsCancellationRequested) break;
@@ -262,7 +264,8 @@ namespace EngineSimRecorder
                     ct.WaitHandle.WaitOne(300);
 
                     // ── 4c: Record LOAD (R still held, H holding RPM) ──
-                    string loadPath = Path.Combine(cfg.OutputDir, $"{target}_load.wav");
+                    string loadFile = namePrefix != null ? $"{namePrefix}_on_{target}.wav" : $"{target}_load.wav";
+                    string loadPath = Path.Combine(cfg.OutputDir, loadFile);
                     SetStatus($"Recording {target} RPM (load)...");
                     Log($"Recording LOAD for {cfg.RecordSeconds}s -> {loadPath}");
                     RecordAudio(backend, loadPath, cfg.RecordSeconds, ct);
@@ -275,7 +278,8 @@ namespace EngineSimRecorder
                     Log("Waiting 2s for engine to settle...");
                     ct.WaitHandle.WaitOne(2000); // 2 second gap
 
-                    string noloadPath = Path.Combine(cfg.OutputDir, $"{target}_noload.wav");
+                    string noloadFile = namePrefix != null ? $"{namePrefix}_off_{target}.wav" : $"{target}_noload.wav";
+                    string noloadPath = Path.Combine(cfg.OutputDir, noloadFile);
                     SetStatus($"Recording {target} RPM (no load)...");
                     Log($"Recording NO-LOAD for {cfg.RecordSeconds}s -> {noloadPath}");
                     RecordAudio(backend, noloadPath, cfg.RecordSeconds, ct);
@@ -311,6 +315,9 @@ namespace EngineSimRecorder
                 Thread.Sleep(200);
                 KeyboardSim.KeyPress(hwnd, KeyboardSim.VK_A, 120); // Ignition off
                 Log("Engine stopped. All recordings complete!");
+                // Open output folder when recording finishes
+                try { Process.Start("explorer.exe", cfg.OutputDir); }
+                catch { Log("Could not open output folder."); }
             }
             catch (OperationCanceledException) { Log("Stopped by user."); }
             catch (Exception ex)
