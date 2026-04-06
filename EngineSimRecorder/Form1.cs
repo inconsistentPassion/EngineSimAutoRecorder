@@ -389,7 +389,8 @@ namespace EngineSimRecorder
                 if (rpm.HasValue)
                 {
                     SetRpm($"RPM: {rpm.Value:F0}");
-                    if (rpm.Value >= targetRpm - cfg.RpmTolerance)
+                    // Fire slightly before target to account for H key reaction time (~120ms)
+                    if (rpm.Value >= targetRpm - cfg.RpmTolerance - 25)
                     {
                         Log($"Reached {rpm.Value:F0} RPM (target: {targetRpm})");
                         break;
