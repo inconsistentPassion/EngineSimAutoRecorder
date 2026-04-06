@@ -345,14 +345,15 @@
                                                  Checked="rbMode_Checked" />
                                 </StackPanel>
                                 <StackPanel x:Name="pnlCutoff" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,8,0,0" Visibility="Collapsed">
-                                    <TextBlock Text="Cutoff freq:" VerticalAlignment="Center" FontSize="12"
+                                    <TextBlock Text="Car type:" VerticalAlignment="Center" FontSize="12"
                                                Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,6,0" />
-                                    <ComboBox x:Name="cmbCutoffFreq" Width="120" FontSize="12">
-                                        <ComboBoxItem Content="400 Hz" />
-                                        <ComboBoxItem Content="600 Hz" />
-                                        <ComboBoxItem Content="800 Hz" IsSelected="True" />
-                                        <ComboBoxItem Content="1000 Hz" />
-                                        <ComboBoxItem Content="1200 Hz" />
+                                    <ComboBox x:Name="cmbCarType" Width="140" FontSize="12">
+                                        <ComboBoxItem Content="Sedan" IsSelected="True" />
+                                        <ComboBoxItem Content="Coupe" />
+                                        <ComboBoxItem Content="SUV" />
+                                        <ComboBoxItem Content="Hatchback" />
+                                        <ComboBoxItem Content="Supercar" />
+                                        <ComboBoxItem Content="Truck" />
                                     </ComboBox>
                                 </StackPanel>
                             </StackPanel>

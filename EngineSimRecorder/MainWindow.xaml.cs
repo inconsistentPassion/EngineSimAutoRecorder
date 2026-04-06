@@ -162,7 +162,7 @@ namespace EngineSimRecorder
                 SampleRate = cmbSampleRate.SelectedIndex == 1 ? 48000 : 44100,
                 Channels = cmbChannels.SelectedIndex == 1 ? 1 : 2,
                 InteriorMode = rbInterior.IsChecked == true,
-                CutoffFreq = GetCutoffFreq(),
+                CarType = GetCarType(),
             };
 
             btnStart.IsEnabled = false;
@@ -463,14 +463,12 @@ namespace EngineSimRecorder
             using var writer = new WaveFileWriter(outputPath, capture.WaveFormat);
             var done = new ManualResetEventSlim(false);
 
-            // Low-pass filter for interior mode (one per channel, interleaved)
-            NAudio.Dsp.BiQuadFilter?[]? lpf = null;
+            // Interior cabin processor
+            InteriorProcessor? interior = null;
             if (cfg.InteriorMode)
             {
-                int ch = cfg.Channels;
-                lpf = new NAudio.Dsp.BiQuadFilter?[ch];
-                for (int c = 0; c < ch; c++)
-                    lpf[c] = NAudio.Dsp.BiQuadFilter.LowPassFilter(cfg.SampleRate, cfg.CutoffFreq, 0.707f);
+                var (cutoff, width) = InteriorProcessor.GetPreset(cfg.CarType);
+                interior = new InteriorProcessor(cfg.SampleRate, cfg.Channels, cutoff, width);
             }
 
             StartRecProgress(cfg.RecordSeconds);
@@ -479,15 +477,12 @@ namespace EngineSimRecorder
             {
                 if (e.BytesRecorded == 0) return;
 
-                if (lpf != null)
+                if (interior != null)
                 {
-                    // Filter float samples in-place
-                    int samples = e.BytesRecorded / 4; // float32 = 4 bytes
-                    int ch = cfg.Channels;
+                    int samples = e.BytesRecorded / 4;
                     var floats = new float[samples];
                     Buffer.BlockCopy(e.Buffer, 0, floats, 0, e.BytesRecorded);
-                    for (int i = 0; i < samples; i++)
-                        floats[i] = lpf[i % ch]!.Transform(floats[i]);
+                    interior.Process(floats, samples);
                     Buffer.BlockCopy(floats, 0, e.Buffer, 0, e.BytesRecorded);
                 }
 
@@ -524,17 +519,9 @@ namespace EngineSimRecorder
             return p.EndsWith("_") ? p : p + "_";
         }
 
-        private int GetCutoffFreq()
+        private string GetCarType()
         {
-            return cmbCutoffFreq.SelectedIndex switch
-            {
-                0 => 400,
-                1 => 600,
-                2 => 800,
-                3 => 1000,
-                4 => 1200,
-                _ => 800,
-            };
+            return (cmbCarType.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Content?.ToString() ?? "Sedan";
         }
 
         private sealed class ProcessItem
@@ -553,10 +540,12 @@ namespace EngineSimRecorder
             rbInterior.IsChecked = _settings.InteriorMode;
             rbExterior.IsChecked = !_settings.InteriorMode;
             pnlCutoff.Visibility = _settings.InteriorMode ? Visibility.Visible : Visibility.Collapsed;
-            cmbCutoffFreq.SelectedIndex = _settings.CutoffFreq switch
+            // Select car type
+            for (int i = 0; i < cmbCarType.Items.Count; i++)
             {
-                400 => 0, 600 => 1, 800 => 2, 1000 => 3, 1200 => 4, _ => 2
-            };
+                if ((cmbCarType.Items[i] as System.Windows.Controls.ComboBoxItem)?.Content?.ToString() == _settings.CarType)
+                { cmbCarType.SelectedIndex = i; break; }
+            }
 
             // Profiles
             RefreshProfiles();
@@ -578,7 +567,7 @@ namespace EngineSimRecorder
             _settings.SampleRate = cmbSampleRate.SelectedIndex == 1 ? 48000 : 44100;
             _settings.Channels = cmbChannels.SelectedIndex == 1 ? 1 : 2;
             _settings.InteriorMode = rbInterior.IsChecked == true;
-            _settings.CutoffFreq = GetCutoffFreq();
+            _settings.CarType = GetCarType();
             _settings.Save();
         }
 

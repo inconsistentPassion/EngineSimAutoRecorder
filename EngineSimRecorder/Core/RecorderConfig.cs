@@ -16,6 +16,6 @@ namespace EngineSimRecorder.Core
         public int SampleRate { get; set; } = 44100;
         public int Channels { get; set; } = 2; // 1=mono, 2=stereo
         public bool InteriorMode { get; set; } = false;
-        public int CutoffFreq { get; set; } = 800;
+        public string CarType { get; set; } = "Sedan";
     }
 }

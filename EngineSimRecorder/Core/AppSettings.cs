@@ -10,7 +10,7 @@ namespace EngineSimRecorder.Core
         public int Channels { get; set; } = 2; // 1=mono, 2=stereo
         public string LastProfile { get; set; } = "";
         public bool InteriorMode { get; set; } = false;
-        public int CutoffFreq { get; set; } = 800;
+        public string CarType { get; set; } = "Sedan";
 
         private static string FilePath =>
             Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json");
