@@ -94,6 +94,24 @@ namespace EngineSimRecorder
             lstTargetRpms.Items.Clear();
         }
 
+        private void lstTargetRpms_SelectedIndexChanged(object? sender, EventArgs e)
+        {
+            if (lstTargetRpms.SelectedItem is int rpm)
+                numRpmList.Value = rpm;
+        }
+
+        private void lstTargetRpms_DoubleClick(object? sender, EventArgs e)
+        {
+            numRpmList.Focus();
+        }
+
+        private void btnReplaceRpm_Click(object sender, EventArgs e)
+        {
+            if (lstTargetRpms.SelectedIndex < 0) return;
+            int newRpm = (int)numRpmList.Value;
+            lstTargetRpms.Items[lstTargetRpms.SelectedIndex] = newRpm;
+        }
+
         private void btnStart_Click(object sender, EventArgs e)
         {
             if (lstTargetRpms.Items.Count == 0)
