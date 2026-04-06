@@ -2,15 +2,14 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Engine Simulator Auto-Recorder 2.0 Alpha"
-        Width="700" Height="830"
-        MinHeight="700"
+        Width="700" Height="800"
+        MinHeight="600"
         WindowStartupLocation="CenterScreen"
         ResizeMode="CanResize"
         Background="{StaticResource BgBrush}"
         FontFamily="Segoe UI">
 
     <Window.Resources>
-        <!-- Section header template -->
         <Style x:Key="SectionTitle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="13" />
             <Setter Property="FontWeight" Value="SemiBold" />
@@ -27,7 +26,7 @@
         </Grid.RowDefinitions>
 
         <!-- ── Header ── -->
-        <StackPanel Grid.Row="0" Margin="0,0,0,14">
+        <StackPanel Grid.Row="0" Margin="0,0,0,10">
             <TextBlock Text="Engine Simulator Auto-Recorder"
                        FontSize="22" FontWeight="Bold"
                        Foreground="{StaticResource TextPrimaryBrush}" />
@@ -36,211 +35,235 @@
                        Margin="0,2,0,0" />
         </StackPanel>
 
-        <!-- ── Main scrollable content ── -->
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-            <StackPanel>
+        <!-- ── Tab Control ── -->
+        <TabControl Grid.Row="1" Margin="0,0,0,8">
+            <TabControl.Resources>
+                <Style TargetType="TabItem">
+                    <Setter Property="FontSize" Value="13" />
+                    <Setter Property="Padding" Value="14,8" />
+                    <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+                </Style>
+            </TabControl.Resources>
 
-                <!-- ══ Process ══ -->
-                <GroupBox>
-                    <GroupBox.Header>
-                        <TextBlock Text="▸  Process" FontSize="13" FontWeight="SemiBold" />
-                    </GroupBox.Header>
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="64" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="Target:" Grid.Column="0" VerticalAlignment="Center"
-                                   Foreground="{StaticResource TextSecondaryBrush}" FontSize="13" />
-                        <ComboBox x:Name="cmbProcess" Grid.Column="1"
-                                  IsEditable="False" VerticalAlignment="Center" />
-                        <Button x:Name="btnRefresh" Grid.Column="2"
-                                Content="↻ Refresh" Style="{StaticResource AccentButton}"
-                                Margin="8,0,0,0" Click="btnRefresh_Click" />
-                    </Grid>
-                </GroupBox>
+            <!-- ══ Tab 1: Recorder ══ -->
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="⏺  Recorder" />
+                    </StackPanel>
+                </TabItem.Header>
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="4,6,4,4">
 
-                <!-- ══ Output ══ -->
-                <GroupBox>
-                    <GroupBox.Header>
-                        <TextBlock Text="▸  Output" FontSize="13" FontWeight="SemiBold" />
-                    </GroupBox.Header>
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="80" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
+                        <!-- ══ Process ══ -->
+                        <GroupBox>
+                            <GroupBox.Header>
+                                <TextBlock Text="▸  Process" FontSize="13" FontWeight="SemiBold" />
+                            </GroupBox.Header>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="64" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Target:" Grid.Column="0" VerticalAlignment="Center"
+                                           Foreground="{StaticResource TextSecondaryBrush}" FontSize="13" />
+                                <ComboBox x:Name="cmbProcess" Grid.Column="1"
+                                          IsEditable="False" VerticalAlignment="Center" />
+                                <Button x:Name="btnRefresh" Grid.Column="2"
+                                        Content="↻ Refresh" Style="{StaticResource AccentButton}"
+                                        Margin="8,0,0,0" Click="btnRefresh_Click" />
+                            </Grid>
+                        </GroupBox>
 
-                        <!-- Output Dir -->
-                        <Label Content="Directory:" Grid.Row="0" Grid.Column="0" />
-                        <TextBox x:Name="txtOutputDir" Grid.Row="0" Grid.Column="1"
-                                 Text="recordings" VerticalAlignment="Center" />
-                        <StackPanel Grid.Row="0" Grid.Column="2" Orientation="Horizontal" Margin="6,0,0,0">
-                            <Button x:Name="btnBrowseOutput" Content="Browse…"
-                                    Style="{StaticResource FlatButton}" Click="btnBrowseOutput_Click" />
-                            <Button x:Name="btnOpenOutput" Content="📂"
-                                    Style="{StaticResource FlatButton}" Margin="4,0,0,0"
-                                    Click="btnOpenOutput_Click" />
-                        </StackPanel>
+                        <!-- ══ Output ══ -->
+                        <GroupBox>
+                            <GroupBox.Header>
+                                <TextBlock Text="▸  Output" FontSize="13" FontWeight="SemiBold" />
+                            </GroupBox.Header>
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="80" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
 
-                        <!-- Car Name -->
-                        <Label Content="Car Name:" Grid.Row="1" Grid.Column="0" />
-                        <TextBox x:Name="txtCarName" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
-                                 VerticalAlignment="Center" />
-
-                        <!-- Prefix -->
-                        <Label Content="Prefix:" Grid.Row="2" Grid.Column="0" />
-                        <TextBox x:Name="txtPrefix" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2"
-                                 VerticalAlignment="Center" />
-                    </Grid>
-                </GroupBox>
-
-                <!-- ══ RPM Targets ══ -->
-                <GroupBox>
-                    <GroupBox.Header>
-                        <TextBlock Text="▸  RPM Targets" FontSize="13" FontWeight="SemiBold" />
-                    </GroupBox.Header>
-                    <StackPanel>
-                        <!-- Preset chips -->
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                            <TextBlock Text="Quick:" VerticalAlignment="Center" Margin="0,0,8,0"
-                                       Foreground="{StaticResource TextMutedBrush}" FontSize="12" />
-                            <Button Content="1K" Style="{StaticResource ChipButton}" Click="btnPreset_Click" />
-                            <Button Content="2K" Style="{StaticResource ChipButton}" Click="btnPreset_Click" Margin="4,0,0,0" />
-                            <Button Content="3K" Style="{StaticResource ChipButton}" Click="btnPreset_Click" Margin="4,0,0,0" />
-                            <Button Content="4K" Style="{StaticResource ChipButton}" Click="btnPreset_Click" Margin="4,0,0,0" />
-                            <Button Content="5K" Style="{StaticResource ChipButton}" Click="btnPreset_Click" Margin="4,0,0,0" />
-                            <Button Content="6K" Style="{StaticResource ChipButton}" Click="btnPreset_Click" Margin="4,0,0,0" />
-                            <Button Content="7K" Style="{StaticResource ChipButton}" Click="btnPreset_Click" Margin="4,0,0,0" />
-                            <Button Content="8K" Style="{StaticResource ChipButton}" Click="btnPreset_Click" Margin="4,0,0,0" />
-                        </StackPanel>
-
-                        <!-- List + Controls -->
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-
-                            <ListBox x:Name="lstTargetRpms" Grid.Column="0"
-                                     MinHeight="100" MaxHeight="180"
-                                     FontFamily="Consolas" FontSize="13"
-                                     BorderThickness="1" BorderBrush="{StaticResource ButtonBorderBrush}"
-                                     SelectionChanged="lstTargetRpms_SelectionChanged"
-                                     MouseDoubleClick="btnEditRpm_Click" />
-
-                            <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Top">
-                                <TextBlock Text="RPM value" FontSize="11" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,4" />
-                                <TextBox x:Name="txtRpmInput" Text="1000" Width="120" FontFamily="Consolas" />
-                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                                    <Button Content="Add" Style="{StaticResource AccentButton}" Click="btnAddRpm_Click" />
-                                    <Button Content="Edit" Style="{StaticResource FlatButton}" Margin="4,0,0,0" Click="btnEditRpm_Click" />
+                                <Label Content="Directory:" Grid.Row="0" Grid.Column="0" />
+                                <TextBox x:Name="txtOutputDir" Grid.Row="0" Grid.Column="1"
+                                         Text="recordings" VerticalAlignment="Center" />
+                                <StackPanel Grid.Row="0" Grid.Column="2" Orientation="Horizontal" Margin="6,0,0,0">
+                                    <Button x:Name="btnBrowseOutput" Content="Browse…"
+                                            Style="{StaticResource FlatButton}" Click="btnBrowseOutput_Click" />
+                                    <Button x:Name="btnOpenOutput" Content="📂"
+                                            Style="{StaticResource FlatButton}" Margin="4,0,0,0"
+                                            Click="btnOpenOutput_Click" />
                                 </StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                    <Button Content="Remove" Style="{StaticResource FlatButton}" Click="btnRemoveRpm_Click" />
-                                    <Button Content="Sort ↑" Style="{StaticResource FlatButton}" Margin="4,0,0,0" Click="btnSortRpm_Click" />
+
+                                <Label Content="Car Name:" Grid.Row="1" Grid.Column="0" />
+                                <TextBox x:Name="txtCarName" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
+                                         VerticalAlignment="Center" />
+
+                                <Label Content="Prefix:" Grid.Row="2" Grid.Column="0" />
+                                <TextBox x:Name="txtPrefix" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2"
+                                         VerticalAlignment="Center" />
+                            </Grid>
+                        </GroupBox>
+
+                        <!-- ══ RPM Targets ══ -->
+                        <GroupBox>
+                            <GroupBox.Header>
+                                <TextBlock Text="▸  RPM Targets" FontSize="13" FontWeight="SemiBold" />
+                            </GroupBox.Header>
+                            <StackPanel>
+                                <!-- Preset chips -->
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                    <TextBlock Text="Quick:" VerticalAlignment="Center" Margin="0,0,8,0"
+                                               Foreground="{StaticResource TextMutedBrush}" FontSize="12" />
+                                    <Button Content="1K" Style="{StaticResource ChipButton}" Click="btnPreset_Click" />
+                                    <Button Content="2K" Style="{StaticResource ChipButton}" Click="btnPreset_Click" Margin="4,0,0,0" />
+                                    <Button Content="3K" Style="{StaticResource ChipButton}" Click="btnPreset_Click" Margin="4,0,0,0" />
+                                    <Button Content="4K" Style="{StaticResource ChipButton}" Click="btnPreset_Click" Margin="4,0,0,0" />
+                                    <Button Content="5K" Style="{StaticResource ChipButton}" Click="btnPreset_Click" Margin="4,0,0,0" />
+                                    <Button Content="6K" Style="{StaticResource ChipButton}" Click="btnPreset_Click" Margin="4,0,0,0" />
+                                    <Button Content="7K" Style="{StaticResource ChipButton}" Click="btnPreset_Click" Margin="4,0,0,0" />
+                                    <Button Content="8K" Style="{StaticResource ChipButton}" Click="btnPreset_Click" Margin="4,0,0,0" />
                                 </StackPanel>
-                                <Button Content="Clear All" Style="{StaticResource FlatButton}" Margin="0,4,0,0" Click="btnClearRpm_Click" />
+
+                                <!-- List + Controls -->
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <ListBox x:Name="lstTargetRpms" Grid.Column="0"
+                                             MinHeight="100" MaxHeight="180"
+                                             FontFamily="Consolas" FontSize="13"
+                                             BorderThickness="1" BorderBrush="{StaticResource ButtonBorderBrush}"
+                                             SelectionChanged="lstTargetRpms_SelectionChanged"
+                                             MouseDoubleClick="btnEditRpm_Click" />
+
+                                    <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Top">
+                                        <TextBlock Text="RPM value" FontSize="11" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,4" />
+                                        <TextBox x:Name="txtRpmInput" Text="1000" Width="120" FontFamily="Consolas" />
+                                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                            <Button Content="Add" Style="{StaticResource AccentButton}" Click="btnAddRpm_Click" />
+                                            <Button Content="Edit" Style="{StaticResource FlatButton}" Margin="4,0,0,0" Click="btnEditRpm_Click" />
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                            <Button Content="Remove" Style="{StaticResource FlatButton}" Click="btnRemoveRpm_Click" />
+                                            <Button Content="Sort ↑" Style="{StaticResource FlatButton}" Margin="4,0,0,0" Click="btnSortRpm_Click" />
+                                        </StackPanel>
+                                        <Button Content="Clear All" Style="{StaticResource FlatButton}" Margin="0,4,0,0" Click="btnClearRpm_Click" />
+                                    </StackPanel>
+                                </Grid>
                             </StackPanel>
-                        </Grid>
+                        </GroupBox>
+
+                        <!-- ══ Audio Quality (below RPM targets) ══ -->
+                        <GroupBox>
+                            <GroupBox.Header>
+                                <TextBlock Text="▸  Audio Quality" FontSize="13" FontWeight="SemiBold" />
+                            </GroupBox.Header>
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="100" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <Label Content="Sample Rate:" Grid.Row="0" Grid.Column="0" />
+                                <ComboBox x:Name="cmbSampleRate" Grid.Row="0" Grid.Column="1"
+                                          Width="150" HorizontalAlignment="Left">
+                                    <ComboBoxItem Content="44100 Hz" IsSelected="True" />
+                                    <ComboBoxItem Content="48000 Hz" />
+                                </ComboBox>
+
+                                <Label Content="Channels:" Grid.Row="1" Grid.Column="0" />
+                                <ComboBox x:Name="cmbChannels" Grid.Row="1" Grid.Column="1"
+                                          Width="150" HorizontalAlignment="Left">
+                                    <ComboBoxItem Content="Stereo" IsSelected="True" />
+                                    <ComboBoxItem Content="Mono" />
+                                </ComboBox>
+                            </Grid>
+                        </GroupBox>
+
+                        <!-- ══ Status ══ -->
+                        <GroupBox>
+                            <GroupBox.Header>
+                                <TextBlock Text="▸  Status" FontSize="13" FontWeight="SemiBold" />
+                            </GroupBox.Header>
+                            <StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock x:Name="lblStatus" Text="Idle..."
+                                               VerticalAlignment="Center" FontSize="13"
+                                               Foreground="{StaticResource TextSecondaryBrush}" Grid.Column="0" />
+                                    <TextBlock x:Name="lblCurrentRpm" Text="RPM: ---"
+                                               FontFamily="Consolas" FontSize="14" FontWeight="Bold"
+                                               Foreground="{StaticResource AccentBrush}" Grid.Column="1" />
+                                </Grid>
+                                <ProgressBar x:Name="pbarProgress" Height="6" Margin="0,8,0,0"
+                                             Minimum="0" Maximum="1" Value="0"
+                                             Foreground="{StaticResource AccentBrush}"
+                                             Background="#E8E8E8" BorderThickness="0" />
+                            </StackPanel>
+                        </GroupBox>
+
+                        <!-- ══ Actions ══ -->
+                        <StackPanel Orientation="Horizontal" Margin="4,4,0,8">
+                            <Button x:Name="btnStart" Content="▶  Start"
+                                    Style="{StaticResource BigStartButton}" Click="btnStart_Click" />
+                            <Button x:Name="btnStop" Content="■  Stop"
+                                    Style="{StaticResource BigStopButton}" Margin="10,0,0,0"
+                                    IsEnabled="False" Click="btnStop_Click" />
+                            <CheckBox x:Name="chkStayOnTop" Content=" Stay on Top"
+                                      VerticalAlignment="Center" Margin="180,0,0,0"
+                                      Foreground="{StaticResource TextSecondaryBrush}"
+                                      Checked="chkStayOnTop_Changed" Unchecked="chkStayOnTop_Changed" />
+                        </StackPanel>
+
                     </StackPanel>
-                </GroupBox>
+                </ScrollViewer>
+            </TabItem>
 
-                <!-- ══ Status ══ -->
-                <GroupBox>
-                    <GroupBox.Header>
-                        <TextBlock Text="▸  Status" FontSize="13" FontWeight="SemiBold" />
-                    </GroupBox.Header>
-                    <StackPanel>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock x:Name="lblStatus" Text="Idle..."
-                                       VerticalAlignment="Center" FontSize="13"
-                                       Foreground="{StaticResource TextSecondaryBrush}" Grid.Column="0" />
-                            <TextBlock x:Name="lblCurrentRpm" Text="RPM: ---"
-                                       FontFamily="Consolas" FontSize="14" FontWeight="Bold"
-                                       Foreground="{StaticResource AccentBrush}" Grid.Column="1" />
-                        </Grid>
-                        <ProgressBar x:Name="pbarProgress" Height="6" Margin="0,8,0,0"
-                                     Minimum="0" Maximum="1" Value="0"
-                                     Foreground="{StaticResource AccentBrush}"
-                                     Background="#E8E8E8" BorderThickness="0" />
+            <!-- ══ Tab 2: Log ══ -->
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="📋  Log" />
                     </StackPanel>
-                </GroupBox>
-
-                <!-- ══ Log ══ -->
-                <Border Style="{StaticResource Card}" Background="{StaticResource LogBgBrush}"
-                        CornerRadius="8" Padding="12,8" Margin="0,0,0,10">
-                    <ScrollViewer x:Name="logScroller" MaxHeight="160"
-                                  VerticalScrollBarVisibility="Auto">
-                        <TextBox x:Name="txtLog"
-                                 FontFamily="Cascadia Mono" FontSize="12"
-                                 Foreground="{StaticResource LogTextBrush}"
-                                 Background="Transparent" BorderThickness="0"
-                                 IsReadOnly="True" TextWrapping="Wrap"
-                                 VerticalScrollBarVisibility="Disabled" />
-                    </ScrollViewer>
-                </Border>
-
-                <!-- ══ Actions ══ -->
-                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                    <Button x:Name="btnStart" Content="▶  Start"
-                            Style="{StaticResource BigStartButton}" Click="btnStart_Click" />
-                    <Button x:Name="btnStop" Content="■  Stop"
-                            Style="{StaticResource BigStopButton}" Margin="10,0,0,0"
-                            IsEnabled="False" Click="btnStop_Click" />
-                    <CheckBox x:Name="chkStayOnTop" Content=" Stay on Top"
-                              VerticalAlignment="Center" Margin="180,0,0,0"
-                              Foreground="{StaticResource TextSecondaryBrush}"
-                              Checked="chkStayOnTop_Changed" Unchecked="chkStayOnTop_Changed" />
-                </StackPanel>
-
-                <!-- ══ Audio Settings ══ -->
-                <GroupBox>
-                    <GroupBox.Header>
-                        <TextBlock Text="▸  Audio Quality" FontSize="13" FontWeight="SemiBold" />
-                    </GroupBox.Header>
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="100" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-
-                        <Label Content="Sample Rate:" Grid.Row="0" Grid.Column="0" />
-                        <ComboBox x:Name="cmbSampleRate" Grid.Row="0" Grid.Column="1"
-                                  Width="150" HorizontalAlignment="Left">
-                            <ComboBoxItem Content="44100 Hz" IsSelected="True" />
-                            <ComboBoxItem Content="48000 Hz" />
-                        </ComboBox>
-
-                        <Label Content="Channels:" Grid.Row="1" Grid.Column="0" />
-                        <ComboBox x:Name="cmbChannels" Grid.Row="1" Grid.Column="1"
-                                  Width="150" HorizontalAlignment="Left">
-                            <ComboBoxItem Content="Stereo" IsSelected="True" />
-                            <ComboBoxItem Content="Mono" />
-                        </ComboBox>
-                    </Grid>
-                </GroupBox>
-
-            </StackPanel>
-        </ScrollViewer>
+                </TabItem.Header>
+                <Grid Margin="4,6,4,4">
+                    <Border Background="{StaticResource LogBgBrush}"
+                            CornerRadius="8" Padding="14,10">
+                        <ScrollViewer x:Name="logScroller"
+                                      VerticalScrollBarVisibility="Auto">
+                            <TextBox x:Name="txtLog"
+                                     FontFamily="Cascadia Mono" FontSize="12.5"
+                                     Foreground="{StaticResource LogTextBrush}"
+                                     Background="Transparent" BorderThickness="0"
+                                     IsReadOnly="True" TextWrapping="Wrap"
+                                     VerticalScrollBarVisibility="Disabled" />
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
+            </TabItem>
+        </TabControl>
 
         <!-- ── Footer ── -->
-        <Border Grid.Row="2" Background="#F0F0F2" Margin="-20,8,-20,-8" Padding="20,5">
+        <Border Grid.Row="2" Background="#F0F0F2" Margin="-20,6,-20,-8" Padding="20,5">
             <TextBlock Text="Engine Simulator Auto-Recorder v2.0 Alpha"
                        FontSize="11.5" Foreground="{StaticResource TextMutedBrush}" />
         </Border>
