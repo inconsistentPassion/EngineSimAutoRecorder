@@ -1,20 +1,21 @@
 # Engine Simulator Auto-Recorder
 
 Automates engine-audio recording from [Engine Simulator](https://github.com/ange-yaghi/engine-sim).
-Reads RPM, holds the engine at each target with a PID controller, and captures system audio via WASAPI.
+Controls the engine via keyboard simulation, reads RPM from memory via a DLL hook, and captures system audio via WASAPI.
 Output WAVs are ready for FMOD Studio / Assetto Corsa (or any FMOD-based game).
 
 ---
 
 ## How it works
 
-The recorder injects a DLL hook into Engine Simulator's process to read RPM directly from memory and control throttle via memory writes. This gives ~50ms update rate, exact float values, and works in the background (no focused window needed).
+The recorder injects a lightweight DLL hook into Engine Simulator's process to read RPM directly from memory. All engine control (throttle, ignition, starter, dyno) is done via keyboard simulation (`PostMessage` WM_KEYDOWN/WM_KEYUP).
 
 - Injects `es_hook.dll` into Engine Simulator's process
-- DLL hooks the ignition module (via [MinHook](https://github.com/TsudaKageworker/minhook)) to read RPM directly from memory
-- Byte pattern scanning finds functions at runtime (ES-Studio approach)
-- Throttle, ignition, dyno, starter all controlled via direct memory writes
+- DLL hooks the ignition module (via [MinHook](https://github.com/TsudaKageworker/minhook)) to read RPM
+- RPM is streamed back over a named pipe (~50ms update rate)
+- Keyboard commands control throttle, ignition, dyno, and starter
 - Thread-safe hook installation (suspends game threads before patching)
+- Focus monitoring warns if neither window is focused during recording
 
 Requires admin privileges for process injection.
 
@@ -24,20 +25,21 @@ Requires admin privileges for process injection.
 
 ```
 Core/
-  IEngineBackend.cs       ← interface for backend implementations
-  PidController.cs        ← shared PID logic
+  IEngineBackend.cs       ← backend interface
+  KeyboardSim.cs          ← PostMessage WM_KEYDOWN/WM_KEYUP simulation
+  PidController.cs        ← PID logic (reserved for future use)
   RecorderConfig.cs       ← shared config
 
 Backends/
-  Injection/
-    InjectionBackend.cs   ← DLL injection + named pipe client
+  Keyboard/
+    KeyboardBackend.cs    ← DLL injection (RPM reading) + keyboard control
 
-EngineSimHook/            ← C++ DLL
+EngineSimHook/            ← C++ DLL (runs silently, no console)
   src/
-    hooks.cpp             ← MinHook-based function hooking
-    pipe.cpp              ← named pipe server
-    memory.cpp            ← byte pattern scanning
     dllmain.cpp           ← entry point + init thread
+    hooks.cpp             ← MinHook-based function hooking
+    pipe.cpp              ← named pipe server (RPM + commands)
+    memory.cpp            ← byte pattern scanning
   vendor/minhook/         ← vendored MinHook library
 ```
 
@@ -45,26 +47,21 @@ EngineSimHook/            ← C++ DLL
 
 ## Build
 
-### 1. Hook DLL
+### One-step build
 
-Requires CMake + MSVC (Visual Studio with C++ workload).
+Open `EngineSimAutoRecorder.sln` in Visual Studio and build. The C++ hook DLL is compiled automatically via an MSBuild target — no manual cmake step needed.
+
+**Requirements:**
+- Visual Studio 2022 with C++ workload (for MSVC + CMake)
+- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+
+### Manual build (alternative)
 
 ```bash
-cmake -S EngineSimHook -B EngineSimHook/build
+cmake -S EngineSimHook -B EngineSimHook/build -G "Visual Studio 17 2022" -A x64
 cmake --build EngineSimHook/build --config Release
-```
-
-Output: `EngineSimHook/bin/es_hook.dll`
-
-### 2. C# Application
-
-Requires [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0).
-
-```bash
 cd EngineSimRecorder
-dotnet restore
 dotnet build -c Release
-dotnet run -c Release
 ```
 
 ---
@@ -74,41 +71,66 @@ dotnet run -c Release
 1. Launch Engine Simulator and load your engine.
 2. Open the recorder.
 3. Click **Refresh**, pick the process from the dropdown.
-4. Set output folder, target RPMs, PID gains, hold/record times.
+4. Set output folder and target RPMs.
 5. Click **▶ Start** — the recorder will:
-   - Inject the DLL
-   - Start the engine (ignition → dyno → starter → wait for RPM > 200)
-   - PID-control to each target RPM
-   - Record WAV while stable
+   - Inject the hook DLL (silent, no console window)
+   - Force focus onto Engine Sim
+   - Start the engine (ignition → starter → dyno)
+   - Rev to each target RPM and hold
+   - Record **load** and **no-load** WAVs at each RPM
+6. Click **■ Stop** to cancel at any time.
+
+### UI options
+
+| Element | Description |
+|---|---|
+| **Process** | Select the running Engine Simulator process |
+| **Output Dir** | Destination folder for WAV recordings |
+| **📂** | Open the output folder in File Explorer |
+| **Browse…** | Pick output folder via dialog |
+| **RPM Targets** | List of RPM points to record (Add / Remove) |
+| **Stay on Top** | Keep the recorder window above all others |
+| **Status** | Current RPM, progress bar, and log output |
+
+### Focus monitoring
+
+During recording, the app checks window focus every second. If neither the recorder nor Engine Sim is focused, a warning appears in the status bar. Keep one of these windows focused for reliable input.
 
 ---
 
-## PID tuning
+## Key bindings
 
-The PID controller converts RPM error into throttle commands.
+These are the keyboard commands sent to Engine Simulator via `PostMessage`:
 
-| Symptom | Fix |
+| Key | Action |
 |---|---|
-| Engine overshoots and hunts | Reduce `Kp` |
-| Too slow to reach target | Increase `Kp` |
-| Steady-state offset remains | Increase `Ki` |
-| Oscillation / jitter | Reduce `Ki` or increase `Kd` |
+| **A** | Ignition (toggle) |
+| **S** | Starter (hold to crank) |
+| **D** | Dyno mode (toggle) |
+| **H** | Hold RPM in dyno mode (toggle) |
+| **R** | Throttle (hold to rev) |
+| **W** | Throttle tap (used during startup) |
 
 ---
 
 ## Output
 
+Each target RPM produces two files:
+
 ```
 recordings/
-├── rpm_800.wav
-├── rpm_1500.wav
-├── rpm_3000.wav
-├── rpm_4500.wav
-├── rpm_6000.wav
-└── rpm_7500.wav
+├── 1500_load.wav
+├── 1500_noload.wav
+├── 3000_load.wav
+├── 3000_noload.wav
+├── 6000_load.wav
+└── 6000_noload.wav
 ```
 
-All files: **44 100 Hz, stereo, 16-bit PCM** — import directly into FMOD Studio.
+- **`_load.wav`** — engine under throttle at target RPM
+- **`_noload.wav`** — engine at target RPM with throttle released
+
+All files: **44 100 Hz, stereo, float PCM** — import directly into FMOD Studio.
 
 ### FMOD / Assetto Corsa setup
 
@@ -124,3 +146,4 @@ All files: **44 100 Hz, stereo, 16-bit PCM** — import directly into FMOD Studi
 
 - [ES-Studio](https://github.com/inconsistentPassion/ES-Studio) — DLL injection approach, byte patterns, memory offsets
 - [MinHook](https://github.com/TsudaKageworker/minhook) — function hooking library
+- [NAudio](https://github.com/naudio/NAudio) — WASAPI loopback capture
