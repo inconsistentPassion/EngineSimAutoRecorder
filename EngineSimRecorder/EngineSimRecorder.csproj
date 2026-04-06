@@ -48,6 +48,7 @@
 
   <ItemGroup>
     <None Include="$(EngineSimHookDll)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="icon.ico" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

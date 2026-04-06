@@ -23,9 +23,13 @@ namespace EngineSimRecorder
         public Form1()
         {
             InitializeComponent();
-            // Set application icon
+            // Set application icon for title bar and taskbar
             string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "icon.ico");
-            if (File.Exists(iconPath)) this.Icon = new Icon(iconPath);
+            if (File.Exists(iconPath))
+            {
+                var ico = new Icon(iconPath);
+                this.Icon = ico;
+            }
             if (System.ComponentModel.LicenseManager.UsageMode != System.ComponentModel.LicenseUsageMode.Designtime)
             {
                 foreach (int rpm in new[] { 1500, 2000, 3000, 4000, 5000, 6000 })
