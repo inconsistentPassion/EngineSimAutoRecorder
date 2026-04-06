@@ -380,7 +380,6 @@ namespace EngineSimRecorder
 
         private void WaitForRpm(KeyboardBackend backend, RecorderConfig cfg, int targetRpm, CancellationToken ct)
         {
-            // Phase 1: Wait until RPM enters the tolerance band
             var sw = Stopwatch.StartNew();
             while (!ct.IsCancellationRequested)
             {
@@ -390,61 +389,16 @@ namespace EngineSimRecorder
                     SetRpm($"RPM: {rpm.Value:F0}");
                     if (Math.Abs(rpm.Value - targetRpm) <= cfg.RpmTolerance)
                     {
-                        Log($"RPM entered band: {rpm.Value:F0} (target: {targetRpm} ±{cfg.RpmTolerance})");
-                        break;
-                    }
-                }
-                if (sw.Elapsed.TotalSeconds > 30)
-                {
-                    Log($"Warning: timeout waiting for {targetRpm} RPM band entry");
-                    return;
-                }
-                ct.WaitHandle.WaitOne(8); // ~125Hz polling to catch the band faster
-            }
-
-            // Phase 2: Confirm RPM is stable in the band for several consecutive readings
-            // This prevents pressing H during a transient overshoot
-            const int requiredStableReadings = 5; // ~80ms of stability at 125Hz polling
-            int stableCount = 0;
-            double lastRpm = 0;
-
-            while (!ct.IsCancellationRequested)
-            {
-                double? rpm = backend.ReadRpm();
-                if (rpm.HasValue)
-                {
-                    SetRpm($"RPM: {rpm.Value:F0}");
-
-                    if (Math.Abs(rpm.Value - targetRpm) <= cfg.RpmTolerance)
-                    {
-                        stableCount++;
-                        lastRpm = rpm.Value;
-                    }
-                    else
-                    {
-                        // RPM drifted out of band — reset counter
-                        if (stableCount > 0)
-                            Log($"RPM drifted to {rpm.Value:F0} — stability reset ({stableCount} → 0)");
-                        stableCount = 0;
-                    }
-
-                    if (stableCount >= requiredStableReadings)
-                    {
-                        Log($"RPM stable at {lastRpm:F0} for {stableCount} readings — ready to hold");
+                        Log($"RPM {rpm.Value:F0} in band (target: {targetRpm} ±{cfg.RpmTolerance})");
                         return;
                     }
                 }
-
                 if (sw.Elapsed.TotalSeconds > 30)
                 {
-                    if (stableCount > 0)
-                        Log($"Timeout but RPM partially stable ({stableCount}/{requiredStableReadings}) — proceeding");
-                    else
-                        Log($"Warning: timeout waiting for stable {targetRpm} RPM");
+                    Log($"Warning: timeout waiting for {targetRpm} RPM");
                     return;
                 }
-
-                ct.WaitHandle.WaitOne(8);
+                ct.WaitHandle.WaitOne(5); // ~200Hz polling
             }
         }
 
