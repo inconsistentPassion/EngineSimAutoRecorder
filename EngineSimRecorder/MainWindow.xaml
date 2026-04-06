@@ -326,6 +326,36 @@
                             </StackPanel>
                         </GroupBox>
 
+                        <!-- ══ Recording Mode ══ -->
+                        <GroupBox Margin="0,6,0,0">
+                            <GroupBox.Header>
+                                <TextBlock Text="▸  Recording Mode" FontSize="12" FontWeight="SemiBold" />
+                            </GroupBox.Header>
+                            <StackPanel Margin="0,2">
+                                <TextBlock Text="Interior mode applies a low-pass filter to simulate cabin sound."
+                                           FontSize="11" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,8" />
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <RadioButton x:Name="rbExterior" Content=" Exterior" IsChecked="True"
+                                                 GroupName="RecMode" FontSize="12" Margin="0,0,20,0"
+                                                 Foreground="{StaticResource TextSecondaryBrush}" />
+                                    <RadioButton x:Name="rbInterior" Content=" Interior (low-pass)"
+                                                 GroupName="RecMode" FontSize="12"
+                                                 Foreground="{StaticResource TextSecondaryBrush}" />
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,8,0,0">
+                                    <TextBlock Text="Cutoff freq:" VerticalAlignment="Center" FontSize="12"
+                                               Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,6,0" />
+                                    <ComboBox x:Name="cmbCutoffFreq" Width="120" FontSize="12">
+                                        <ComboBoxItem Content="400 Hz" />
+                                        <ComboBoxItem Content="600 Hz" />
+                                        <ComboBoxItem Content="800 Hz" IsSelected="True" />
+                                        <ComboBoxItem Content="1000 Hz" />
+                                        <ComboBoxItem Content="1200 Hz" />
+                                    </ComboBox>
+                                </StackPanel>
+                            </StackPanel>
+                        </GroupBox>
+
                         <!-- ══ Audio Quality ══ -->
                         <GroupBox Margin="0,6,0,0">
                             <GroupBox.Header>

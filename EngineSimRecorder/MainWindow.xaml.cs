@@ -161,6 +161,8 @@ namespace EngineSimRecorder
                 CustomPrefix = GetPrefix(),
                 SampleRate = cmbSampleRate.SelectedIndex == 1 ? 48000 : 44100,
                 Channels = cmbChannels.SelectedIndex == 1 ? 1 : 2,
+                InteriorMode = rbInterior.IsChecked == true,
+                CutoffFreq = GetCutoffFreq(),
             };
 
             btnStart.IsEnabled = false;
@@ -358,7 +360,8 @@ namespace EngineSimRecorder
                     }
 
                     string baseName = string.IsNullOrEmpty(carName) ? "" : $"{prefix}{carName}_";
-                    string loadFile = $"{baseName}on_{target}.wav";
+                    string modePrefix = cfg.InteriorMode ? "int_" : "";
+                    string loadFile = $"{baseName}{modePrefix}on_{target}.wav";
                     string loadPath = Path.Combine(cfg.OutputDir, loadFile);
                     SetStatus($"Recording {target} RPM (load)...");
                     Log($"Recording LOAD for {cfg.RecordSeconds}s -> {loadPath}");
@@ -371,7 +374,7 @@ namespace EngineSimRecorder
                     Log("Waiting 2s for engine to settle...");
                     ct.WaitHandle.WaitOne(2000);
 
-                    string noloadFile = $"{baseName}off_{target}.wav";
+                    string noloadFile = $"{baseName}{modePrefix}off_{target}.wav";
                     string noloadPath = Path.Combine(cfg.OutputDir, noloadFile);
                     SetStatus($"Recording {target} RPM (no load)...");
                     Log($"Recording NO-LOAD for {cfg.RecordSeconds}s -> {noloadPath}");
@@ -460,12 +463,35 @@ namespace EngineSimRecorder
             using var writer = new WaveFileWriter(outputPath, capture.WaveFormat);
             var done = new ManualResetEventSlim(false);
 
+            // Low-pass filter for interior mode (one per channel, interleaved)
+            NAudio.Dsp.BiQuadFilter?[]? lpf = null;
+            if (cfg.InteriorMode)
+            {
+                int ch = cfg.Channels;
+                lpf = new NAudio.Dsp.BiQuadFilter?[ch];
+                for (int c = 0; c < ch; c++)
+                    lpf[c] = NAudio.Dsp.BiQuadFilter.LowPassFilter(cfg.SampleRate, cfg.CutoffFreq, 0.707f);
+            }
+
             StartRecProgress(cfg.RecordSeconds);
 
             capture.DataAvailable += (s, e) =>
             {
-                if (e.BytesRecorded > 0)
-                    writer.Write(e.Buffer, 0, e.BytesRecorded);
+                if (e.BytesRecorded == 0) return;
+
+                if (lpf != null)
+                {
+                    // Filter float samples in-place
+                    int samples = e.BytesRecorded / 4; // float32 = 4 bytes
+                    int ch = cfg.Channels;
+                    var floats = new float[samples];
+                    Buffer.BlockCopy(e.Buffer, 0, floats, 0, e.BytesRecorded);
+                    for (int i = 0; i < samples; i++)
+                        floats[i] = lpf[i % ch]!.Transform(floats[i]);
+                    Buffer.BlockCopy(floats, 0, e.Buffer, 0, e.BytesRecorded);
+                }
+
+                writer.Write(e.Buffer, 0, e.BytesRecorded);
             };
             capture.RecordingStopped += (s, e) => done.Set();
             capture.StartRecording();
@@ -498,6 +524,19 @@ namespace EngineSimRecorder
             return p.EndsWith("_") ? p : p + "_";
         }
 
+        private int GetCutoffFreq()
+        {
+            return cmbCutoffFreq.SelectedIndex switch
+            {
+                0 => 400,
+                1 => 600,
+                2 => 800,
+                3 => 1000,
+                4 => 1200,
+                _ => 800,
+            };
+        }
+
         private sealed class ProcessItem
         {
             public int ProcessId { get; }
@@ -511,6 +550,12 @@ namespace EngineSimRecorder
             _settings = AppSettings.Load();
             cmbSampleRate.SelectedIndex = _settings.SampleRate == 48000 ? 1 : 0;
             cmbChannels.SelectedIndex = _settings.Channels == 1 ? 1 : 0;
+            rbInterior.IsChecked = _settings.InteriorMode;
+            rbExterior.IsChecked = !_settings.InteriorMode;
+            cmbCutoffFreq.SelectedIndex = _settings.CutoffFreq switch
+            {
+                400 => 0, 600 => 1, 800 => 2, 1000 => 3, 1200 => 4, _ => 2
+            };
 
             // Profiles
             RefreshProfiles();
@@ -531,6 +576,8 @@ namespace EngineSimRecorder
             _cts?.Cancel();
             _settings.SampleRate = cmbSampleRate.SelectedIndex == 1 ? 48000 : 44100;
             _settings.Channels = cmbChannels.SelectedIndex == 1 ? 1 : 2;
+            _settings.InteriorMode = rbInterior.IsChecked == true;
+            _settings.CutoffFreq = GetCutoffFreq();
             _settings.Save();
         }
 
