@@ -471,129 +471,129 @@ namespace EngineSimRecorder
         private void RecordAudio(KeyboardBackend backend, string outputPath, RecorderConfig cfg, CancellationToken ct)
         {
             using var capture = new WasapiLoopbackCapture();
-            capture.WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(cfg.SampleRate, cfg.Channels);
-            using var writer = new WaveFileWriter(outputPath, capture.WaveFormat);
-            var done = new ManualResetEventSlim(false);
+       capture.WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(cfg.SampleRate, cfg.Channels);
+ using var writer = new WaveFileWriter(outputPath, capture.WaveFormat);
+   var done = new ManualResetEventSlim(false);
 
-            // Interior cabin processor
-            InteriorProcessor? interior = null;
-            if (cfg.InteriorMode)
-            {
-                if (cfg.CarType == "Custom")
-                {
-                    interior = new InteriorProcessor(cfg.SampleRate, cfg.Channels,
-                        cfg.CustomCutoffHz, cfg.CustomStereoWidth,
-                        cfg.CustomRumbleHz, cfg.CustomRumbleDb,
-                        cfg.CustomRes1Hz, cfg.CustomRes1Db,
-                        cfg.CustomRes2Hz, cfg.CustomRes2Db,
-                        cfg.CustomReverbMs, cfg.CustomReverbMix,
-                        cfg.CustomCompRatio, cfg.CustomCompThreshDb);
-                }
-                else
-                {
-                    var (cutoff, width) = InteriorProcessor.GetPreset(cfg.CarType);
-                    interior = new InteriorProcessor(cfg.SampleRate, cfg.Channels, cutoff, width);
-                }
+      // Interior cabin processor
+   InteriorProcessor? interior = null;
+        if (cfg.InteriorMode)
+     {
+           if (cfg.CarType == "Custom")
+      {
+            interior = new InteriorProcessor(cfg.SampleRate, cfg.Channels,
+               cfg.CustomCutoffHz, cfg.CustomStereoWidth,
+   cfg.CustomRumbleHz, cfg.CustomRumbleDb,
+            cfg.CustomRes1Hz, cfg.CustomRes1Db,
+    cfg.CustomRes2Hz, cfg.CustomRes2Db,
+               cfg.CustomReverbMs, cfg.CustomReverbMix,
+cfg.CustomCompRatio, cfg.CustomCompThreshDb);
+       }
+          else
+  {
+      var (cutoff, width) = InteriorProcessor.GetPreset(cfg.CarType);
+       interior = new InteriorProcessor(cfg.SampleRate, cfg.Channels, cutoff, width);
+     }
             }
 
             StartRecProgress(cfg.RecordSeconds);
 
-            capture.DataAvailable += (s, e) =>
-            {
-                if (e.BytesRecorded == 0) return;
+        capture.DataAvailable += (s, e) =>
+      {
+       if (e.BytesRecorded == 0) return;
 
                 if (interior != null)
-                {
-                    int samples = e.BytesRecorded / 4;
-                    var floats = new float[samples];
-                    Buffer.BlockCopy(e.Buffer, 0, floats, 0, e.BytesRecorded);
-                    interior.Process(floats, samples);
-                    Buffer.BlockCopy(floats, 0, e.Buffer, 0, e.BytesRecorded);
-                }
+       {
+        int samples = e.BytesRecorded / 4;
+         var floats = new float[samples];
+  Buffer.BlockCopy(e.Buffer, 0, floats, 0, e.BytesRecorded);
+interior.Process(floats, samples);
+         Buffer.BlockCopy(floats, 0, e.Buffer, 0, e.BytesRecorded);
+      }
 
-                writer.Write(e.Buffer, 0, e.BytesRecorded);
-            };
-            capture.RecordingStopped += (s, e) => done.Set();
-            capture.StartRecording();
+            writer.Write(e.Buffer, 0, e.BytesRecorded);
+      };
+     capture.RecordingStopped += (s, e) => done.Set();
+  capture.StartRecording();
 
-            DateTime start = DateTime.UtcNow;
+DateTime start = DateTime.UtcNow;
             while (!ct.IsCancellationRequested)
             {
                 double elapsed = (DateTime.UtcNow - start).TotalSeconds;
-                if (elapsed >= cfg.RecordSeconds) break;
+   if (elapsed >= cfg.RecordSeconds) break;
 
-                double? rpm = backend.ReadRpm();
-                if (rpm.HasValue)
-                {
-                    SetRpm($"RPM: {rpm.Value:F0}");
-                    SetStatus($"Recording - {rpm.Value:F0} RPM - {elapsed:F1}s / {cfg.RecordSeconds}s");
+            double? rpm = backend.ReadRpm();
+     if (rpm.HasValue)
+        {
+        SetRpm($"RPM: {rpm.Value:F0}");
+                 SetStatus($"Recording - {rpm.Value:F0} RPM - {elapsed:F1}s / {cfg.RecordSeconds}s");
                 }
-                ct.WaitHandle.WaitOne(16);
-            }
+  ct.WaitHandle.WaitOne(16);
+       }
 
-            capture.StopRecording();
-            done.Wait(TimeSpan.FromSeconds(5));
-        }
+       capture.StopRecording();
+          done.Wait(TimeSpan.FromSeconds(5));
+   }
 
         // ── Helpers ──
 
         private string GetPrefix()
-        {
-            string p = txtPrefix.Text.Trim();
-            if (string.IsNullOrEmpty(p)) return "";
-            return p.EndsWith("_") ? p : p + "_";
-        }
+      {
+       string p = txtPrefix.Text.Trim();
+  if (string.IsNullOrEmpty(p)) return "";
+     return p.EndsWith("_") ? p : p + "_";
+      }
 
-        private string GetCarType()
-        {
+      private string GetCarType()
+ {
             return (cmbCarType.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Content?.ToString() ?? "Sedan";
-        }
+      }
 
         private sealed class ProcessItem
-        {
+     {
             public int ProcessId { get; }
             public string DisplayName { get; }
-            public ProcessItem(Process p) { ProcessId = p.Id; DisplayName = $"{p.ProcessName} (PID {p.Id})"; }
-            public override string ToString() => DisplayName;
+public ProcessItem(Process p) { ProcessId = p.Id; DisplayName = $"{p.ProcessName} (PID {p.Id})"; }
+      public override string ToString() => DisplayName;
         }
 
-        private void Window_Loaded(object sender, RoutedEventArgs e)
-        {
+      private void Window_Loaded(object sender, RoutedEventArgs e)
+   {
             _settings = AppSettings.Load();
-            cmbSampleRate.SelectedIndex = _settings.SampleRate == 48000 ? 1 : 0;
+   cmbSampleRate.SelectedIndex = _settings.SampleRate == 48000 ? 1 : 0;
             cmbChannels.SelectedIndex = _settings.Channels == 1 ? 1 : 0;
-            rbInterior.IsChecked = _settings.InteriorMode;
-            rbExterior.IsChecked = !_settings.InteriorMode;
-            pnlCutoff.Visibility = _settings.InteriorMode ? Visibility.Visible : Visibility.Collapsed;
+   rbInterior.IsChecked = _settings.InteriorMode;
+  rbExterior.IsChecked = !_settings.InteriorMode;
+       pnlCutoff.Visibility = _settings.InteriorMode ? Visibility.Visible : Visibility.Collapsed;
             // Select car type
             for (int i = 0; i < cmbCarType.Items.Count; i++)
-            {
-                if ((cmbCarType.Items[i] as System.Windows.Controls.ComboBoxItem)?.Content?.ToString() == _settings.CarType)
-                { cmbCarType.SelectedIndex = i; break; }
-            }
+      {
+           if ((cmbCarType.Items[i] as System.Windows.Controls.ComboBoxItem)?.Content?.ToString() == _settings.CarType)
+      { cmbCarType.SelectedIndex = i; break; }
+ }
 
-            // Profiles
-            RefreshProfiles();
-            if (!string.IsNullOrEmpty(_settings.LastProfile))
-            {
-                int idx = -1;
-                for (int i = 0; i < cmbProfiles.Items.Count; i++)
-                {
-                    if (cmbProfiles.Items[i]?.ToString() == _settings.LastProfile)
-                    { idx = i; break; }
+     // Profiles
+       RefreshProfiles();
+        if (!string.IsNullOrEmpty(_settings.LastProfile))
+        {
+       int idx = -1;
+   for (int i = 0; i < cmbProfiles.Items.Count; i++)
+        {
+     if (cmbProfiles.Items[i]?.ToString() == _settings.LastProfile)
+   { idx = i; break; }
                 }
-                if (idx >= 0) cmbProfiles.SelectedIndex = idx;
-            }
+if (idx >= 0) cmbProfiles.SelectedIndex = idx;
+    }
         }
 
-        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+    private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
             _cts?.Cancel();
             _settings.SampleRate = cmbSampleRate.SelectedIndex == 1 ? 48000 : 44100;
             _settings.Channels = cmbChannels.SelectedIndex == 1 ? 1 : 2;
-            _settings.InteriorMode = rbInterior.IsChecked == true;
+    _settings.InteriorMode = rbInterior.IsChecked == true;
             _settings.CarType = GetCarType();
-            _settings.Save();
+_settings.Save();
         }
 
         // ── Focus monitor ──
@@ -603,103 +603,103 @@ namespace EngineSimRecorder
 
         private void FocusMonitor_Tick(object? sender, EventArgs e)
         {
-            if (_engineSimHwnd == IntPtr.Zero) return;
+       if (_engineSimHwnd == IntPtr.Zero) return;
 
-            IntPtr focused = GetForegroundWindow();
-            bool recorderFocused = (focused == new System.Windows.Interop.WindowInteropHelper(this).Handle);
-            bool simFocused = (focused == _engineSimHwnd);
+     IntPtr focused = GetForegroundWindow();
+    bool recorderFocused = (focused == new System.Windows.Interop.WindowInteropHelper(this).Handle);
+       bool simFocused = (focused == _engineSimHwnd);
 
-            if (!recorderFocused && !simFocused)
-            {
-                if (!_focusWarned)
-                {
-                    _focusWarned = true;
-                    lblStatus.Foreground = new SolidColorBrush(Colors.OrangeRed);
-                    Log("⚠ Neither window focused — click this or Engine Sim");
-                }
-            }
+        if (!recorderFocused && !simFocused)
+     {
+          if (!_focusWarned)
+       {
+         _focusWarned = true;
+         lblStatus.Foreground = new SolidColorBrush(Colors.OrangeRed);
+        Log("⚠ Neither window focused — click this or Engine Sim");
+        }
+   }
             else
-            {
-                if (_focusWarned)
-                {
-                    _focusWarned = false;
-                    lblStatus.Foreground = (Brush)FindResource("TextSecondaryBrush");
-                }
+   {
+    if (_focusWarned)
+         {
+       _focusWarned = false;
+     lblStatus.Foreground = (Brush)FindResource("TextSecondaryBrush");
+              }
             }
-        }
+  }
 
-        // ── Profiles ──
+ // ── Profiles ──
 
-        private void RefreshProfiles()
+    private void RefreshProfiles()
         {
-            cmbProfiles.Items.Clear();
+       cmbProfiles.Items.Clear();
             foreach (string name in RpmProfile.GetProfileNames())
-                cmbProfiles.Items.Add(name);
-        }
+        cmbProfiles.Items.Add(name);
+      }
 
         private void btnSaveProfile_Click(object sender, RoutedEventArgs e)
         {
             string name = txtProfileName.Text.Trim();
-            if (string.IsNullOrEmpty(name))
-            {
-                lblProfileStatus.Text = "Enter a profile name first.";
-                return;
-            }
+     if (string.IsNullOrEmpty(name))
+    {
+  lblProfileStatus.Text = "Enter a profile name first.";
+  return;
+    }
 
-            var targets = new List<int>();
-            foreach (var item in lstTargetRpms.Items)
-                targets.Add(Convert.ToInt32(item));
+     var targets = new List<int>();
+ foreach (var item in lstTargetRpms.Items)
+    targets.Add(Convert.ToInt32(item));
 
-            var profile = new RpmProfile
+    var profile = new RpmProfile
             {
-                Name = name,
-                CarName = txtCarName.Text.Trim(),
-                Prefix = txtPrefix.Text.Trim(),
-                OutputDir = txtOutputDir.Text.Trim(),
+              Name = name,
+       CarName = txtCarName.Text.Trim(),
+  Prefix = txtPrefix.Text.Trim(),
+   OutputDir = txtOutputDir.Text.Trim(),
                 TargetRpms = targets,
-                SampleRate = cmbSampleRate.SelectedIndex == 1 ? 48000 : 44100,
-                Channels = cmbChannels.SelectedIndex == 1 ? 1 : 2,
-            };
-            profile.Save();
+    SampleRate = cmbSampleRate.SelectedIndex == 1 ? 48000 : 44100,
+    Channels = cmbChannels.SelectedIndex == 1 ? 1 : 2,
+       };
+   profile.Save();
 
             _settings.LastProfile = name;
             RefreshProfiles();
-            for (int i = 0; i < cmbProfiles.Items.Count; i++)
-            {
-                if (cmbProfiles.Items[i]?.ToString() == name)
-                { cmbProfiles.SelectedIndex = i; break; }
-            }
-            lblProfileStatus.Text = $"Saved '{name}' ({targets.Count} RPM targets)";
+  for (int i = 0; i < cmbProfiles.Items.Count; i++)
+      {
+          if (cmbProfiles.Items[i]?.ToString() == name)
+    { cmbProfiles.SelectedIndex = i; break; }
+    }
+   lblProfileStatus.Text = $"Saved '{name}' ({targets.Count} RPM targets)";
         }
 
         private void btnLoadProfile_Click(object sender, RoutedEventArgs e)
         {
-            if (cmbProfiles.SelectedItem is not string name)
+   if (cmbProfiles.SelectedItem is not string name)
             {
-                lblProfileStatus.Text = "Select a profile to load.";
-                return;
-            }
+     lblProfileStatus.Text = "Select a profile to load.";
+   return;
+         }
 
             var profile = RpmProfile.Load(name);
             if (profile == null)
-            {
-                lblProfileStatus.Text = $"Failed to load '{name}'.";
-                RefreshProfiles();
-                return;
+        {
+       lblProfileStatus.Text = $"Failed to load '{name}'.";
+         RefreshProfiles();
+  return;
             }
 
-            txtCarName.Text = profile.CarName;
-            txtPrefix.Text = profile.Prefix;
+      txtCarName.Text = profile.CarName;
+    txtPrefix.Text = profile.Prefix;
             txtOutputDir.Text = profile.OutputDir ?? "recordings";
 
-            lstTargetRpms.Items.Clear();
-            foreach (int rpm in profile.TargetRpms)
-                lstTargetRpms.Items.Add(rpm);
+    lstTargetRpms.Items.Clear();
+         foreach (int rpm in profile.TargetRpms)
+          lstTargetRpms.Items.Add(rpm);
 
             if (profile.SampleRate == 48000) cmbSampleRate.SelectedIndex = 1;
             else cmbSampleRate.SelectedIndex = 0;
 
-            cmbChannels.SelectedIndex = profile.Channels == 1 ? 1 : 0;
+    cmbChannels.SelectedIndex = profile.Channels == 1 ? 1 : 0;
 
             _settings.LastProfile = name;
             lblProfileStatus.Text = $"Loaded '{name}' ({profile.TargetRpms.Count} RPM targets)";
@@ -707,72 +707,73 @@ namespace EngineSimRecorder
 
         private void btnDeleteProfile_Click(object sender, RoutedEventArgs e)
         {
-            if (cmbProfiles.SelectedItem is not string name)
+      if (cmbProfiles.SelectedItem is not string name)
             {
                 lblProfileStatus.Text = "Select a profile to delete.";
-                return;
+         return;
             }
 
-            var result = MessageBox.Show($"Delete profile '{name}'?", "Confirm",
-                MessageBoxButton.YesNo, MessageBoxImage.Question);
-            if (result == MessageBoxResult.Yes)
-            {
+   var result = MessageBox.Show($"Delete profile '{name}'?", "Confirm",
+     MessageBoxButton.YesNo, MessageBoxImage.Question);
+  if (result == MessageBoxResult.Yes)
+ {
                 RpmProfile.Delete(name);
-                RefreshProfiles();
-                lblProfileStatus.Text = $"Deleted '{name}'.";
-            }
+        RefreshProfiles();
+    lblProfileStatus.Text = $"Deleted '{name}'.";
+   }
         }
 
         private void btnNudgeUp_Click(object sender, RoutedEventArgs e)
+      {
+         if (lstTargetRpms.SelectedItem is int selected)
         {
-            if (lstTargetRpms.SelectedItem is int selected)
-            {
-                int idx = lstTargetRpms.SelectedIndex;
-                lstTargetRpms.Items[idx] = selected + 250;
-            }
-        }
+     int idx = lstTargetRpms.SelectedIndex;
+        lstTargetRpms.Items[idx] = selected + 250;
+    }
+    }
 
         private void btnNudgeDown_Click(object sender, RoutedEventArgs e)
-        {
-            if (lstTargetRpms.SelectedItem is int selected)
-            {
-                int idx = lstTargetRpms.SelectedIndex;
+    {
+      if (lstTargetRpms.SelectedItem is int selected)
+{
+           int idx = lstTargetRpms.SelectedIndex;
                 int newVal = selected - 250;
                 if (newVal > 0) lstTargetRpms.Items[idx] = newVal;
-            }
+    }
         }
 
 
         private void cmbChannels_SelectionChanged(object sender, SelectionChangedEventArgs e) { }
 
-        private void rbMode_Checked(object sender, RoutedEventArgs e)
-        {
-            if (pnlCutoff != null)
-                pnlCutoff.Visibility = rbInterior.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+     private void rbMode_Checked(object sender, RoutedEventArgs e)
+   {
+    if (pnlCutoff != null)
+          pnlCutoff.Visibility = rbInterior.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private void cmbCarType_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (pnlCustom == null) return;
-            string? type = (cmbCarType.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Content?.ToString();
-            pnlCustom.Visibility = type == "Custom" ? Visibility.Visible : Visibility.Collapsed;
+          if (pnlCustom == null) return;
+         string? type = (cmbCarType.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Content?.ToString();
+        pnlCustom.Visibility = type == "Custom" ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private void slCustom_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-            if (lblCutoff == null) return;
-            lblCutoff.Text = $"{(int)slCutoff.Value} Hz";
-            lblRumbleHz.Text = $"{(int)slRumbleHz.Value} Hz";
-            lblRumbleDb.Text = $"+{(int)slRumbleDb.Value} dB";
-            lblRes1Hz.Text = $"{(int)slRes1Hz.Value} Hz";
-            lblRes1Db.Text = $"+{(int)slRes1Db.Value} dB";
-            lblRes2Hz.Text = $"{(int)slRes2Hz.Value} Hz";
-            lblRes2Db.Text = $"+{(int)slRes2Db.Value} dB";
+            if (!this.IsLoaded) return;
+   if (lblCutoff == null) return;
+         lblCutoff.Text = $"{(int)slCutoff.Value} Hz";
+       lblRumbleHz.Text = $"{(int)slRumbleHz.Value} Hz";
+ lblRumbleDb.Text = $"+{(int)slRumbleDb.Value} dB";
+      lblRes1Hz.Text = $"{(int)slRes1Hz.Value} Hz";
+   lblRes1Db.Text = $"+{(int)slRes1Db.Value} dB";
+      lblRes2Hz.Text = $"{(int)slRes2Hz.Value} Hz";
+ lblRes2Db.Text = $"+{(int)slRes2Db.Value} dB";
             lblWidth.Text = $"{(int)slWidth.Value}%";
-            lblReverbMix.Text = $"{(int)slReverbMix.Value}%";
+      lblReverbMix.Text = $"{(int)slReverbMix.Value}%";
             lblReverbMs.Text = $"{(int)slReverbMs.Value} ms";
             lblCompRatio.Text = $"{(int)slCompRatio.Value}:1";
-            lblCompThresh.Text = $"{(int)slCompThresh.Value} dB";
+     lblCompThresh.Text = $"{(int)slCompThresh.Value} dB";
         }
     }
 }
