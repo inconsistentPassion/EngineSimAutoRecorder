@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using EngineSimRecorder.Backends.Keyboard;
 using EngineSimRecorder.Core;
@@ -193,14 +194,14 @@ namespace EngineSimRecorder
         private void SetRpm(string t) => Dispatcher.BeginInvoke(() => lblCurrentRpm.Text = t);
         private void IncProgress() => Dispatcher.BeginInvoke(() =>
         {
-            double target = Math.Min(pbarProgress.Value + 1, pbarProgress.Maximum);
-            var anim = new System.Windows.Media.Animation.DoubleAnimation(
-                target,
-                new System.Windows.Duration(TimeSpan.FromMilliseconds(400)),
+          double target = Math.Min(pbarProgress.Value + 1, pbarProgress.Maximum);
+        var anim = new DoubleAnimation(
+  target,
+          new Duration(TimeSpan.FromMilliseconds(400)),
                 FillBehavior.HoldEnd);
-            anim.EasingFunction = new System.Windows.Media.Animation.CubicEase
-                { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut };
-            pbarProgress.BeginAnimation(ProgressBar.ValueProperty, anim);
+        anim.EasingFunction = new CubicEase
+        { EasingMode = EasingMode.EaseOut };
+         pbarProgress.BeginAnimation(ProgressBar.ValueProperty, anim);
         });
         private void ResetControls() => Dispatcher.BeginInvoke(() =>
         {
