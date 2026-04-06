@@ -55,6 +55,15 @@ Open `EngineSimAutoRecorder.sln` in Visual Studio and build. The C++ hook DLL is
 - Visual Studio 2022 with C++ workload (for MSVC + CMake)
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
 
+### Publish (single executable)
+
+```bash
+cd EngineSimRecorder
+dotnet publish -c Release
+```
+
+Output: `EngineSimRecorder.exe` + `es_hook.dll` + `icon.ico`
+
 ### Manual build (alternative)
 
 ```bash
@@ -79,6 +88,7 @@ dotnet build -c Release
    - Rev to each target RPM and hold
    - Record **load** and **no-load** WAVs at each RPM
 6. Click **■ Stop** to cancel at any time.
+7. Output folder opens automatically when recording finishes.
 
 ### UI options
 
@@ -88,9 +98,22 @@ dotnet build -c Release
 | **Output Dir** | Destination folder for WAV recordings |
 | **📂** | Open the output folder in File Explorer |
 | **Browse…** | Pick output folder via dialog |
-| **RPM Targets** | List of RPM points to record (Add / Remove) |
+| **Car Name** | Custom name prepended to output filenames |
+| **Prefix** | Custom prefix before the car name (e.g. `ext_`) |
+| **RPM Presets** | One-click buttons: 1K, 2K, 3K, 4K, 5K, 6K, 7K, 8K |
+| **RPM Targets** | List of RPM points to record |
+| **Sort ↑** | Sort RPM list ascending |
+| **Clear All** | Remove all RPM targets |
 | **Stay on Top** | Keep the recorder window above all others |
 | **Status** | Current RPM, progress bar, and log output |
+
+### RPM list management
+
+- **Add** — type a value in the numeric input and click Add
+- **Presets** — click any 1K–8K button for quick add (no duplicates)
+- **Remove** — select an item and click Del, or right-click → Remove
+- **Sort** — orders all RPMs ascending
+- **Clear All** — wipes the entire list
 
 ### Focus monitoring
 
@@ -115,20 +138,29 @@ These are the keyboard commands sent to Engine Simulator via `PostMessage`:
 
 ## Output
 
-Each target RPM produces two files:
+WAV filenames are built from your Car Name, Prefix, and RPM values.
+
+### Naming format
+
+| Car Name | Prefix | RPM | Output |
+|---|---|---|---|
+| `supra` | `ext_` | 3000 | `ext_supra_3000_on.wav` |
+| `supra` | *(empty)* | 3000 | `supra_3000_on.wav` |
+| *(empty)* | *(empty)* | 3000 | `3000_on.wav` |
+
+Each target RPM produces two files — `_on` (throttle held) and `_off` (throttle released).
+
+### Example output
 
 ```
 recordings/
-├── 1500_load.wav
-├── 1500_noload.wav
-├── 3000_load.wav
-├── 3000_noload.wav
-├── 6000_load.wav
-└── 6000_noload.wav
+├── ext_supra_1500_on.wav
+├── ext_supra_1500_off.wav
+├── ext_supra_3000_on.wav
+├── ext_supra_3000_off.wav
+├── ext_supra_6000_on.wav
+└── ext_supra_6000_off.wav
 ```
-
-- **`_load.wav`** — engine under throttle at target RPM
-- **`_noload.wav`** — engine at target RPM with throttle released
 
 All files: **44 100 Hz, stereo, float PCM** — import directly into FMOD Studio.
 
