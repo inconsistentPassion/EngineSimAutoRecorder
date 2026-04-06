@@ -131,7 +131,7 @@ namespace EngineSimRecorder
                 ProcessId = sel.ProcessId,
                 TargetRpms = targets,
                 CustomName = txtCarName.Text.Trim(),
-                CustomPrefix = txtPrefix.Text.Trim(),
+                CustomPrefix = GetPrefix(),
             };
 
             btnStart.Enabled = false;
@@ -449,6 +449,13 @@ namespace EngineSimRecorder
         }
 
         // ── Helpers ────────────────────────────────────────────────────
+
+        private string GetPrefix()
+        {
+            string p = txtPrefix.Text.Trim();
+            if (string.IsNullOrEmpty(p)) return "";
+            return p.EndsWith("_") ? p : p + "_";
+        }
 
         private sealed class ProcessItem
         {
