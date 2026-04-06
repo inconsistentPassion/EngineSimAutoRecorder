@@ -166,47 +166,27 @@
             </Setter>
         </Style>
 
-        <!-- Car ignition Start button -->
-        <Style x:Key="BigStartButton" TargetType="Button">
-            <Setter Property="Width" Value="80" />
-            <Setter Property="Height" Value="80" />
-            <Setter Property="Cursor" Value="Hand" />
+        <!-- Big action button style -->
+        <Style x:Key="BigStartButton" TargetType="Button" BasedOn="{StaticResource AccentButton}">
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Padding" Value="24,10" />
+            <Setter Property="Background" Value="#228B22" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Grid>
-                            <!-- Outer ring -->
-                            <Ellipse x:Name="outerRing"
-                                     Stroke="#228B22" StrokeThickness="4"
-                                     Fill="#1A2E1A" />
-                            <!-- Inner circle -->
-                            <Ellipse x:Name="innerCircle"
-                                     Margin="10"
-                                     Fill="#28A428" />
-                            <!-- Text -->
-                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                                <TextBlock Text="⏻"
-                                           FontSize="28" FontWeight="Bold"
-                                           Foreground="White"
-                                           HorizontalAlignment="Center" />
-                                <TextBlock Text="START"
-                                           FontSize="9" FontWeight="Bold"
-                                           Foreground="#D0FFD0"
-                                           HorizontalAlignment="Center"
-                                           Margin="0,-2,0,0" />
-                            </StackPanel>
-                        </Grid>
+                        <Border x:Name="border"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="outerRing" Property="StrokeThickness" Value="5" />
-                                <Setter TargetName="innerCircle" Property="Fill" Value="#32C832" />
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="innerCircle" Property="Fill" Value="#1E8B1E" />
+                                <Setter TargetName="border" Property="Background" Value="#1E7B1E" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="outerRing" Property="Stroke" Value="#888" />
-                                <Setter TargetName="innerCircle" Property="Fill" Value="#666" />
+                                <Setter TargetName="border" Property="Opacity" Value="0.5" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -214,47 +194,26 @@
             </Setter>
         </Style>
 
-        <!-- Car ignition Stop button -->
-        <Style x:Key="BigStopButton" TargetType="Button">
-            <Setter Property="Width" Value="80" />
-            <Setter Property="Height" Value="80" />
-            <Setter Property="Cursor" Value="Hand" />
+        <!-- Big stop button style -->
+        <Style x:Key="BigStopButton" TargetType="Button" BasedOn="{StaticResource DangerButton}">
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Padding" Value="24,10" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Grid>
-                            <!-- Outer ring -->
-                            <Ellipse x:Name="outerRing"
-                                     Stroke="#CC2020" StrokeThickness="4"
-                                     Fill="#2E1A1A" />
-                            <!-- Inner circle -->
-                            <Ellipse x:Name="innerCircle"
-                                     Margin="10"
-                                     Fill="#C83030" />
-                            <!-- Text -->
-                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                                <TextBlock Text="■"
-                                           FontSize="24" FontWeight="Bold"
-                                           Foreground="White"
-                                           HorizontalAlignment="Center" />
-                                <TextBlock Text="STOP"
-                                           FontSize="9" FontWeight="Bold"
-                                           Foreground="#FFD0D0"
-                                           HorizontalAlignment="Center"
-                                           Margin="0,-2,0,0" />
-                            </StackPanel>
-                        </Grid>
+                        <Border x:Name="border"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="outerRing" Property="StrokeThickness" Value="5" />
-                                <Setter TargetName="innerCircle" Property="Fill" Value="#E03838" />
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="innerCircle" Property="Fill" Value="#A01818" />
+                                <Setter TargetName="border" Property="Background" Value="#A82020" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="outerRing" Property="Stroke" Value="#888" />
-                                <Setter TargetName="innerCircle" Property="Fill" Value="#666" />
+                                <Setter TargetName="border" Property="Opacity" Value="0.5" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
