@@ -205,6 +205,37 @@
                               Checked="chkStayOnTop_Changed" Unchecked="chkStayOnTop_Changed" />
                 </StackPanel>
 
+                <!-- ══ Audio Settings ══ -->
+                <GroupBox>
+                    <GroupBox.Header>
+                        <TextBlock Text="▸  Audio Quality" FontSize="13" FontWeight="SemiBold" />
+                    </GroupBox.Header>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="100" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <Label Content="Sample Rate:" Grid.Row="0" Grid.Column="0" />
+                        <ComboBox x:Name="cmbSampleRate" Grid.Row="0" Grid.Column="1"
+                                  Width="150" HorizontalAlignment="Left">
+                            <ComboBoxItem Content="44100 Hz" IsSelected="True" />
+                            <ComboBoxItem Content="48000 Hz" />
+                        </ComboBox>
+
+                        <Label Content="Channels:" Grid.Row="1" Grid.Column="0" />
+                        <ComboBox x:Name="cmbChannels" Grid.Row="1" Grid.Column="1"
+                                  Width="150" HorizontalAlignment="Left">
+                            <ComboBoxItem Content="Stereo" IsSelected="True" />
+                            <ComboBoxItem Content="Mono" />
+                        </ComboBox>
+                    </Grid>
+                </GroupBox>
+
             </StackPanel>
         </ScrollViewer>
 
