@@ -51,6 +51,16 @@ namespace EngineSimRecorder
             if (dlg.ShowDialog() == DialogResult.OK) txtOutputDir.Text = dlg.SelectedPath;
         }
 
+        private void btnOpenOutput_Click(object sender, EventArgs e)
+        {
+            string dir = txtOutputDir.Text.Trim();
+            if (!Directory.Exists(dir))
+            {
+                Directory.CreateDirectory(dir);
+            }
+            Process.Start("explorer.exe", dir);
+        }
+
         private void btnAddRpm_Click(object sender, EventArgs e)
         {
             int rpm = (int)numRpmList.Value;

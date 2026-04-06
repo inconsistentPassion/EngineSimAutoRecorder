@@ -21,6 +21,7 @@
             lblProcess = new Label();
             grpCapture = new GroupBox();
             btnBrowseOutput = new Button();
+            btnOpenOutput = new Button();
             txtOutputDir = new TextBox();
             lblOutputDir = new Label();
             grpRpm = new GroupBox();
@@ -100,6 +101,7 @@
             // 
             // grpCapture
             // 
+            grpCapture.Controls.Add(btnOpenOutput);
             grpCapture.Controls.Add(btnBrowseOutput);
             grpCapture.Controls.Add(txtOutputDir);
             grpCapture.Controls.Add(lblOutputDir);
@@ -114,13 +116,24 @@
             // 
             // btnBrowseOutput
             // 
-            btnBrowseOutput.Location = new Point(671, 33);
+            btnBrowseOutput.Location = new Point(600, 33);
             btnBrowseOutput.Margin = new Padding(4, 5, 4, 5);
             btnBrowseOutput.Name = "btnBrowseOutput";
             btnBrowseOutput.Size = new Size(107, 42);
             btnBrowseOutput.TabIndex = 0;
             btnBrowseOutput.Text = "Browse…";
             btnBrowseOutput.Click += btnBrowseOutput_Click;
+            // 
+            // btnOpenOutput
+            // 
+            btnOpenOutput.Location = new Point(720, 33);
+            btnOpenOutput.Margin = new Padding(4, 5, 4, 5);
+            btnOpenOutput.Name = "btnOpenOutput";
+            btnOpenOutput.Size = new Size(60, 42);
+            btnOpenOutput.TabIndex = 3;
+            btnOpenOutput.Text = "📂";
+            btnOpenOutput.Font = new Font("Segoe UI", 12F);
+            btnOpenOutput.Click += btnOpenOutput_Click;
             // 
             // txtOutputDir
             // 
@@ -350,6 +363,7 @@
         private System.Windows.Forms.Label lblProcess;
         private System.Windows.Forms.GroupBox grpCapture;
         private System.Windows.Forms.Button btnBrowseOutput;
+        private System.Windows.Forms.Button btnOpenOutput;
         private System.Windows.Forms.TextBox txtOutputDir;
         private System.Windows.Forms.Label lblOutputDir;
         private System.Windows.Forms.GroupBox grpRpm;
