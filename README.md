@@ -54,24 +54,6 @@ Open `EngineSimAutoRecorder.sln` in Visual Studio and build. The C++ hook DLL is
 **Requirements:**
 - Visual Studio 2022 with C++ workload (for MSVC + CMake)
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
-- `cmake` on your PATH (see below)
-
-**Adding CMake to PATH:**
-
-VS installs CMake but doesn't add it to PATH. Open a terminal and run:
-
-```powershell
-# Find your VS install path
-$vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
-
-# Add cmake to PATH for current session
-$env:PATH += ";$vs\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
-
-# Verify
-cmake --version
-```
-
-Or add it permanently via **System Properties → Environment Variables → PATH**.
 
 ### Manual build (alternative)
 

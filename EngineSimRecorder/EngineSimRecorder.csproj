@@ -22,15 +22,19 @@
   <PropertyGroup>
     <EngineSimHookBuildDir>$(MSBuildThisFileDirectory)..\EngineSimHook\build</EngineSimHookBuildDir>
     <EngineSimHookDll>$(MSBuildThisFileDirectory)..\EngineSimHook\bin\$(Configuration)\es_hook.dll</EngineSimHookDll>
+    <!-- Try cmake from VS installation, fall back to PATH -->
+    <_CMakePath Condition="'$(_CMakePath)' == '' AND Exists('$(VsInstallRoot)\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe')">$(VsInstallRoot)\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe</_CMakePath>
+    <_CMakePath Condition="'$(_CMakePath)' == ''">cmake</_CMakePath>
   </PropertyGroup>
 
   <Target Name="BuildEngineSimHook" BeforeTargets="BeforeBuild"
           Inputs="..\EngineSimHook\CMakeLists.txt;..\EngineSimHook\src\dllmain.cpp;..\EngineSimHook\src\hooks.cpp;..\EngineSimHook\src\memory.cpp;..\EngineSimHook\src\pipe.cpp"
           Outputs="$(EngineSimHookDll)">
     <Message Importance="high" Text="=== Building es_hook.dll via CMake ===" />
-    <Exec Command="cmake -S &quot;$(MSBuildThisFileDirectory)..\EngineSimHook&quot; -B &quot;$(EngineSimHookBuildDir)&quot; -G &quot;Visual Studio 17 2022&quot; -A x64"
+    <Message Importance="high" Text="Using CMake: $(_CMakePath)" />
+    <Exec Command="&quot;$(_CMakePath)&quot; -S &quot;$(MSBuildThisFileDirectory)..\EngineSimHook&quot; -B &quot;$(EngineSimHookBuildDir)&quot; -G &quot;Visual Studio 17 2022&quot; -A x64"
           ConsoleToMSBuild="true" />
-    <Exec Command="cmake --build &quot;$(EngineSimHookBuildDir)&quot; --config $(Configuration)"
+    <Exec Command="&quot;$(_CMakePath)&quot; --build &quot;$(EngineSimHookBuildDir)&quot; --config $(Configuration)"
           ConsoleToMSBuild="true" />
     <Message Importance="high" Text="=== es_hook.dll built successfully ===" />
   </Target>
