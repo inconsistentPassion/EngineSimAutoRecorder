@@ -6,7 +6,6 @@ namespace EngineSimRecorder.Core
 {
     public sealed class AppSettings
     {
-        public string Theme { get; set; } = "system"; // "dark", "light", "system"
         public int SampleRate { get; set; } = 44100;
         public int Channels { get; set; } = 2; // 1=mono, 2=stereo
 

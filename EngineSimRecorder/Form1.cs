@@ -167,108 +167,6 @@ namespace EngineSimRecorder
             this.TopMost = chkStayOnTop.Checked;
         }
 
-        // ── Theme ──────────────────────────────────────────────────────
-
-        private void ThemeChanged(object? sender, EventArgs e)
-        {
-            string theme;
-            if (rbThemeDark.Checked) theme = "dark";
-            else if (rbThemeLight.Checked) theme = "light";
-            else
-            {
-                // Detect system theme from registry
-                try
-                {
-                    using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
-                        @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
-                    int val = (int)(key?.GetValue("AppsUseLightTheme") ?? 1);
-                    theme = val == 0 ? "dark" : "light";
-                }
-                catch { theme = "light"; }
-            }
-            ApplyTheme(theme);
-        }
-
-        private void ApplyTheme(string theme)
-        {
-            bool dark = theme == "dark";
-
-            Color bg = dark ? Color.FromArgb(32, 32, 36) : SystemColors.Window;
-            Color fg = dark ? Color.FromArgb(220, 220, 220) : SystemColors.ControlText;
-            Color groupBoxBg = dark ? Color.FromArgb(40, 40, 46) : SystemColors.Control;
-            Color inputBg = dark ? Color.FromArgb(50, 50, 58) : SystemColors.Window;
-            Color tabBg = dark ? Color.FromArgb(36, 36, 42) : SystemColors.Control;
-            Color borderBg = dark ? Color.FromArgb(55, 55, 64) : SystemColors.ControlDark;
-
-            this.BackColor = bg;
-            this.ForeColor = fg;
-
-            ApplyThemeToControls(this.Controls, bg, fg, groupBoxBg, inputBg, tabBg, dark);
-
-            // Console log
-            txtLog.BackColor = dark ? Color.FromArgb(24, 24, 28) : Color.White;
-            txtLog.ForeColor = dark ? Color.FromArgb(152, 195, 121) : Color.FromArgb(0, 100, 0);
-        }
-
-        private void ApplyThemeToControls(Control.ControlCollection controls,
-            Color bg, Color fg, Color groupBoxBg, Color inputBg, Color tabBg, bool dark)
-        {
-            foreach (Control c in controls)
-            {
-                if (c is TabControl tc)
-                {
-                    tc.BackColor = tabBg;
-                    foreach (TabPage tp in tc.TabPages)
-                    {
-                        tp.BackColor = bg;
-                        tp.ForeColor = fg;
-                        ApplyThemeToControls(tp.Controls, bg, fg, groupBoxBg, inputBg, tabBg, dark);
-                    }
-                }
-                else if (c is GroupBox gb)
-                {
-                    gb.BackColor = groupBoxBg;
-                    gb.ForeColor = fg;
-                    ApplyThemeToControls(gb.Controls, bg, fg, groupBoxBg, inputBg, tabBg, dark);
-                }
-                else if (c is TextBox tb && tb != txtLog)
-                {
-                    tb.BackColor = inputBg;
-                    tb.ForeColor = fg;
-                }
-                else if (c is ComboBox cb)
-                {
-                    cb.BackColor = inputBg;
-                    cb.ForeColor = fg;
-                }
-                else if (c is NumericUpDown nud)
-                {
-                    nud.BackColor = inputBg;
-                    nud.ForeColor = fg;
-                }
-                else if (c is ListBox lb)
-                {
-                    lb.BackColor = inputBg;
-                    lb.ForeColor = fg;
-                }
-                else if (c is Button btn)
-                {
-                    // Keep Start/Stop colors, theme the rest
-                    if (btn != btnStart && btn != btnStop)
-                    {
-                        btn.BackColor = dark ? Color.FromArgb(55, 55, 64) : SystemColors.Control;
-                        btn.ForeColor = fg;
-                        btn.FlatStyle = dark ? FlatStyle.Flat : FlatStyle.Standard;
-                        if (dark) btn.FlatAppearance.BorderColor = Color.FromArgb(75, 75, 85);
-                    }
-                }
-                else if (c is CheckBox || c is RadioButton || c is Label)
-                {
-                    c.ForeColor = fg;
-                }
-            }
-        }
-
         // ── UI helpers ─────────────────────────────────────────────────
 
         private void Log(string msg)
@@ -588,14 +486,6 @@ namespace EngineSimRecorder
             // Apply audio settings to UI
             cmbSampleRate.SelectedIndex = _settings.SampleRate == 48000 ? 1 : 0;
             cmbChannels.SelectedIndex = _settings.Channels == 1 ? 1 : 0;
-
-            // Apply theme
-            switch (_settings.Theme)
-            {
-                case "dark": rbThemeDark.Checked = true; break;
-                case "light": rbThemeLight.Checked = true; break;
-                default: rbThemeSystem.Checked = true; break;
-            }
         }
 
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
@@ -605,9 +495,6 @@ namespace EngineSimRecorder
             // Save settings
             _settings.SampleRate = cmbSampleRate.SelectedIndex == 1 ? 48000 : 44100;
             _settings.Channels = cmbChannels.SelectedIndex == 1 ? 1 : 2;
-            if (rbThemeDark.Checked) _settings.Theme = "dark";
-            else if (rbThemeLight.Checked) _settings.Theme = "light";
-            else _settings.Theme = "system";
             _settings.Save();
         }
 
