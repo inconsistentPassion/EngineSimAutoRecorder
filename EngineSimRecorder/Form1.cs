@@ -538,7 +538,7 @@ namespace EngineSimRecorder
                 if (rpm.HasValue)
                 {
                     SetRpm($"RPM: {rpm.Value:F0}");
-                    SetStatus($"Recording - {rpm.Value:F0} RPM - {elapsed:F1}s / {seconds}s");
+                    SetStatus($"Recording - {rpm.Value:F0} RPM - {elapsed:F1}s / {cfg.RecordSeconds}s");
                 }
 
                 ct.WaitHandle.WaitOne(100);
