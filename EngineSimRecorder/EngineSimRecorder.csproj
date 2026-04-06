@@ -4,7 +4,7 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
-    <UseWindowsForms>true</UseWindowsForms>
+    <UseWPF>true</UseWPF>
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>EngineSimRecorder</AssemblyName>
     <RootNamespace>EngineSimRecorder</RootNamespace>
@@ -21,15 +21,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- NAudio: WASAPI loopback capture + FFT -->
     <PackageReference Include="NAudio" Version="2.2.1" />
   </ItemGroup>
 
-  <!-- Auto-build es_hook.dll via CMake before C# compilation -->
+  <!-- Auto-build es_hook.dll via CMake -->
   <PropertyGroup>
     <EngineSimHookBuildDir>$(MSBuildThisFileDirectory)..\EngineSimHook\build</EngineSimHookBuildDir>
     <EngineSimHookDll>$(MSBuildThisFileDirectory)..\EngineSimHook\bin\$(Configuration)\es_hook.dll</EngineSimHookDll>
-    <!-- Try cmake from VS installation, fall back to PATH -->
     <_CMakePath Condition="'$(_CMakePath)' == '' AND Exists('$(VsInstallRoot)\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe')">$(VsInstallRoot)\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe</_CMakePath>
     <_CMakePath Condition="'$(_CMakePath)' == ''">cmake</_CMakePath>
   </PropertyGroup>
@@ -38,7 +36,6 @@
           Inputs="..\EngineSimHook\CMakeLists.txt;..\EngineSimHook\src\dllmain.cpp;..\EngineSimHook\src\hooks.cpp;..\EngineSimHook\src\memory.cpp;..\EngineSimHook\src\pipe.cpp"
           Outputs="$(EngineSimHookDll)">
     <Message Importance="high" Text="=== Building es_hook.dll via CMake ===" />
-    <Message Importance="high" Text="Using CMake: $(_CMakePath)" />
     <Exec Command="&quot;$(_CMakePath)&quot; -S &quot;$(MSBuildThisFileDirectory)..\EngineSimHook&quot; -B &quot;$(EngineSimHookBuildDir)&quot; -G &quot;Visual Studio 17 2022&quot; -A x64"
           ConsoleToMSBuild="true" />
     <Exec Command="&quot;$(_CMakePath)&quot; --build &quot;$(EngineSimHookBuildDir)&quot; --config $(Configuration)"
@@ -49,19 +46,6 @@
   <ItemGroup>
     <None Include="$(EngineSimHookDll)" CopyToOutputDirectory="PreserveNewest" />
     <None Include="icon.ico" CopyToOutputDirectory="PreserveNewest" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Update="Form1.cs">
-  <SubType>Form</SubType>
-  </Compile>
-    <Compile Update="Form1.Designer.cs">
-      <DependentUpon>Form1.cs</DependentUpon>
- <SubType>Code</SubType>
-    </Compile>
-  <EmbeddedResource Update="Form1.resx">
-    <DependentUpon>Form1.cs</DependentUpon>
-    </EmbeddedResource>
   </ItemGroup>
 
 </Project>

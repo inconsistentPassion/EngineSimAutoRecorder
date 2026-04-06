@@ -1,133 +1,142 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows.Forms;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Threading;
 using EngineSimRecorder.Backends.Keyboard;
 using EngineSimRecorder.Core;
 using NAudio.Wave;
 
 namespace EngineSimRecorder
 {
-    public partial class Form1 : Form
+    public partial class MainWindow : Window
     {
         private CancellationTokenSource? _cts;
         private Task? _workerTask;
-        private System.Windows.Forms.Timer? _focusMonitor;
+        private DispatcherTimer? _focusMonitor;
         private IntPtr _engineSimHwnd = IntPtr.Zero;
         private bool _focusWarned = false;
         private AppSettings _settings = new();
 
-        public Form1()
+        public MainWindow()
         {
             InitializeComponent();
-            // Set application icon for title bar and taskbar
+
             string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "icon.ico");
             if (File.Exists(iconPath))
-            {
-                var ico = new Icon(iconPath);
-                this.Icon = ico;
-            }
-            if (System.ComponentModel.LicenseManager.UsageMode != System.ComponentModel.LicenseUsageMode.Designtime)
-            {
-                foreach (int rpm in new[] { 1500, 2000, 3000, 4000, 5000, 6000 })
-                    lstTargetRpms.Items.Add(rpm);
-            }
+                this.Icon = new System.Windows.Media.Imaging.BitmapImage(new Uri(iconPath));
 
-            this.Text = "Engine Sim Recorder 1.0.0";
+            // Default RPM targets
+            foreach (int rpm in new[] { 1500, 2000, 3000, 4000, 5000, 6000 })
+                lstTargetRpms.Items.Add(rpm);
         }
 
-        // ── UI events ──────────────────────────────────────────────────
+        // ── Process ──
 
-        private void btnRefresh_Click(object sender, EventArgs e) => RefreshProcessList();
-
-        private void RefreshProcessList()
+        private void btnRefresh_Click(object sender, RoutedEventArgs e)
         {
             cmbProcess.Items.Clear();
             foreach (var name in new[] { "engine-sim-app", "engine-sim", "engine_sim", "EngineSimulator" })
+            {
                 foreach (var proc in Process.GetProcessesByName(name))
                     cmbProcess.Items.Add(new ProcessItem(proc));
-            if (cmbProcess.Items.Count > 0) cmbProcess.SelectedIndex = 0;
+            }
+            if (cmbProcess.Items.Count > 0)
+                cmbProcess.SelectedIndex = 0;
         }
 
-        private void btnBrowseOutput_Click(object sender, EventArgs e)
+        // ── Output ──
+
+        private void btnBrowseOutput_Click(object sender, RoutedEventArgs e)
         {
-            using var dlg = new FolderBrowserDialog { Description = "Select output folder" };
-            if (dlg.ShowDialog() == DialogResult.OK) txtOutputDir.Text = dlg.SelectedPath;
+            var dlg = new System.Windows.Forms.FolderBrowserDialog { Description = "Select output folder" };
+            if (dlg.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                txtOutputDir.Text = dlg.SelectedPath;
         }
 
-        private void btnOpenOutput_Click(object sender, EventArgs e)
+        private void btnOpenOutput_Click(object sender, RoutedEventArgs e)
         {
             string dir = txtOutputDir.Text.Trim();
             if (!Directory.Exists(dir))
-            {
                 Directory.CreateDirectory(dir);
-            }
             Process.Start("explorer.exe", dir);
         }
 
-        private void btnAddRpm_Click(object sender, EventArgs e)
+        // ── RPM ──
+
+        private void btnAddRpm_Click(object sender, RoutedEventArgs e)
         {
-            int rpm = (int)numRpmList.Value;
-            if (!lstTargetRpms.Items.Contains(rpm)) lstTargetRpms.Items.Add(rpm);
+            if (int.TryParse(txtRpmInput.Text, out int rpm) && !lstTargetRpms.Items.Contains(rpm))
+                lstTargetRpms.Items.Add(rpm);
         }
 
-        private void btnRemoveRpm_Click(object sender, EventArgs e)
+        private void btnRemoveRpm_Click(object sender, RoutedEventArgs e)
         {
-            if (lstTargetRpms.SelectedItem != null) lstTargetRpms.Items.Remove(lstTargetRpms.SelectedItem);
+            if (lstTargetRpms.SelectedItem != null)
+                lstTargetRpms.Items.Remove(lstTargetRpms.SelectedItem);
         }
 
-        private void btnPreset_Click(object? sender, EventArgs e)
+        private void btnPreset_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is Button btn && int.TryParse(btn.Text.Replace("K", "000"), out int rpm))
+            if (sender is Button btn && int.TryParse(btn.Content?.ToString()?.Replace("K", "000"), out int rpm))
             {
-                if (!lstTargetRpms.Items.Contains(rpm)) lstTargetRpms.Items.Add(rpm);
+                if (!lstTargetRpms.Items.Contains(rpm))
+                    lstTargetRpms.Items.Add(rpm);
             }
         }
 
-        private void btnSortRpm_Click(object sender, EventArgs e)
+        private void btnSortRpm_Click(object sender, RoutedEventArgs e)
         {
             var items = new List<int>();
-            foreach (var item in lstTargetRpms.Items) items.Add(Convert.ToInt32(item));
+            foreach (var item in lstTargetRpms.Items)
+                items.Add(Convert.ToInt32(item));
             items.Sort();
             lstTargetRpms.Items.Clear();
-            foreach (var rpm in items) lstTargetRpms.Items.Add(rpm);
+            foreach (var rpm in items)
+                lstTargetRpms.Items.Add(rpm);
         }
 
-        private void btnClearRpm_Click(object sender, EventArgs e)
+        private void btnClearRpm_Click(object sender, RoutedEventArgs e)
         {
             lstTargetRpms.Items.Clear();
         }
 
-        private void btnEditRpm_Click(object? sender, EventArgs e)
+        private void btnEditRpm_Click(object sender, RoutedEventArgs e)
         {
             if (lstTargetRpms.SelectedItem is not int selected) return;
-            int index = lstTargetRpms.SelectedIndex;
-            lstTargetRpms.Items[index] = (int)numRpmList.Value;
+            if (int.TryParse(txtRpmInput.Text, out int newVal))
+            {
+                int idx = lstTargetRpms.SelectedIndex;
+                lstTargetRpms.Items[idx] = newVal;
+            }
         }
 
-        private void lstTargetRpms_SelectedIndexChanged(object sender, EventArgs e)
+        private void lstTargetRpms_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (lstTargetRpms.SelectedItem is int selected)
-                numRpmList.Value = selected;
+                txtRpmInput.Text = selected.ToString();
         }
 
-        private void btnStart_Click(object sender, EventArgs e)
+        // ── Start / Stop ──
+
+        private void btnStart_Click(object sender, RoutedEventArgs e)
         {
             if (lstTargetRpms.Items.Count == 0)
             {
                 MessageBox.Show("Add at least one target RPM.", "No targets",
-                           MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
             if (cmbProcess.SelectedItem is not ProcessItem sel)
             {
                 MessageBox.Show("Select an Engine Simulator process.", "No process",
-                          MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -135,7 +144,8 @@ namespace EngineSimRecorder
             Directory.CreateDirectory(outputDir);
 
             var targets = new List<int>();
-            foreach (var item in lstTargetRpms.Items) targets.Add(Convert.ToInt32(item));
+            foreach (var item in lstTargetRpms.Items)
+                targets.Add(Convert.ToInt32(item));
             targets.Sort();
 
             var cfg = new RecorderConfig
@@ -149,62 +159,48 @@ namespace EngineSimRecorder
                 Channels = cmbChannels.SelectedIndex == 1 ? 1 : 2,
             };
 
-            btnStart.Enabled = false;
-            btnStop.Enabled = true;
-            btnRefresh.Enabled = false;
+            btnStart.IsEnabled = false;
+            btnStop.IsEnabled = true;
             pbarProgress.Value = 0;
             pbarProgress.Maximum = targets.Count;
-            txtLog.Clear();
+            txtLog.Text = "";
 
             _cts = new CancellationTokenSource();
             _workerTask = Task.Run(() => RunAsync(cfg, _cts.Token));
         }
 
-        private void btnStop_Click(object sender, EventArgs e) => _cts?.Cancel();
+        private void btnStop_Click(object sender, RoutedEventArgs e) => _cts?.Cancel();
 
-        private void chkStayOnTop_CheckedChanged(object sender, EventArgs e)
+        private void chkStayOnTop_Changed(object sender, RoutedEventArgs e)
         {
-            this.TopMost = chkStayOnTop.Checked;
+            Topmost = chkStayOnTop.IsChecked == true;
         }
 
-        // ── UI helpers ─────────────────────────────────────────────────
+        // ── UI Helpers ──
 
         private void Log(string msg)
         {
             string line = $"[{DateTime.Now:HH:mm:ss}] {msg}";
-            if (InvokeRequired) BeginInvoke(new Action(() => AppendLog(line)));
-            else AppendLog(line);
+            Dispatcher.BeginInvoke(() =>
+            {
+                txtLog.AppendText(line + "\n");
+                txtLog.ScrollToEnd();
+            });
         }
-        private void AppendLog(string line)
+
+        private void SetStatus(string t) => Dispatcher.BeginInvoke(() => lblStatus.Text = t);
+        private void SetRpm(string t) => Dispatcher.BeginInvoke(() => lblCurrentRpm.Text = t);
+        private void IncProgress() => Dispatcher.BeginInvoke(() =>
+            pbarProgress.Value = Math.Min(pbarProgress.Value + 1, pbarProgress.Maximum));
+        private void ResetControls() => Dispatcher.BeginInvoke(() =>
         {
-            txtLog.AppendText(line + Environment.NewLine);
-            txtLog.ScrollToCaret();
-        }
-        private void SetStatus(string t) => BeginInvoke(new Action(() => lblStatus.Text = t));
-        private void SetRpm(string t) => BeginInvoke(new Action(() => lblCurrentRpm.Text = t));
-        private void IncProgress() => BeginInvoke(new Action(() =>
-       pbarProgress.Value = Math.Min(pbarProgress.Value + 1, pbarProgress.Maximum)));
-        private void ResetControls() => BeginInvoke(new Action(() =>
-        {
-            btnStart.Enabled = true; btnStop.Enabled = false;
-            btnRefresh.Enabled = true;
+            btnStart.IsEnabled = true;
+            btnStop.IsEnabled = false;
             lblStatus.Text = "Done.";
-        }));
+        });
 
         // ════════════════════════════════════════════════════════════════
         //  WORKFLOW (all keyboard, DLL only for RPM)
-        //
-        //  1. Inject DLL, connect pipe for RPM
-        //  2. Press I to turn on ignition
-        //  3. Hold S for 2s (starter) + tap R to help start
-        //  4. Press D to enter dyno mode
-        //  5. For each target RPM:
-        //     a. Hold R to rev up until RPM reaches target
-        //     b. Press H to hold RPM (R is STILL held)
-        //     c. Record 5s with R held -> {rpm}_load.wav
-        //     d. Release R (depress), record 5s -> {rpm}_noload.wav
-        //     e. Press R again + release H -> engine slowly revs to next RPM
-        //  6. Shut down
         // ════════════════════════════════════════════════════════════════
 
         private void RunAsync(RecorderConfig cfg, CancellationToken ct)
@@ -224,47 +220,40 @@ namespace EngineSimRecorder
                 IntPtr hwnd = backend.Hwnd;
                 _engineSimHwnd = hwnd;
 
-                // ── Force focus on Engine Sim ──
                 Log("Focusing Engine Sim window...");
                 KeyboardSim.FocusWindow(hwnd);
 
-                // ── Start focus monitor ──
                 _focusWarned = false;
-                BeginInvoke(new Action(() =>
+                Dispatcher.BeginInvoke(() =>
                 {
-                    _focusMonitor = new System.Windows.Forms.Timer { Interval = 1000 };
+                    _focusMonitor = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
                     _focusMonitor.Tick += FocusMonitor_Tick;
                     _focusMonitor.Start();
-                }));
+                });
 
-                // ── Step 1: Turn on ignition (press A) ──
+                // Step 1: Ignition
                 Log("=== STEP 1: Ignition ===");
                 KeyboardSim.KeyPress(hwnd, KeyboardSim.VK_A, 120);
                 Log("Pressed A (Ignition ON)");
                 ct.WaitHandle.WaitOne(500);
 
-                // ── Step 2: Hold starter S for 1500ms + single tap W ──
+                // Step 2: Starter
                 Log("=== STEP 2: Starting engine ===");
                 Log("Holding S (Starter) for 1500ms + single tap W...");
-
                 KeyboardSim.KeyDown(hwnd, KeyboardSim.VK_S);
-                ct.WaitHandle.WaitOne(300); // let starter crank briefly before throttle tap
-
-                // Single short tap of W to help engine catch (10ms, precise via busy-wait)
+                ct.WaitHandle.WaitOne(300);
                 KeyboardSim.KeyPress(hwnd, KeyboardSim.VK_W, 10);
                 Log("Tapped W (throttle)");
 
-                // Keep S held for the remainder of 1500ms total
                 var starterSw = Stopwatch.StartNew();
-                while (starterSw.ElapsedMilliseconds < 1200) // 300 already elapsed above
+                while (starterSw.ElapsedMilliseconds < 1200)
                 {
                     if (ct.IsCancellationRequested) break;
-                    KeyboardSim.KeyDown(hwnd, KeyboardSim.VK_S); // keep held
+                    KeyboardSim.KeyDown(hwnd, KeyboardSim.VK_S);
                     double? rpm = backend.ReadRpm();
                     if (rpm.HasValue) SetRpm($"RPM: {rpm.Value:F0}");
                     ct.WaitHandle.WaitOne(50);
                 }
-
                 KeyboardSim.KeyUp(hwnd, KeyboardSim.VK_S);
                 Log("Released S (Starter)");
                 ct.WaitHandle.WaitOne(500);
@@ -277,17 +266,17 @@ namespace EngineSimRecorder
 
                 if (ct.IsCancellationRequested) return;
 
-                // ── Step 3: Enter dyno mode (press D), keep S held 500ms to prevent stall ──
+                // Step 3: Dyno mode
                 Log("=== STEP 3: Dyno mode ===");
                 KeyboardSim.KeyPress(hwnd, KeyboardSim.VK_D, 120);
-                Log("Pressed D (Dyno ON) - holding S for 500ms to prevent stall...");
+                Log("Pressed D (Dyno ON) - holding S for 500ms...");
                 KeyboardSim.KeyDown(hwnd, KeyboardSim.VK_S);
                 ct.WaitHandle.WaitOne(500);
                 KeyboardSim.KeyUp(hwnd, KeyboardSim.VK_S);
                 Log("Released S");
                 ct.WaitHandle.WaitOne(300);
 
-                // ── Step 4: For each target RPM ──
+                // Step 4: Record each target RPM
                 string prefix = cfg.CustomPrefix ?? "";
                 string carName = cfg.CustomName ?? "";
                 for (int i = 0; i < cfg.TargetRpms.Count; i++)
@@ -297,19 +286,16 @@ namespace EngineSimRecorder
                     int target = cfg.TargetRpms[i];
                     Log($"=== TARGET {i + 1}/{cfg.TargetRpms.Count}: {target} RPM ===");
 
-                    // ── 4a: Hold R to rev up to target RPM ──
                     SetStatus($"Revving to {target} RPM...");
                     Log($"Holding R to rev to {target} RPM...");
-                    backend.SetThrottle(1.0); // starts holding R key
+                    backend.SetThrottle(1.0);
                     WaitForRpm(backend, cfg, target, ct);
                     if (ct.IsCancellationRequested) break;
 
-                    // ── 4b: Press H to hold RPM (R is STILL held) ──
                     Log("Pressing H (Hold RPM) - throttle still held");
                     KeyboardSim.KeyPress(hwnd, KeyboardSim.VK_H, 120);
                     ct.WaitHandle.WaitOne(300);
 
-                    // ── 4c: Record LOAD (R still held, H holding RPM) ──
                     string baseName = string.IsNullOrEmpty(carName) ? "" : $"{prefix}{carName}_";
                     string loadFile = $"{baseName}on_{target}.wav";
                     string loadPath = Path.Combine(cfg.OutputDir, loadFile);
@@ -319,11 +305,10 @@ namespace EngineSimRecorder
                     if (ct.IsCancellationRequested) break;
                     Log($"Saved: {loadPath}");
 
-                    // ── 4d: Release R (depress throttle), 2s gap, then record NO-LOAD ──
                     Log("Releasing R (throttle off) - H still holding");
-                    backend.SetThrottle(0); // releases R key
+                    backend.SetThrottle(0);
                     Log("Waiting 2s for engine to settle...");
-                    ct.WaitHandle.WaitOne(2000); // 2 second gap
+                    ct.WaitHandle.WaitOne(2000);
 
                     string noloadFile = $"{baseName}off_{target}.wav";
                     string noloadPath = Path.Combine(cfg.OutputDir, noloadFile);
@@ -336,33 +321,28 @@ namespace EngineSimRecorder
                     IncProgress();
                     Log($"Target {target} RPM complete!");
 
-                    // ── 4e: Prepare for next RPM ──
-                    // Press R (hold throttle again) + release H
-                    // so the engine slowly revs toward the next target
                     if (i < cfg.TargetRpms.Count - 1)
                     {
                         Log("Pressing R + releasing H -> revving to next target...");
-                        backend.SetThrottle(1.0); // hold R again
+                        backend.SetThrottle(1.0);
                         ct.WaitHandle.WaitOne(100);
-                        KeyboardSim.KeyPress(hwnd, KeyboardSim.VK_H, 120); // release hold
+                        KeyboardSim.KeyPress(hwnd, KeyboardSim.VK_H, 120);
                         ct.WaitHandle.WaitOne(300);
                     }
                     else
                     {
-                        // Last target - release hold
                         KeyboardSim.KeyPress(hwnd, KeyboardSim.VK_H, 120);
                     }
                 }
 
-                // ── Step 5: Shut down ──
+                // Shutdown
                 Log("=== SHUTTING DOWN ===");
                 backend.SetThrottle(0);
                 Thread.Sleep(200);
-                KeyboardSim.KeyPress(hwnd, KeyboardSim.VK_D, 120); // Dyno off
+                KeyboardSim.KeyPress(hwnd, KeyboardSim.VK_D, 120);
                 Thread.Sleep(200);
-                KeyboardSim.KeyPress(hwnd, KeyboardSim.VK_A, 120); // Ignition off
+                KeyboardSim.KeyPress(hwnd, KeyboardSim.VK_A, 120);
                 Log("Engine stopped. All recordings complete!");
-                // Open output folder when recording finishes
                 try { Process.Start("explorer.exe", cfg.OutputDir); }
                 catch { Log("Could not open output folder."); }
             }
@@ -370,31 +350,24 @@ namespace EngineSimRecorder
             catch (Exception ex)
             {
                 Log($"ERROR: {ex.Message}");
-                BeginInvoke(new Action(() =>
-        MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)));
+                Dispatcher.BeginInvoke(() =>
+                    MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error));
             }
             finally
             {
                 try { backend?.SetThrottle(0); } catch { }
                 backend?.Dispose();
-                BeginInvoke(new Action(() =>
+                Dispatcher.BeginInvoke(() =>
                 {
                     _focusMonitor?.Stop();
-                    _focusMonitor?.Dispose();
                     _focusMonitor = null;
-                    lblStatus.ForeColor = SystemColors.ControlText;
-                }));
+                });
                 _engineSimHwnd = IntPtr.Zero;
                 ResetControls();
             }
         }
 
-        // ── Wait for RPM to reach target ──────────────────────────────
-        // Throttle is already being held by the caller.
-        // Just monitors RPM until it's close enough.
-
-        private void WaitForRpm(KeyboardBackend backend, RecorderConfig cfg,
-          int targetRpm, CancellationToken ct)
+        private void WaitForRpm(KeyboardBackend backend, RecorderConfig cfg, int targetRpm, CancellationToken ct)
         {
             var sw = Stopwatch.StartNew();
             while (!ct.IsCancellationRequested)
@@ -403,31 +376,23 @@ namespace EngineSimRecorder
                 if (rpm.HasValue)
                 {
                     SetRpm($"RPM: {rpm.Value:F0}");
-                    // Fire slightly before target to account for H key reaction time (~120ms)
                     if (rpm.Value >= targetRpm - cfg.RpmTolerance - 25)
                     {
                         Log($"Reached {rpm.Value:F0} RPM (target: {targetRpm})");
                         break;
                     }
                 }
-
                 if (sw.Elapsed.TotalSeconds > 30)
                 {
                     double current = backend.ReadRpm() ?? 0;
                     Log($"Warning: timeout revving to {targetRpm} (current: {current:F0})");
                     break;
                 }
-
                 ct.WaitHandle.WaitOne(20);
             }
         }
 
-        // ── Simple audio recording ────────────────────────────────────
-        // Records system audio for the given number of seconds.
-        // Shows RPM in the UI while recording.
-
-        private void RecordAudio(KeyboardBackend backend, string outputPath,
-               RecorderConfig cfg, CancellationToken ct)
+        private void RecordAudio(KeyboardBackend backend, string outputPath, RecorderConfig cfg, CancellationToken ct)
         {
             using var capture = new WasapiLoopbackCapture();
             capture.WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(cfg.SampleRate, cfg.Channels);
@@ -435,10 +400,10 @@ namespace EngineSimRecorder
             var done = new ManualResetEventSlim(false);
 
             capture.DataAvailable += (s, e) =>
-                {
-                    if (e.BytesRecorded > 0)
-                        writer.Write(e.Buffer, 0, e.BytesRecorded);
-                };
+            {
+                if (e.BytesRecorded > 0)
+                    writer.Write(e.Buffer, 0, e.BytesRecorded);
+            };
             capture.RecordingStopped += (s, e) => done.Set();
             capture.StartRecording();
 
@@ -454,7 +419,6 @@ namespace EngineSimRecorder
                     SetRpm($"RPM: {rpm.Value:F0}");
                     SetStatus($"Recording - {rpm.Value:F0} RPM - {elapsed:F1}s / {cfg.RecordSeconds}s");
                 }
-
                 ct.WaitHandle.WaitOne(100);
             }
 
@@ -462,7 +426,7 @@ namespace EngineSimRecorder
             done.Wait(TimeSpan.FromSeconds(5));
         }
 
-        // ── Helpers ────────────────────────────────────────────────────
+        // ── Helpers ──
 
         private string GetPrefix()
         {
@@ -479,26 +443,22 @@ namespace EngineSimRecorder
             public override string ToString() => DisplayName;
         }
 
-        private void Form1_Load(object sender, EventArgs e)
+        private void Window_Loaded(object sender, RoutedEventArgs e)
         {
             _settings = AppSettings.Load();
-
-            // Apply audio settings to UI
             cmbSampleRate.SelectedIndex = _settings.SampleRate == 48000 ? 1 : 0;
             cmbChannels.SelectedIndex = _settings.Channels == 1 ? 1 : 0;
         }
 
-        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
+        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
             _cts?.Cancel();
-
-            // Save settings
             _settings.SampleRate = cmbSampleRate.SelectedIndex == 1 ? 48000 : 44100;
             _settings.Channels = cmbChannels.SelectedIndex == 1 ? 1 : 2;
             _settings.Save();
         }
 
-        // ── Focus monitoring ──────────────────────────────────────────
+        // ── Focus monitor ──
 
         [System.Runtime.InteropServices.DllImport("user32.dll")]
         private static extern IntPtr GetForegroundWindow();
@@ -508,7 +468,7 @@ namespace EngineSimRecorder
             if (_engineSimHwnd == IntPtr.Zero) return;
 
             IntPtr focused = GetForegroundWindow();
-            bool recorderFocused = (focused == this.Handle);
+            bool recorderFocused = (focused == new System.Windows.Interop.WindowInteropHelper(this).Handle);
             bool simFocused = (focused == _engineSimHwnd);
 
             if (!recorderFocused && !simFocused)
@@ -516,8 +476,8 @@ namespace EngineSimRecorder
                 if (!_focusWarned)
                 {
                     _focusWarned = true;
-                    lblStatus.ForeColor = Color.OrangeRed;
-                    Log("⚠ WARNING: Neither Engine Sim nor this window is focused. Click this window or Engine Sim to keep input working.");
+                    lblStatus.Foreground = new SolidColorBrush(Colors.OrangeRed);
+                    Log("⚠ Neither window focused — click this or Engine Sim");
                 }
             }
             else
@@ -525,7 +485,7 @@ namespace EngineSimRecorder
                 if (_focusWarned)
                 {
                     _focusWarned = false;
-                    lblStatus.ForeColor = SystemColors.ControlText;
+                    lblStatus.Foreground = (Brush)FindResource("TextSecondaryBrush");
                 }
             }
         }
