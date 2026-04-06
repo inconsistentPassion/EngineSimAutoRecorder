@@ -325,7 +325,7 @@ namespace EngineSimRecorder
                     {
                         Log("Pressing R + releasing H -> revving to next target...");
                         backend.SetThrottle(1.0);
-                        ct.WaitHandle.WaitOne(30);
+                        ct.WaitHandle.WaitOne(16);
                         KeyboardSim.KeyPress(hwnd, KeyboardSim.VK_H, 120);
                         ct.WaitHandle.WaitOne(300);
                     }
@@ -388,7 +388,7 @@ namespace EngineSimRecorder
                     Log($"Warning: timeout revving to {targetRpm} (current: {current:F0})");
                     break;
                 }
-                ct.WaitHandle.WaitOne(20);
+                ct.WaitHandle.WaitOne(16);
             }
         }
 
@@ -419,7 +419,7 @@ namespace EngineSimRecorder
                     SetRpm($"RPM: {rpm.Value:F0}");
                     SetStatus($"Recording - {rpm.Value:F0} RPM - {elapsed:F1}s / {cfg.RecordSeconds}s");
                 }
-                ct.WaitHandle.WaitOne(30);
+                ct.WaitHandle.WaitOne(16);
             }
 
             capture.StopRecording();
