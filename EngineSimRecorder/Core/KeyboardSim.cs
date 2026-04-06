@@ -107,33 +107,6 @@ namespace EngineSimRecorder.Core
         }
 
         /// <summary>
-        /// Hold a key down for a duration by sending repeated WM_KEYDOWN
-        /// messages (simulating Windows auto-repeat), then release.
-        /// Use this for keys like S (starter) and R (throttle).
-        /// </summary>
-        public static void KeyHold(IntPtr hwnd, ushort vk, int durationMs, int repeatIntervalMs = 30)
-        {
-            uint scanCode = MapVirtualKey(vk, 0);
-
-            // Initial press
-            IntPtr lpDown = MakeLParam(1, scanCode, false, false);
-            PostMessage(hwnd, WM_KEYDOWN, (IntPtr)vk, lpDown);
-
-            // Repeated presses (with previous-key-state = 1, simulating held key)
-            IntPtr lpRepeat = MakeLParam(1, scanCode, false, true);
-            var sw = Stopwatch.StartNew();
-            while (sw.ElapsedMilliseconds < durationMs)
-            {
-                Thread.Sleep(repeatIntervalMs);
-                PostMessage(hwnd, WM_KEYDOWN, (IntPtr)vk, lpRepeat);
-            }
-
-            // Release
-            IntPtr lpUp = MakeLParam(1, scanCode, true, true);
-            PostMessage(hwnd, WM_KEYUP, (IntPtr)vk, lpUp);
-        }
-
-        /// <summary>
         /// Build the lParam for WM_KEYDOWN / WM_KEYUP.
         /// See: https://learn.microsoft.com/en-us/windows/win32/inputdev/wm-keydown
         /// </summary>

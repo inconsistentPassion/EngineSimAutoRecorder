@@ -10,11 +10,10 @@ namespace EngineSimRecorder.Core
         public string CustomName { get; set; } = "";
         public string CustomPrefix { get; set; } = "";
         public List<int> TargetRpms { get; set; } = new();
-        public int RpmTolerance { get; set; } = 50;
+        public int RpmTolerance { get; set; } = 5;
         public int HoldSeconds { get; set; } = 5;
         public int RecordSeconds { get; set; } = 5;
-        public double Kp { get; set; } = 0.005;
-        public double Ki { get; set; } = 0.0001;
-        public double Kd { get; set; } = 0.005;
+        public int SampleRate { get; set; } = 44100;
+        public int Channels { get; set; } = 2; // 1=mono, 2=stereo
     }
 }

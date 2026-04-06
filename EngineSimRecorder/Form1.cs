@@ -19,6 +19,7 @@ namespace EngineSimRecorder
         private System.Windows.Forms.Timer? _focusMonitor;
         private IntPtr _engineSimHwnd = IntPtr.Zero;
         private bool _focusWarned = false;
+        private AppSettings _settings = new();
 
         public Form1()
         {
@@ -36,7 +37,6 @@ namespace EngineSimRecorder
                     lstTargetRpms.Items.Add(rpm);
             }
 
-            // change window title here
             this.Text = "Engine Sim Recorder 1.0.0";
         }
 
@@ -102,6 +102,19 @@ namespace EngineSimRecorder
             lstTargetRpms.Items.Clear();
         }
 
+        private void btnEditRpm_Click(object? sender, EventArgs e)
+        {
+            if (lstTargetRpms.SelectedItem is not int selected) return;
+            int index = lstTargetRpms.SelectedIndex;
+            lstTargetRpms.Items[index] = (int)numRpmList.Value;
+        }
+
+        private void lstTargetRpms_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (lstTargetRpms.SelectedItem is int selected)
+                numRpmList.Value = selected;
+        }
+
         private void btnStart_Click(object sender, EventArgs e)
         {
             if (lstTargetRpms.Items.Count == 0)
@@ -131,7 +144,9 @@ namespace EngineSimRecorder
                 ProcessId = sel.ProcessId,
                 TargetRpms = targets,
                 CustomName = txtCarName.Text.Trim(),
-                CustomPrefix = txtPrefix.Text.Trim(),
+                CustomPrefix = GetPrefix(),
+                SampleRate = cmbSampleRate.SelectedIndex == 1 ? 48000 : 44100,
+                Channels = cmbChannels.SelectedIndex == 1 ? 1 : 2,
             };
 
             btnStart.Enabled = false;
@@ -146,7 +161,6 @@ namespace EngineSimRecorder
         }
 
         private void btnStop_Click(object sender, EventArgs e) => _cts?.Cancel();
-        private void Form1_FormClosing(object sender, FormClosingEventArgs e) => _cts?.Cancel();
 
         private void chkStayOnTop_CheckedChanged(object sender, EventArgs e)
         {
@@ -296,12 +310,12 @@ namespace EngineSimRecorder
                     ct.WaitHandle.WaitOne(300);
 
                     // ── 4c: Record LOAD (R still held, H holding RPM) ──
-                    string baseName = string.IsNullOrEmpty(carName) ? target.ToString() : $"{prefix}{carName}_{target}";
-                    string loadFile = $"{baseName}_on.wav";
+                    string baseName = string.IsNullOrEmpty(carName) ? "" : $"{prefix}{carName}_";
+                    string loadFile = $"{baseName}on_{target}.wav";
                     string loadPath = Path.Combine(cfg.OutputDir, loadFile);
                     SetStatus($"Recording {target} RPM (load)...");
                     Log($"Recording LOAD for {cfg.RecordSeconds}s -> {loadPath}");
-                    RecordAudio(backend, loadPath, cfg.RecordSeconds, ct);
+                    RecordAudio(backend, loadPath, cfg, ct);
                     if (ct.IsCancellationRequested) break;
                     Log($"Saved: {loadPath}");
 
@@ -311,11 +325,11 @@ namespace EngineSimRecorder
                     Log("Waiting 2s for engine to settle...");
                     ct.WaitHandle.WaitOne(2000); // 2 second gap
 
-                    string noloadFile = $"{baseName}_off.wav";
+                    string noloadFile = $"{baseName}off_{target}.wav";
                     string noloadPath = Path.Combine(cfg.OutputDir, noloadFile);
                     SetStatus($"Recording {target} RPM (no load)...");
                     Log($"Recording NO-LOAD for {cfg.RecordSeconds}s -> {noloadPath}");
-                    RecordAudio(backend, noloadPath, cfg.RecordSeconds, ct);
+                    RecordAudio(backend, noloadPath, cfg, ct);
                     if (ct.IsCancellationRequested) break;
                     Log($"Saved: {noloadPath}");
 
@@ -389,7 +403,8 @@ namespace EngineSimRecorder
                 if (rpm.HasValue)
                 {
                     SetRpm($"RPM: {rpm.Value:F0}");
-                    if (rpm.Value >= targetRpm - cfg.RpmTolerance)
+                    // Fire slightly before target to account for H key reaction time (~120ms)
+                    if (rpm.Value >= targetRpm - cfg.RpmTolerance - 25)
                     {
                         Log($"Reached {rpm.Value:F0} RPM (target: {targetRpm})");
                         break;
@@ -403,7 +418,7 @@ namespace EngineSimRecorder
                     break;
                 }
 
-                ct.WaitHandle.WaitOne(50);
+                ct.WaitHandle.WaitOne(20);
             }
         }
 
@@ -412,10 +427,10 @@ namespace EngineSimRecorder
         // Shows RPM in the UI while recording.
 
         private void RecordAudio(KeyboardBackend backend, string outputPath,
-               int seconds, CancellationToken ct)
+               RecorderConfig cfg, CancellationToken ct)
         {
             using var capture = new WasapiLoopbackCapture();
-            capture.WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(44100, 2);
+            capture.WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(cfg.SampleRate, cfg.Channels);
             using var writer = new WaveFileWriter(outputPath, capture.WaveFormat);
             var done = new ManualResetEventSlim(false);
 
@@ -431,13 +446,13 @@ namespace EngineSimRecorder
             while (!ct.IsCancellationRequested)
             {
                 double elapsed = (DateTime.UtcNow - start).TotalSeconds;
-                if (elapsed >= seconds) break;
+                if (elapsed >= cfg.RecordSeconds) break;
 
                 double? rpm = backend.ReadRpm();
                 if (rpm.HasValue)
                 {
                     SetRpm($"RPM: {rpm.Value:F0}");
-                    SetStatus($"Recording - {rpm.Value:F0} RPM - {elapsed:F1}s / {seconds}s");
+                    SetStatus($"Recording - {rpm.Value:F0} RPM - {elapsed:F1}s / {cfg.RecordSeconds}s");
                 }
 
                 ct.WaitHandle.WaitOne(100);
@@ -449,6 +464,13 @@ namespace EngineSimRecorder
 
         // ── Helpers ────────────────────────────────────────────────────
 
+        private string GetPrefix()
+        {
+            string p = txtPrefix.Text.Trim();
+            if (string.IsNullOrEmpty(p)) return "";
+            return p.EndsWith("_") ? p : p + "_";
+        }
+
         private sealed class ProcessItem
         {
             public int ProcessId { get; }
@@ -459,7 +481,21 @@ namespace EngineSimRecorder
 
         private void Form1_Load(object sender, EventArgs e)
         {
+            _settings = AppSettings.Load();
 
+            // Apply audio settings to UI
+            cmbSampleRate.SelectedIndex = _settings.SampleRate == 48000 ? 1 : 0;
+            cmbChannels.SelectedIndex = _settings.Channels == 1 ? 1 : 0;
+        }
+
+        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            _cts?.Cancel();
+
+            // Save settings
+            _settings.SampleRate = cmbSampleRate.SelectedIndex == 1 ? 48000 : 44100;
+            _settings.Channels = cmbChannels.SelectedIndex == 1 ? 1 : 2;
+            _settings.Save();
         }
 
         // ── Focus monitoring ──────────────────────────────────────────
