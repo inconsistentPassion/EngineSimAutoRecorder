@@ -110,23 +110,49 @@ void SetupHooks() {
     std::cout << "--- Pattern Scanning ---\n";
     Memory::WriteLog("Base", Memory::getBase());
 
-    uintptr_t ignitionModFunc = Memory::FindPatternIDA(
+    const char* ignitionPattern =
         "40 53 48 81 EC ? ? ? ? 44 0F 29 54 24 ? 48 8B D9 48 8B 49 60 "
         "44 0F 29 4C 24 ? 45 0F 57 C9 44 0F 29 6C 24 ? 44 0F 28 E9 "
-        "0F 57 C9 E8 ? ? ? ?");
+        "0F 57 C9 E8 ? ? ? ?";
 
-    uintptr_t processFunc = Memory::FindPatternIDA(
+    const char* processPattern =
         "48 8B C4 48 89 58 10 48 89 70 18 48 89 78 20 55 41 54 41 55 "
         "41 56 41 57 48 8D 68 A1 48 81 EC ? ? ? ? 0F 29 70 C8 0F 29 78 B8 "
-        "44 0F 29 40 ? 44");
+        "44 0F 29 40 ? 44";
+
+    // Find all matches — reject if ambiguous (more than 1 match)
+    auto ignitionMatches = Memory::FindPatternAll(ignitionPattern);
+    auto processMatches = Memory::FindPatternAll(processPattern);
+
+    std::cout << "[+] Ignition pattern: " << ignitionMatches.size() << " match(es)\n";
+    std::cout << "[+] SimProcess pattern: " << processMatches.size() << " match(es)\n";
+
+    if (ignitionMatches.size() != 1) {
+        std::cout << "[!] ERROR: Expected 1 ignition match, got " << ignitionMatches.size()
+                  << " — wrong Engine Simulator version?\n";
+        return;
+    }
+    if (processMatches.size() != 1) {
+        std::cout << "[!] ERROR: Expected 1 SimProcess match, got " << processMatches.size()
+                  << " — wrong Engine Simulator version?\n";
+        return;
+    }
+
+    uintptr_t ignitionModFunc = ignitionMatches[0];
+    uintptr_t processFunc = processMatches[0];
+
+    // Validate function prologs — catch cases where the pattern matched data, not code
+    if (!Memory::ValidateFunctionProlog(ignitionModFunc)) {
+        std::cout << "[!] WARNING: Ignition match at 0x" << std::hex << ignitionModFunc
+                  << " doesn't look like a function prolog\n";
+    }
+    if (!Memory::ValidateFunctionProlog(processFunc)) {
+        std::cout << "[!] WARNING: SimProcess match at 0x" << std::hex << processFunc
+                  << " doesn't look like a function prolog\n";
+    }
 
     Memory::WriteLog("Ignition Module", ignitionModFunc);
     Memory::WriteLog("SimProcess", processFunc);
-
-    if (!ignitionModFunc || !processFunc) {
-        std::cout << "[!] Critical pattern not found — wrong Engine Simulator version?\n";
-        return;
-    }
 
     // ── SAFETY: Suspend all game threads before patching ─────────────
     // Without this, MinHook writes a JMP instruction over the function

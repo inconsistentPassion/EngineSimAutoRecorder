@@ -52,8 +52,8 @@ static void PipeServerLoop() {
         while (pipeRunning.load()) {
         DWORD now = GetTickCount();
 
-    // ── Send RPM every 50ms ──────────────────────────────────
-        if (now - lastRpmSend >= 50) {
+    // ── Send RPM every 10ms (~100Hz) ──────────────────────────
+        if (now - lastRpmSend >= 10) {
     MsgRpmUpdate msg;
       msg.type = MSG_RPM_UPDATE;
          msg.rpm = State::currentRpm.load();

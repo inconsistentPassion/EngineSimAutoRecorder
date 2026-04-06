@@ -37,6 +37,7 @@ namespace EngineSimRecorder.Backends.Keyboard
      [DllImport("kernel32.dll", SetLastError = true)] private static extern bool WriteProcessMemory(IntPtr h, IntPtr a, byte[] b, uint s, out int w);
         [DllImport("kernel32.dll")] private static extern IntPtr CreateRemoteThread(IntPtr h, IntPtr a, uint s, IntPtr fp, IntPtr p, uint c, out IntPtr tid);
         [DllImport("kernel32.dll")] private static extern uint WaitForSingleObject(IntPtr h, uint ms);
+        [DllImport("kernel32.dll")] private static extern bool GetExitCodeThread(IntPtr h, out uint exitCode);
         [DllImport("kernel32.dll", SetLastError = true)] private static extern bool VirtualFreeEx(IntPtr h, IntPtr a, uint s, uint t);
    [DllImport("kernel32.dll")] private static extern bool CloseHandle(IntPtr h);
 
@@ -96,11 +97,10 @@ Hwnd = KeyboardSim.FindMainWindow(cfg.ProcessId);
       if (!InjectDll(cfg.ProcessId, dllPath))
     return false;
 
-   log("Waiting for hook initialization (5s)...");
-  ct.WaitHandle.WaitOne(5000);
-
-         // 3. Connect pipe (for RPM data only)
-    if (!ConnectPipe())
+   // 3. Connect pipe with retry — the DLL creates the pipe server,
+   //    so we need to wait for it to be ready
+   log("Connecting to hook pipe...");
+  if (!ConnectPipeWithRetry(ct, maxAttempts: 10, delayMs: 500))
     return false;
 
 // 4. Start background RPM reader
@@ -171,96 +171,122 @@ Hwnd = KeyboardSim.FindMainWindow(cfg.ProcessId);
         _pipe = null;
       }
 
-  // ?? Throttle hold thread ??????????????????????????????????????
+  // Throttle hold thread
         // Engine Sim throttle (R key) is binary: held = full throttle, released = idle.
- // This thread sends repeated WM_KEYDOWN when throttle is "on" so the
-        // game sees the key as continuously held.
+        // Send KeyDown once when throttle is requested, repeat every 200ms as a
+        // safety net in case the game drops the key state. KeyUp on release.
 
         private void ThrottleHoldLoop()
         {
-      uint scanCode = 0;
-   bool wasHeld = false;
+            bool wasHeld = false;
 
             while (_throttleRunning)
-     {
-      bool shouldHold;
-      lock (_throttleLock) { shouldHold = _throttleKeyHeld; }
+            {
+                bool shouldHold;
+                lock (_throttleLock) { shouldHold = _throttleKeyHeld; }
 
-  if (shouldHold)
-       {
-     if (!wasHeld)
-             {
-             // Initial key down
-   KeyboardSim.KeyDown(Hwnd, KeyboardSim.VK_R);
-     wasHeld = true;
-  }
-           else
-    {
-            // Repeat key down (simulates held key)
-      KeyboardSim.KeyDown(Hwnd, KeyboardSim.VK_R);
-        }
-      Thread.Sleep(20); // ~50 repeats/sec
+                if (shouldHold)
+                {
+                    if (!wasHeld)
+                    {
+                        KeyboardSim.KeyDown(Hwnd, KeyboardSim.VK_R);
+                        wasHeld = true;
+                    }
+                    // Safety repeat every 200ms — not 20ms, that floods the input buffer
+                    Thread.Sleep(200);
                 }
-       else
-   {
-       if (wasHeld)
-   {
-            KeyboardSim.KeyUp(Hwnd, KeyboardSim.VK_R);
-            wasHeld = false;
-              }
-          Thread.Sleep(20);
-    }
-       }
+                else
+                {
+                    if (wasHeld)
+                    {
+                        KeyboardSim.KeyUp(Hwnd, KeyboardSim.VK_R);
+                        wasHeld = false;
+                    }
+                    Thread.Sleep(50);
+                }
+            }
 
             // Cleanup
- if (wasHeld)
-  KeyboardSim.KeyUp(Hwnd, KeyboardSim.VK_R);
+            if (wasHeld)
+                KeyboardSim.KeyUp(Hwnd, KeyboardSim.VK_R);
         }
 
-  // ?? RPM reader thread ?????????????????????????????????????????
+  // RPM reader thread
 
         private void RpmReaderLoop()
         {
             byte[] buf = new byte[64];
             while (_rpmReaderRunning)
             {
-         if (_pipe == null || !_pipe.IsConnected) { Thread.Sleep(100); continue; }
-        try
-         {
-   int n;
-          lock (_pipeLock) { n = _pipe.Read(buf, 0, buf.Length); }
+                if (_pipe == null || !_pipe.IsConnected)
+                {
+                    Thread.Sleep(100);
+                    continue;
+                }
+                try
+                {
+                    int n;
+                    lock (_pipeLock)
+                    {
+                        if (_pipe == null || !_pipe.IsConnected) continue;
+                        n = _pipe.Read(buf, 0, buf.Length);
+                    }
                     if (n >= 9 && buf[0] == MSG_RPM_UPDATE)
-  {
-            double rpm = BitConverter.ToDouble(buf, 1);
-   lock (_rpmLock) { _latestRpm = rpm; }
-   }
-          }
-          catch (Exception ex)
-             {
- _log?.Invoke($"RPM reader error: {ex.Message}");
-          Thread.Sleep(100);
-      }
+                    {
+                        double rpm = BitConverter.ToDouble(buf, 1);
+                        lock (_rpmLock) { _latestRpm = rpm; }
+                    }
+                    else if (n == 0)
+                    {
+                        // Pipe disconnected
+                        _log?.Invoke("RPM pipe disconnected.");
+                        Thread.Sleep(100);
+                    }
+                }
+                catch (IOException)
+                {
+                    // Pipe broken — will reconnect on next iteration
+                    Thread.Sleep(100);
+                }
+                catch (Exception ex)
+                {
+                    _log?.Invoke($"RPM reader error: {ex.Message}");
+                    Thread.Sleep(100);
+                }
             }
         }
 
-// ?? Pipe connection (RPM only) ????????????????????????????????
+// Pipe connection (RPM only)
 
-   private bool ConnectPipe(int timeoutMs = 15000)
+        private bool ConnectPipeWithRetry(CancellationToken ct, int maxAttempts = 10, int delayMs = 500)
+        {
+            for (int attempt = 1; attempt <= maxAttempts; attempt++)
+            {
+                if (ct.IsCancellationRequested) return false;
+                _log?.Invoke($"Pipe connection attempt {attempt}/{maxAttempts}...");
+                if (ConnectPipe(2000)) return true;
+                if (attempt < maxAttempts) ct.WaitHandle.WaitOne(delayMs);
+            }
+            _log?.Invoke("ERROR: Could not connect to hook pipe after all attempts.");
+            return false;
+        }
+
+        private bool ConnectPipe(int timeoutMs = 5000)
         {
             try
-   {
-        _pipe = new NamedPipeClientStream(".", PIPE_NAME, PipeDirection.InOut, PipeOptions.None);
-          _log?.Invoke("Connecting to hook pipe...");
-          _pipe.Connect(timeoutMs);
-   _pipe.ReadMode = PipeTransmissionMode.Message;
-      _log?.Invoke("Connected to pipe (message mode) for RPM");
-     return true;
-     }
+            {
+                _pipe?.Dispose();
+                _pipe = new NamedPipeClientStream(".", PIPE_NAME, PipeDirection.InOut, PipeOptions.None);
+                _pipe.Connect(timeoutMs);
+                _pipe.ReadMode = PipeTransmissionMode.Message;
+                _log?.Invoke("Connected to pipe (message mode) for RPM");
+                return true;
+            }
             catch (Exception ex)
-      {
-     _log?.Invoke($"Pipe connection failed: {ex.Message}");
-      return false;
-  }
+            {
+                _log?.Invoke($"Pipe connection failed: {ex.Message}");
+                return false;
+            }
         }
 
   // ?? DLL Injection ?????????????????????????????????????????????
@@ -297,11 +323,31 @@ Hwnd = KeyboardSim.FindMainWindow(cfg.ProcessId);
   return false;
      }
 
-            WaitForSingleObject(thread, 5000);
+            // Wait for LoadLibraryA to complete and check result
+            uint waitResult = WaitForSingleObject(thread, 10000);
+            if (waitResult != 0x00000000) // WAIT_OBJECT_0
+            {
+                _log?.Invoke($"Remote thread wait failed: 0x{waitResult:X} (timeout or error)");
+                CloseHandle(thread);
+                VirtualFreeEx(hProc, mem, 0, 0x8000); // MEM_RELEASE
+                CloseHandle(hProc);
+                return false;
+            }
+
+            // LoadLibraryA returns HMODULE (non-zero on success)
+            if (!GetExitCodeThread(thread, out uint exitCode) || exitCode == 0)
+            {
+                _log?.Invoke($"DLL init failed — LoadLibraryA returned 0x{exitCode:X} (bad path or missing deps?)");
+                CloseHandle(thread);
+                VirtualFreeEx(hProc, mem, 0, 0x8000);
+                CloseHandle(hProc);
+                return false;
+            }
+
     VirtualFreeEx(hProc, mem, 0, 0x8000);
 CloseHandle(thread);
             CloseHandle(hProc);
-    _log?.Invoke($"DLL injected into PID {pid}");
+    _log?.Invoke($"DLL injected into PID {pid} (module base: 0x{exitCode:X})");
     return true;
 }
     }
