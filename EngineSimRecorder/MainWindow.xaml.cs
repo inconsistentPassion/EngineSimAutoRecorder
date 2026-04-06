@@ -489,5 +489,15 @@ namespace EngineSimRecorder
                 }
             }
         }
+
+        private void pbarProgress_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+
+        }
+
+        private void cmbChannels_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+
+        }
     }
 }
