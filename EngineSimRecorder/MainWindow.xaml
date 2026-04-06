@@ -63,7 +63,6 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <!-- ── Header ── -->
@@ -77,7 +76,7 @@
         </StackPanel>
 
         <!-- ── Tab Control ── -->
-        <TabControl Grid.Row="1" Margin="0,0,0,6">
+        <TabControl Grid.Row="1" Margin="0,0,0,0">
             <TabControl.Resources>
                 <Style TargetType="TabItem">
                     <Setter Property="FontSize" Value="12.5" />
@@ -294,12 +293,6 @@
                 </Grid>
             </TabItem>
         </TabControl>
-
-        <!-- ── Footer ── -->
-        <Border Grid.Row="2" Background="#F0F0F2" Margin="-20,4,-20,-8" Padding="20,4">
-            <TextBlock Text="Engine Simulator Auto-Recorder v2.0 Alpha"
-                       FontSize="11" Foreground="{StaticResource TextMutedBrush}" />
-        </Border>
 
     </Grid>
 </Window>
