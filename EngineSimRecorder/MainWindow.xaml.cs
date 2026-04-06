@@ -552,6 +552,7 @@ namespace EngineSimRecorder
             cmbChannels.SelectedIndex = _settings.Channels == 1 ? 1 : 0;
             rbInterior.IsChecked = _settings.InteriorMode;
             rbExterior.IsChecked = !_settings.InteriorMode;
+            pnlCutoff.Visibility = _settings.InteriorMode ? Visibility.Visible : Visibility.Collapsed;
             cmbCutoffFreq.SelectedIndex = _settings.CutoffFreq switch
             {
                 400 => 0, 600 => 1, 800 => 2, 1000 => 3, 1200 => 4, _ => 2
@@ -729,5 +730,11 @@ namespace EngineSimRecorder
 
 
         private void cmbChannels_SelectionChanged(object sender, SelectionChangedEventArgs e) { }
+
+        private void rbMode_Checked(object sender, RoutedEventArgs e)
+        {
+            if (pnlCutoff != null)
+                pnlCutoff.Visibility = rbInterior.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        }
     }
 }

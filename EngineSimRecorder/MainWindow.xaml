@@ -337,12 +337,14 @@
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                     <RadioButton x:Name="rbExterior" Content=" Exterior" IsChecked="True"
                                                  GroupName="RecMode" FontSize="12" Margin="0,0,20,0"
-                                                 Foreground="{StaticResource TextSecondaryBrush}" />
+                                                 Foreground="{StaticResource TextSecondaryBrush}"
+                                                 Checked="rbMode_Checked" />
                                     <RadioButton x:Name="rbInterior" Content=" Interior (low-pass)"
                                                  GroupName="RecMode" FontSize="12"
-                                                 Foreground="{StaticResource TextSecondaryBrush}" />
+                                                 Foreground="{StaticResource TextSecondaryBrush}"
+                                                 Checked="rbMode_Checked" />
                                 </StackPanel>
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,8,0,0">
+                                <StackPanel x:Name="pnlCutoff" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,8,0,0" Visibility="Collapsed">
                                     <TextBlock Text="Cutoff freq:" VerticalAlignment="Center" FontSize="12"
                                                Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,6,0" />
                                     <ComboBox x:Name="cmbCutoffFreq" Width="120" FontSize="12">
