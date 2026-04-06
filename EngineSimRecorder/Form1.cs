@@ -94,24 +94,6 @@ namespace EngineSimRecorder
             lstTargetRpms.Items.Clear();
         }
 
-        private void lstTargetRpms_SelectedIndexChanged(object? sender, EventArgs e)
-        {
-            if (lstTargetRpms.SelectedItem is int rpm)
-                numRpmList.Value = rpm;
-        }
-
-        private void lstTargetRpms_DoubleClick(object? sender, EventArgs e)
-        {
-            numRpmList.Focus();
-        }
-
-        private void btnReplaceRpm_Click(object sender, EventArgs e)
-        {
-            if (lstTargetRpms.SelectedIndex < 0) return;
-            int newRpm = (int)numRpmList.Value;
-            lstTargetRpms.Items[lstTargetRpms.SelectedIndex] = newRpm;
-        }
-
         private void btnStart_Click(object sender, EventArgs e)
         {
             if (lstTargetRpms.Items.Count == 0)
@@ -304,7 +286,7 @@ namespace EngineSimRecorder
                     ct.WaitHandle.WaitOne(300);
 
                     // ── 4c: Record LOAD (R still held, H holding RPM) ──
-                    string loadFile = namePrefix != null ? $"{namePrefix}_on_{target}.wav" : $"{target}_load.wav";
+                    string loadFile = namePrefix != null ? $"{namePrefix}_on_{target}.wav" : $"{target}_on.wav";
                     string loadPath = Path.Combine(cfg.OutputDir, loadFile);
                     SetStatus($"Recording {target} RPM (load)...");
                     Log($"Recording LOAD for {cfg.RecordSeconds}s -> {loadPath}");
@@ -318,7 +300,7 @@ namespace EngineSimRecorder
                     Log("Waiting 2s for engine to settle...");
                     ct.WaitHandle.WaitOne(2000); // 2 second gap
 
-                    string noloadFile = namePrefix != null ? $"{namePrefix}_off_{target}.wav" : $"{target}_noload.wav";
+                    string noloadFile = namePrefix != null ? $"{namePrefix}_off_{target}.wav" : $"{target}_off.wav";
                     string noloadPath = Path.Combine(cfg.OutputDir, noloadFile);
                     SetStatus($"Recording {target} RPM (no load)...");
                     Log($"Recording NO-LOAD for {cfg.RecordSeconds}s -> {noloadPath}");

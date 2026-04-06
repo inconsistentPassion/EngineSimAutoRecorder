@@ -50,7 +50,6 @@
             btnPreset8k = new Button();
             btnSortRpm = new Button();
             btnClearRpm = new Button();
-            btnReplaceRpm = new Button();
             ctxRpm = new ContextMenuStrip();
             ctxRpmRemove = new ToolStripMenuItem();
             grpProcess.SuspendLayout();
@@ -219,7 +218,6 @@
             grpRpm.Controls.Add(btnAddRpm);
             grpRpm.Controls.Add(btnSortRpm);
             grpRpm.Controls.Add(btnClearRpm);
-            grpRpm.Controls.Add(btnReplaceRpm);
             grpRpm.Controls.Add(lblTargetRpms);
             grpRpm.Location = new Point(17, 333);
             grpRpm.Margin = new Padding(4, 5, 4, 5);
@@ -331,8 +329,6 @@
             lstTargetRpms.Name = "lstTargetRpms";
             lstTargetRpms.Size = new Size(490, 129);
             lstTargetRpms.TabIndex = 1;
-            lstTargetRpms.DoubleClick += lstTargetRpms_DoubleClick;
-            lstTargetRpms.SelectedIndexChanged += lstTargetRpms_SelectedIndexChanged;
             // 
             // btnAddRpm
             // 
@@ -373,16 +369,6 @@
             btnClearRpm.TabIndex = 6;
             btnClearRpm.Text = "Clear All";
             btnClearRpm.Click += btnClearRpm_Click;
-            // 
-            // btnReplaceRpm
-            // 
-            btnReplaceRpm.Location = new Point(510, 175);
-            btnReplaceRpm.Margin = new Padding(4, 5, 4, 5);
-            btnReplaceRpm.Name = "btnReplaceRpm";
-            btnReplaceRpm.Size = new Size(280, 42);
-            btnReplaceRpm.TabIndex = 7;
-            btnReplaceRpm.Text = "Replace Selected";
-            btnReplaceRpm.Click += btnReplaceRpm_Click;
             // 
             // lblTargetRpms
             // 
@@ -564,7 +550,6 @@
         private System.Windows.Forms.Button btnPreset8k;
         private System.Windows.Forms.Button btnSortRpm;
         private System.Windows.Forms.Button btnClearRpm;
-        private System.Windows.Forms.Button btnReplaceRpm;
         private System.Windows.Forms.ContextMenuStrip ctxRpm;
         private System.Windows.Forms.ToolStripMenuItem ctxRpmRemove;
     }
