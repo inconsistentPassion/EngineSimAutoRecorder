@@ -199,7 +199,7 @@ Hwnd = KeyboardSim.FindMainWindow(cfg.ProcessId);
             // Repeat key down (simulates held key)
       KeyboardSim.KeyDown(Hwnd, KeyboardSim.VK_R);
         }
-      Thread.Sleep(30); // ~33 repeats/sec, similar to real keyboard repeat rate
+      Thread.Sleep(20); // ~50 repeats/sec
                 }
        else
    {
@@ -208,7 +208,7 @@ Hwnd = KeyboardSim.FindMainWindow(cfg.ProcessId);
             KeyboardSim.KeyUp(Hwnd, KeyboardSim.VK_R);
             wasHeld = false;
               }
-          Thread.Sleep(30);
+          Thread.Sleep(20);
     }
        }
 

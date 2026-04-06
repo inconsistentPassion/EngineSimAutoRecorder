@@ -296,8 +296,8 @@ namespace EngineSimRecorder
                     ct.WaitHandle.WaitOne(300);
 
                     // ── 4c: Record LOAD (R still held, H holding RPM) ──
-                    string baseName = string.IsNullOrEmpty(carName) ? target.ToString() : $"{prefix}{carName}_{target}";
-                    string loadFile = $"{baseName}_on.wav";
+                    string baseName = string.IsNullOrEmpty(carName) ? "" : $"{prefix}{carName}_";
+                    string loadFile = $"{baseName}on_{target}.wav";
                     string loadPath = Path.Combine(cfg.OutputDir, loadFile);
                     SetStatus($"Recording {target} RPM (load)...");
                     Log($"Recording LOAD for {cfg.RecordSeconds}s -> {loadPath}");
@@ -311,7 +311,7 @@ namespace EngineSimRecorder
                     Log("Waiting 2s for engine to settle...");
                     ct.WaitHandle.WaitOne(2000); // 2 second gap
 
-                    string noloadFile = $"{baseName}_off.wav";
+                    string noloadFile = $"{baseName}off_{target}.wav";
                     string noloadPath = Path.Combine(cfg.OutputDir, noloadFile);
                     SetStatus($"Recording {target} RPM (no load)...");
                     Log($"Recording NO-LOAD for {cfg.RecordSeconds}s -> {noloadPath}");
@@ -377,18 +377,33 @@ namespace EngineSimRecorder
 
         // ── Wait for RPM to reach target ──────────────────────────────
         // Throttle is already being held by the caller.
-        // Just monitors RPM until it's close enough.
+        // Releases throttle early (at ~90% of target) so RPM coasts
+        // into the target instead of overshooting.
 
         private void WaitForRpm(KeyboardBackend backend, RecorderConfig cfg,
           int targetRpm, CancellationToken ct)
         {
             var sw = Stopwatch.StartNew();
+            bool throttleReleased = false;
+
+            // Release throttle when RPM reaches this % of target — lets it coast in
+            double earlyReleaseThreshold = targetRpm * 0.90;
+
             while (!ct.IsCancellationRequested)
             {
                 double? rpm = backend.ReadRpm();
                 if (rpm.HasValue)
                 {
                     SetRpm($"RPM: {rpm.Value:F0}");
+
+                    // Early throttle release — let RPM coast to target
+                    if (!throttleReleased && rpm.Value >= earlyReleaseThreshold)
+                    {
+                        backend.SetThrottle(0);
+                        throttleReleased = true;
+                        Log($"Released throttle at {rpm.Value:F0} RPM, coasting to {targetRpm}...");
+                    }
+
                     if (rpm.Value >= targetRpm - cfg.RpmTolerance)
                     {
                         Log($"Reached {rpm.Value:F0} RPM (target: {targetRpm})");
@@ -403,7 +418,7 @@ namespace EngineSimRecorder
                     break;
                 }
 
-                ct.WaitHandle.WaitOne(50);
+                ct.WaitHandle.WaitOne(20);
             }
         }
 
