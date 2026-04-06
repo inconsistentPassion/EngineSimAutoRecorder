@@ -22,7 +22,7 @@ namespace EngineSimRecorder
         private DispatcherTimer? _focusMonitor;
         private DispatcherTimer? _progressTimer;
         private Stopwatch? _progressSw;
-        private double _progressEstSec;
+        private double _progressDurationSec;
         private IntPtr _engineSimHwnd = IntPtr.Zero;
         private bool _focusWarned = false;
         private AppSettings _settings = new();
@@ -167,15 +167,8 @@ namespace EngineSimRecorder
             btnStop.IsEnabled = true;
             pbarProgress.BeginAnimation(ProgressBar.ValueProperty, null);
             pbarProgress.Value = 0;
-            pbarProgress.Maximum = 1;
+            pbarProgress.Foreground = (Brush)FindResource("AccentBrush");
             txtLog.Text = "";
-
-            // Estimate total duration: startup ~3s + per-target (~4s RPM wait + hold + 2x recording + settle)
-            _progressEstSec = 3.0 + targets.Count * (4.0 + 0.5 + 2 * cfg.RecordSeconds + 2.0 + 0.3);
-            _progressSw = Stopwatch.StartNew();
-            _progressTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(80) };
-            _progressTimer.Tick += ProgressTimer_Tick;
-            _progressTimer.Start();
 
             _cts = new CancellationTokenSource();
             _workerTask = Task.Run(() => RunAsync(cfg, _cts.Token));
@@ -203,26 +196,50 @@ namespace EngineSimRecorder
         private void SetStatus(string t) => Dispatcher.BeginInvoke(() => lblStatus.Text = t);
         private void SetRpm(string t) => Dispatcher.BeginInvoke(() => lblCurrentRpm.Text = t);
 
-        private void ProgressTimer_Tick(object? sender, EventArgs e)
+        private void StartRecProgress(double durationSec)
         {
-            if (_progressSw == null) return;
-            double fraction = Math.Min(_progressSw.Elapsed.TotalSeconds / _progressEstSec, 0.98);
-            var anim = new System.Windows.Media.Animation.DoubleAnimation(
-                fraction,
-                new System.Windows.Duration(TimeSpan.FromMilliseconds(80)));
-            pbarProgress.BeginAnimation(ProgressBar.ValueProperty, anim);
+            Dispatcher.BeginInvoke(() =>
+            {
+                _progressDurationSec = durationSec;
+                pbarProgress.BeginAnimation(ProgressBar.ValueProperty, null);
+                pbarProgress.Value = 0;
+                _progressSw = Stopwatch.StartNew();
+                _progressTimer?.Stop();
+                _progressTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(60) };
+                _progressTimer.Tick += ProgressTimer_Tick;
+                _progressTimer.Start();
+            });
         }
 
-        private void StopProgressTimer()
+        private void StopRecProgress()
         {
             Dispatcher.BeginInvoke(() =>
             {
                 _progressTimer?.Stop();
                 _progressTimer = null;
-                // Snap to 100%
+                pbarProgress.BeginAnimation(ProgressBar.ValueProperty, null);
+                pbarProgress.Value = 0;
+            });
+        }
+
+        private void FinishRecProgress()
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                _progressTimer?.Stop();
+                _progressTimer = null;
                 pbarProgress.BeginAnimation(ProgressBar.ValueProperty, null);
                 pbarProgress.Value = 1;
+                pbarProgress.Foreground = (Brush)FindResource("DoneBrush");
             });
+        }
+
+        private void ProgressTimer_Tick(object? sender, EventArgs e)
+        {
+            if (_progressSw == null || _progressDurationSec <= 0) return;
+            double fraction = Math.Min(_progressSw.Elapsed.TotalSeconds / _progressDurationSec, 1.0);
+            var anim = new DoubleAnimation(fraction, new Duration(TimeSpan.FromMilliseconds(60)));
+            pbarProgress.BeginAnimation(ProgressBar.ValueProperty, anim);
         }
 
         private void ResetControls() => Dispatcher.BeginInvoke(() =>
@@ -386,6 +403,7 @@ namespace EngineSimRecorder
                 Thread.Sleep(200);
                 KeyboardSim.KeyPress(hwnd, KeyboardSim.VK_A, 120);
                 Log("Engine stopped. All recordings complete!");
+                FinishRecProgress();
                 try { Process.Start("explorer.exe", cfg.OutputDir); }
                 catch { Log("Could not open output folder."); }
             }
@@ -406,7 +424,7 @@ namespace EngineSimRecorder
                     _focusMonitor = null;
                 });
                 _engineSimHwnd = IntPtr.Zero;
-                StopProgressTimer();
+                StopRecProgress();
                 ResetControls();
             }
         }
@@ -441,6 +459,8 @@ namespace EngineSimRecorder
             capture.WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(cfg.SampleRate, cfg.Channels);
             using var writer = new WaveFileWriter(outputPath, capture.WaveFormat);
             var done = new ManualResetEventSlim(false);
+
+            StartRecProgress(cfg.RecordSeconds);
 
             capture.DataAvailable += (s, e) =>
             {

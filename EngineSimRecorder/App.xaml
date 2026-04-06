@@ -11,6 +11,9 @@
         <Color x:Key="AccentHoverColor">#106EBE</Color>
         <SolidColorBrush x:Key="AccentHoverBrush" Color="{StaticResource AccentHoverColor}" />
 
+        <!-- Done -->
+        <SolidColorBrush x:Key="DoneBrush" Color="#22C55E" />
+
         <!-- Danger -->
         <Color x:Key="DangerColor">#C82828</Color>
         <SolidColorBrush x:Key="DangerBrush" Color="{StaticResource DangerColor}" />
