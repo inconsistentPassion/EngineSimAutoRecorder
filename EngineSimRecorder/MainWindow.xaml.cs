@@ -161,6 +161,7 @@ namespace EngineSimRecorder
 
             btnStart.IsEnabled = false;
             btnStop.IsEnabled = true;
+            pbarProgress.BeginAnimation(ProgressBar.ValueProperty, null);
             pbarProgress.Value = 0;
             pbarProgress.Maximum = targets.Count;
             txtLog.Text = "";
@@ -191,7 +192,16 @@ namespace EngineSimRecorder
         private void SetStatus(string t) => Dispatcher.BeginInvoke(() => lblStatus.Text = t);
         private void SetRpm(string t) => Dispatcher.BeginInvoke(() => lblCurrentRpm.Text = t);
         private void IncProgress() => Dispatcher.BeginInvoke(() =>
-            pbarProgress.Value = Math.Min(pbarProgress.Value + 1, pbarProgress.Maximum));
+        {
+            double target = Math.Min(pbarProgress.Value + 1, pbarProgress.Maximum);
+            var anim = new System.Windows.Media.Animation.DoubleAnimation(
+                target,
+                new System.Windows.Duration(TimeSpan.FromMilliseconds(400)),
+                FillBehavior.HoldEnd);
+            anim.EasingFunction = new System.Windows.Media.Animation.CubicEase
+                { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut };
+            pbarProgress.BeginAnimation(ProgressBar.ValueProperty, anim);
+        });
         private void ResetControls() => Dispatcher.BeginInvoke(() =>
         {
             btnStart.IsEnabled = true;
@@ -627,7 +637,7 @@ namespace EngineSimRecorder
             }
         }
 
-        private void pbarProgress_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e) { }
+
         private void cmbChannels_SelectionChanged(object sender, SelectionChangedEventArgs e) { }
     }
 }
