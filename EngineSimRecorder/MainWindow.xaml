@@ -175,6 +175,12 @@
                                     <Button Content="6K" Style="{StaticResource ChipButton}" Click="btnPreset_Click" Margin="3,0,0,0" />
                                     <Button Content="7K" Style="{StaticResource ChipButton}" Click="btnPreset_Click" Margin="3,0,0,0" />
                                     <Button Content="8K" Style="{StaticResource ChipButton}" Click="btnPreset_Click" Margin="3,0,0,0" />
+                                    <Button Content="9K" Style="{StaticResource ChipButton}" Click="btnPreset_Click" Margin="3,0,0,0" />
+                                    <Button Content="10K" Style="{StaticResource ChipButton}" Click="btnPreset_Click" Margin="3,0,0,0" />
+                                    <Button Content="11K" Style="{StaticResource ChipButton}" Click="btnPreset_Click" Margin="3,0,0,0" />
+                                    <Button Content="12K" Style="{StaticResource ChipButton}" Click="btnPreset_Click" Margin="3,0,0,0" />
+                                    <Button Content="13K" Style="{StaticResource ChipButton}" Click="btnPreset_Click" Margin="3,0,0,0" />
+                                    <Button Content="14K" Style="{StaticResource ChipButton}" Click="btnPreset_Click" Margin="3,0,0,0" />
                                 </StackPanel>
 
                                 <!-- List + Controls -->
