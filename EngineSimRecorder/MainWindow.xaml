@@ -19,8 +19,7 @@
                     <ControlTemplate TargetType="ScrollBar">
                         <Grid>
                             <Track x:Name="PART_Track"
-                                   IsDirectionReversed="True"
-                                   Background="Transparent">
+                                   IsDirectionReversed="True">
                                 <Track.Thumb>
                                     <Thumb>
                                         <Thumb.Template>
