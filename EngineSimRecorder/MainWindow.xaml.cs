@@ -608,6 +608,25 @@ namespace EngineSimRecorder
             }
         }
 
+        private void btnNudgeUp_Click(object sender, RoutedEventArgs e)
+        {
+            if (lstTargetRpms.SelectedItem is int selected)
+            {
+                int idx = lstTargetRpms.SelectedIndex;
+                lstTargetRpms.Items[idx] = selected + 250;
+            }
+        }
+
+        private void btnNudgeDown_Click(object sender, RoutedEventArgs e)
+        {
+            if (lstTargetRpms.SelectedItem is int selected)
+            {
+                int idx = lstTargetRpms.SelectedIndex;
+                int newVal = selected - 250;
+                if (newVal > 0) lstTargetRpms.Items[idx] = newVal;
+            }
+        }
+
         private void pbarProgress_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e) { }
         private void cmbChannels_SelectionChanged(object sender, SelectionChangedEventArgs e) { }
     }

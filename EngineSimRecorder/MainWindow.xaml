@@ -191,13 +191,23 @@
                                     </Grid.ColumnDefinitions>
 
                                     <ListBox x:Name="lstTargetRpms" Grid.Column="0"
-                                             FontFamily="Consolas" FontSize="12"
+                                             FontFamily="Consolas" FontSize="11"
                                              BorderThickness="1" BorderBrush="{StaticResource ButtonBorderBrush}"
                                              SelectionChanged="lstTargetRpms_SelectionChanged"
-                                             MouseDoubleClick="btnEditRpm_Click" Margin="0,10,0,0" />
+                                             MouseDoubleClick="btnEditRpm_Click" Margin="0,10,0,0"
+                                             MaxHeight="160" />
 
                                     <StackPanel Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Top">
-                                        <TextBlock Text="RPM value" FontSize="10" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,2" />
+                                        <!-- Quick adjust -->
+                                        <TextBlock Text="Quick Edit" FontSize="10" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,2" />
+                                        <StackPanel Orientation="Horizontal">
+                                            <Button Content="-250" Style="{StaticResource FlatButton}" FontSize="11"
+                                                    Click="btnNudgeDown_Click" Width="60" />
+                                            <Button Content="+250" Style="{StaticResource FlatButton}" FontSize="11"
+                                                    Margin="3,0,0,0" Click="btnNudgeUp_Click" Width="60" />
+                                        </StackPanel>
+
+                                        <TextBlock Text="RPM value" FontSize="10" Foreground="{StaticResource TextMutedBrush}" Margin="0,8,0,2" />
                                         <TextBox x:Name="txtRpmInput" Text="1000" Width="142" FontFamily="Consolas" FontSize="12" />
                                         <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                                             <Button Content="Add" Style="{StaticResource AccentButton}" FontSize="11" Click="btnAddRpm_Click" Width="70" />
