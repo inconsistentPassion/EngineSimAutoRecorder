@@ -52,10 +52,17 @@
                         <TextBlock Text="⏺  Recorder" />
                     </StackPanel>
                 </TabItem.Header>
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel Margin="4,6,4,4">
+                <Grid Margin="4,6,4,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
 
-                        <!-- ══ Process ══ -->
+                    <!-- Scrollable content -->
+                    <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="0,0,0,8">
+
+                            <!-- ══ Process ══ -->
                         <GroupBox>
                             <GroupBox.Header>
                                 <TextBlock Text="▸  Process" FontSize="13" FontWeight="SemiBold" />
@@ -221,8 +228,11 @@
                             </StackPanel>
                         </GroupBox>
 
-                        <!-- ══ Actions ══ -->
-                        <StackPanel Orientation="Horizontal" Margin="4,4,0,8">
+                    </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- ══ Actions (pinned bottom) ══ -->
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,8,0,8">
                             <Button x:Name="btnStart" Content="▶  Start"
                                     Style="{StaticResource BigStartButton}" Click="btnStart_Click" />
                             <Button x:Name="btnStop" Content="■  Stop"
@@ -232,10 +242,8 @@
                                       VerticalAlignment="Center" Margin="180,0,0,0"
                                       Foreground="{StaticResource TextSecondaryBrush}"
                                       Checked="chkStayOnTop_Changed" Unchecked="chkStayOnTop_Changed" />
-                        </StackPanel>
-
                     </StackPanel>
-                </ScrollViewer>
+                </Grid>
             </TabItem>
 
             <!-- ══ Tab 2: Log ══ -->
