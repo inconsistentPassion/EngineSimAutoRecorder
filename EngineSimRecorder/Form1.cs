@@ -72,6 +72,28 @@ namespace EngineSimRecorder
             if (lstTargetRpms.SelectedItem != null) lstTargetRpms.Items.Remove(lstTargetRpms.SelectedItem);
         }
 
+        private void btnPreset_Click(object? sender, EventArgs e)
+        {
+            if (sender is Button btn && int.TryParse(btn.Text.Replace("K", "000"), out int rpm))
+            {
+                if (!lstTargetRpms.Items.Contains(rpm)) lstTargetRpms.Items.Add(rpm);
+            }
+        }
+
+        private void btnSortRpm_Click(object sender, EventArgs e)
+        {
+            var items = new List<int>();
+            foreach (var item in lstTargetRpms.Items) items.Add(Convert.ToInt32(item));
+            items.Sort();
+            lstTargetRpms.Items.Clear();
+            foreach (var rpm in items) lstTargetRpms.Items.Add(rpm);
+        }
+
+        private void btnClearRpm_Click(object sender, EventArgs e)
+        {
+            lstTargetRpms.Items.Clear();
+        }
+
         private void btnStart_Click(object sender, EventArgs e)
         {
             if (lstTargetRpms.Items.Count == 0)

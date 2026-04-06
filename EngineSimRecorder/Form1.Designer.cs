@@ -40,6 +40,18 @@
             chkStayOnTop = new CheckBox();
             lblCarName = new Label();
             txtCarName = new TextBox();
+            btnPreset1k = new Button();
+            btnPreset2k = new Button();
+            btnPreset3k = new Button();
+            btnPreset4k = new Button();
+            btnPreset5k = new Button();
+            btnPreset6k = new Button();
+            btnPreset7k = new Button();
+            btnPreset8k = new Button();
+            btnSortRpm = new Button();
+            btnClearRpm = new Button();
+            ctxRpm = new ContextMenuStrip();
+            ctxRpmRemove = new ToolStripMenuItem();
             grpProcess.SuspendLayout();
             grpCapture.SuspendLayout();
             grpRpm.SuspendLayout();
@@ -177,26 +189,129 @@
             txtCarName.TabIndex = 4;
             txtCarName.PlaceholderText = "e.g. supra_mk4";
             // 
+            // ctxRpm
+            // 
+            ctxRpm.Items.AddRange(new ToolStripItem[] { ctxRpmRemove });
+            ctxRpm.Name = "ctxRpm";
+            ctxRpm.Size = new Size(158, 34);
+            // 
+            // ctxRpmRemove
+            // 
+            ctxRpmRemove.Name = "ctxRpmRemove";
+            ctxRpmRemove.Size = new Size(157, 34);
+            ctxRpmRemove.Text = "Remove";
+            ctxRpmRemove.Click += btnRemoveRpm_Click;
+            // 
             // grpRpm
             // 
+            grpRpm.Controls.Add(btnPreset1k);
+            grpRpm.Controls.Add(btnPreset2k);
+            grpRpm.Controls.Add(btnPreset3k);
+            grpRpm.Controls.Add(btnPreset4k);
+            grpRpm.Controls.Add(btnPreset5k);
+            grpRpm.Controls.Add(btnPreset6k);
+            grpRpm.Controls.Add(btnPreset7k);
+            grpRpm.Controls.Add(btnPreset8k);
             grpRpm.Controls.Add(numRpmList);
             grpRpm.Controls.Add(lstTargetRpms);
             grpRpm.Controls.Add(btnRemoveRpm);
             grpRpm.Controls.Add(btnAddRpm);
+            grpRpm.Controls.Add(btnSortRpm);
+            grpRpm.Controls.Add(btnClearRpm);
             grpRpm.Controls.Add(lblTargetRpms);
             grpRpm.Location = new Point(17, 333);
             grpRpm.Margin = new Padding(4, 5, 4, 5);
             grpRpm.Name = "grpRpm";
             grpRpm.Padding = new Padding(4, 5, 4, 5);
-            grpRpm.Size = new Size(800, 167);
+            grpRpm.Size = new Size(800, 240);
             grpRpm.TabIndex = 3;
             grpRpm.TabStop = false;
             grpRpm.Text = "RPM Targets";
             // 
+            // btnPreset1k
+            // 
+            btnPreset1k.Location = new Point(9, 33);
+            btnPreset1k.Margin = new Padding(4, 5, 4, 5);
+            btnPreset1k.Name = "btnPreset1k";
+            btnPreset1k.Size = new Size(64, 35);
+            btnPreset1k.TabIndex = 10;
+            btnPreset1k.Text = "1K";
+            btnPreset1k.Click += btnPreset_Click;
+            // 
+            // btnPreset2k
+            // 
+            btnPreset2k.Location = new Point(79, 33);
+            btnPreset2k.Margin = new Padding(4, 5, 4, 5);
+            btnPreset2k.Name = "btnPreset2k";
+            btnPreset2k.Size = new Size(64, 35);
+            btnPreset2k.TabIndex = 11;
+            btnPreset2k.Text = "2K";
+            btnPreset2k.Click += btnPreset_Click;
+            // 
+            // btnPreset3k
+            // 
+            btnPreset3k.Location = new Point(149, 33);
+            btnPreset3k.Margin = new Padding(4, 5, 4, 5);
+            btnPreset3k.Name = "btnPreset3k";
+            btnPreset3k.Size = new Size(64, 35);
+            btnPreset3k.TabIndex = 12;
+            btnPreset3k.Text = "3K";
+            btnPreset3k.Click += btnPreset_Click;
+            // 
+            // btnPreset4k
+            // 
+            btnPreset4k.Location = new Point(219, 33);
+            btnPreset4k.Margin = new Padding(4, 5, 4, 5);
+            btnPreset4k.Name = "btnPreset4k";
+            btnPreset4k.Size = new Size(64, 35);
+            btnPreset4k.TabIndex = 13;
+            btnPreset4k.Text = "4K";
+            btnPreset4k.Click += btnPreset_Click;
+            // 
+            // btnPreset5k
+            // 
+            btnPreset5k.Location = new Point(289, 33);
+            btnPreset5k.Margin = new Padding(4, 5, 4, 5);
+            btnPreset5k.Name = "btnPreset5k";
+            btnPreset5k.Size = new Size(64, 35);
+            btnPreset5k.TabIndex = 14;
+            btnPreset5k.Text = "5K";
+            btnPreset5k.Click += btnPreset_Click;
+            // 
+            // btnPreset6k
+            // 
+            btnPreset6k.Location = new Point(359, 33);
+            btnPreset6k.Margin = new Padding(4, 5, 4, 5);
+            btnPreset6k.Name = "btnPreset6k";
+            btnPreset6k.Size = new Size(64, 35);
+            btnPreset6k.TabIndex = 15;
+            btnPreset6k.Text = "6K";
+            btnPreset6k.Click += btnPreset_Click;
+            // 
+            // btnPreset7k
+            // 
+            btnPreset7k.Location = new Point(429, 33);
+            btnPreset7k.Margin = new Padding(4, 5, 4, 5);
+            btnPreset7k.Name = "btnPreset7k";
+            btnPreset7k.Size = new Size(64, 35);
+            btnPreset7k.TabIndex = 16;
+            btnPreset7k.Text = "7K";
+            btnPreset7k.Click += btnPreset_Click;
+            // 
+            // btnPreset8k
+            // 
+            btnPreset8k.Location = new Point(499, 33);
+            btnPreset8k.Margin = new Padding(4, 5, 4, 5);
+            btnPreset8k.Name = "btnPreset8k";
+            btnPreset8k.Size = new Size(64, 35);
+            btnPreset8k.TabIndex = 17;
+            btnPreset8k.Text = "8K";
+            btnPreset8k.Click += btnPreset_Click;
+            // 
             // numRpmList
             // 
             numRpmList.Increment = new decimal(new int[] { 500, 0, 0, 0 });
-            numRpmList.Location = new Point(286, 67);
+            numRpmList.Location = new Point(510, 82);
             numRpmList.Margin = new Padding(4, 5, 4, 5);
             numRpmList.Maximum = new decimal(new int[] { 30000, 0, 0, 0 });
             numRpmList.Minimum = new decimal(new int[] { 100, 0, 0, 0 });
@@ -207,32 +322,53 @@
             // 
             // lstTargetRpms
             // 
+            lstTargetRpms.ContextMenuStrip = ctxRpm;
             lstTargetRpms.ItemHeight = 25;
-            lstTargetRpms.Location = new Point(9, 67);
+            lstTargetRpms.Location = new Point(9, 80);
             lstTargetRpms.Margin = new Padding(4, 5, 4, 5);
             lstTargetRpms.Name = "lstTargetRpms";
-            lstTargetRpms.Size = new Size(255, 79);
+            lstTargetRpms.Size = new Size(490, 129);
             lstTargetRpms.TabIndex = 1;
-            // 
-            // btnRemoveRpm
-            // 
-            btnRemoveRpm.Location = new Point(529, 67);
-            btnRemoveRpm.Margin = new Padding(4, 5, 4, 5);
-            btnRemoveRpm.Name = "btnRemoveRpm";
-            btnRemoveRpm.Size = new Size(100, 42);
-            btnRemoveRpm.TabIndex = 2;
-            btnRemoveRpm.Text = "Remove";
-            btnRemoveRpm.Click += btnRemoveRpm_Click;
             // 
             // btnAddRpm
             // 
-            btnAddRpm.Location = new Point(429, 67);
+            btnAddRpm.Location = new Point(649, 75);
             btnAddRpm.Margin = new Padding(4, 5, 4, 5);
             btnAddRpm.Name = "btnAddRpm";
-            btnAddRpm.Size = new Size(86, 42);
+            btnAddRpm.Size = new Size(70, 42);
             btnAddRpm.TabIndex = 3;
             btnAddRpm.Text = "Add";
             btnAddRpm.Click += btnAddRpm_Click;
+            // 
+            // btnRemoveRpm
+            // 
+            btnRemoveRpm.Location = new Point(725, 75);
+            btnRemoveRpm.Margin = new Padding(4, 5, 4, 5);
+            btnRemoveRpm.Name = "btnRemoveRpm";
+            btnRemoveRpm.Size = new Size(65, 42);
+            btnRemoveRpm.TabIndex = 2;
+            btnRemoveRpm.Text = "Del";
+            btnRemoveRpm.Click += btnRemoveRpm_Click;
+            // 
+            // btnSortRpm
+            // 
+            btnSortRpm.Location = new Point(510, 125);
+            btnSortRpm.Margin = new Padding(4, 5, 4, 5);
+            btnSortRpm.Name = "btnSortRpm";
+            btnSortRpm.Size = new Size(129, 42);
+            btnSortRpm.TabIndex = 5;
+            btnSortRpm.Text = "Sort ↑";
+            btnSortRpm.Click += btnSortRpm_Click;
+            // 
+            // btnClearRpm
+            // 
+            btnClearRpm.Location = new Point(649, 125);
+            btnClearRpm.Margin = new Padding(4, 5, 4, 5);
+            btnClearRpm.Name = "btnClearRpm";
+            btnClearRpm.Size = new Size(141, 42);
+            btnClearRpm.TabIndex = 6;
+            btnClearRpm.Text = "Clear All";
+            btnClearRpm.Click += btnClearRpm_Click;
             // 
             // lblTargetRpms
             // 
@@ -240,16 +376,15 @@
             lblTargetRpms.Location = new Point(9, 37);
             lblTargetRpms.Margin = new Padding(4, 0, 4, 0);
             lblTargetRpms.Name = "lblTargetRpms";
-            lblTargetRpms.Size = new Size(114, 25);
+            lblTargetRpms.Size = new Size(0, 25);
             lblTargetRpms.TabIndex = 4;
-            lblTargetRpms.Text = "Target RPMs:";
             // 
             // grpStatus
             // 
             grpStatus.Controls.Add(pbarProgress);
             grpStatus.Controls.Add(lblCurrentRpm);
             grpStatus.Controls.Add(lblStatus);
-            grpStatus.Location = new Point(17, 513);
+            grpStatus.Location = new Point(17, 586);
             grpStatus.Margin = new Padding(4, 5, 4, 5);
             grpStatus.Name = "grpStatus";
             grpStatus.Padding = new Padding(4, 5, 4, 5);
@@ -292,7 +427,7 @@
             txtLog.BackColor = Color.Black;
             txtLog.Font = new Font("Consolas", 8.25F);
             txtLog.ForeColor = Color.LimeGreen;
-            txtLog.Location = new Point(17, 647);
+            txtLog.Location = new Point(17, 720);
             txtLog.Margin = new Padding(4, 5, 4, 5);
             txtLog.Multiline = true;
             txtLog.Name = "txtLog";
@@ -306,7 +441,7 @@
             btnStart.BackColor = Color.ForestGreen;
             btnStart.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             btnStart.ForeColor = Color.White;
-            btnStart.Location = new Point(17, 913);
+            btnStart.Location = new Point(17, 986);
             btnStart.Margin = new Padding(4, 5, 4, 5);
             btnStart.Name = "btnStart";
             btnStart.Size = new Size(264, 60);
@@ -321,7 +456,7 @@
             btnStop.Enabled = false;
             btnStop.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             btnStop.ForeColor = Color.White;
-            btnStop.Location = new Point(303, 913);
+            btnStop.Location = new Point(303, 986);
             btnStop.Margin = new Padding(4, 5, 4, 5);
             btnStop.Name = "btnStop";
             btnStop.Size = new Size(264, 60);
@@ -333,7 +468,7 @@
             // chkStayOnTop
             // 
             chkStayOnTop.AutoSize = true;
-            chkStayOnTop.Location = new Point(686, 944);
+            chkStayOnTop.Location = new Point(686, 1017);
             chkStayOnTop.Margin = new Padding(4, 5, 4, 5);
             chkStayOnTop.Name = "chkStayOnTop";
             chkStayOnTop.Size = new Size(131, 29);
@@ -346,7 +481,7 @@
             // 
             AutoScaleDimensions = new SizeF(10F, 25F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(834, 993);
+            ClientSize = new Size(834, 1066);
             Controls.Add(chkStayOnTop);
             Controls.Add(btnStop);
             Controls.Add(btnStart);
@@ -405,5 +540,17 @@
         private System.Windows.Forms.CheckBox chkStayOnTop;
         private System.Windows.Forms.Label lblCarName;
         private System.Windows.Forms.TextBox txtCarName;
+        private System.Windows.Forms.Button btnPreset1k;
+        private System.Windows.Forms.Button btnPreset2k;
+        private System.Windows.Forms.Button btnPreset3k;
+        private System.Windows.Forms.Button btnPreset4k;
+        private System.Windows.Forms.Button btnPreset5k;
+        private System.Windows.Forms.Button btnPreset6k;
+        private System.Windows.Forms.Button btnPreset7k;
+        private System.Windows.Forms.Button btnPreset8k;
+        private System.Windows.Forms.Button btnSortRpm;
+        private System.Windows.Forms.Button btnClearRpm;
+        private System.Windows.Forms.ContextMenuStrip ctxRpm;
+        private System.Windows.Forms.ToolStripMenuItem ctxRpmRemove;
     }
 }
