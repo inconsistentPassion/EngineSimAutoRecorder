@@ -252,7 +252,7 @@ namespace EngineSimRecorder
                     KeyboardSim.KeyDown(hwnd, KeyboardSim.VK_S);
                     double? rpm = backend.ReadRpm();
                     if (rpm.HasValue) SetRpm($"RPM: {rpm.Value:F0}");
-                    ct.WaitHandle.WaitOne(50);
+                    ct.WaitHandle.WaitOne(16);
                 }
                 KeyboardSim.KeyUp(hwnd, KeyboardSim.VK_S);
                 Log("Released S (Starter)");
@@ -325,7 +325,7 @@ namespace EngineSimRecorder
                     {
                         Log("Pressing R + releasing H -> revving to next target...");
                         backend.SetThrottle(1.0);
-                        ct.WaitHandle.WaitOne(100);
+                        ct.WaitHandle.WaitOne(30);
                         KeyboardSim.KeyPress(hwnd, KeyboardSim.VK_H, 120);
                         ct.WaitHandle.WaitOne(300);
                     }
@@ -419,7 +419,7 @@ namespace EngineSimRecorder
                     SetRpm($"RPM: {rpm.Value:F0}");
                     SetStatus($"Recording - {rpm.Value:F0} RPM - {elapsed:F1}s / {cfg.RecordSeconds}s");
                 }
-                ct.WaitHandle.WaitOne(100);
+                ct.WaitHandle.WaitOne(30);
             }
 
             capture.StopRecording();
