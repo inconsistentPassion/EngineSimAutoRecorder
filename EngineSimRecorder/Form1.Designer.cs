@@ -20,8 +20,8 @@
             cmbProcess = new ComboBox();
             lblProcess = new Label();
             grpCapture = new GroupBox();
-            btnBrowseOutput = new Button();
             btnOpenOutput = new Button();
+            btnBrowseOutput = new Button();
             txtOutputDir = new TextBox();
             lblOutputDir = new Label();
             grpRpm = new GroupBox();
@@ -114,6 +114,17 @@
             grpCapture.TabStop = false;
             grpCapture.Text = "Output";
             // 
+            // btnOpenOutput
+            // 
+            btnOpenOutput.Font = new Font("Segoe UI", 12F);
+            btnOpenOutput.Location = new Point(720, 33);
+            btnOpenOutput.Margin = new Padding(4, 5, 4, 5);
+            btnOpenOutput.Name = "btnOpenOutput";
+            btnOpenOutput.Size = new Size(60, 42);
+            btnOpenOutput.TabIndex = 3;
+            btnOpenOutput.Text = "📂";
+            btnOpenOutput.Click += btnOpenOutput_Click;
+            // 
             // btnBrowseOutput
             // 
             btnBrowseOutput.Location = new Point(600, 33);
@@ -124,23 +135,12 @@
             btnBrowseOutput.Text = "Browse…";
             btnBrowseOutput.Click += btnBrowseOutput_Click;
             // 
-            // btnOpenOutput
-            // 
-            btnOpenOutput.Location = new Point(720, 33);
-            btnOpenOutput.Margin = new Padding(4, 5, 4, 5);
-            btnOpenOutput.Name = "btnOpenOutput";
-            btnOpenOutput.Size = new Size(60, 42);
-            btnOpenOutput.TabIndex = 3;
-            btnOpenOutput.Text = "📂";
-            btnOpenOutput.Font = new Font("Segoe UI", 12F);
-            btnOpenOutput.Click += btnOpenOutput_Click;
-            // 
             // txtOutputDir
             // 
-            txtOutputDir.Location = new Point(114, 35);
+            txtOutputDir.Location = new Point(114, 37);
             txtOutputDir.Margin = new Padding(4, 5, 4, 5);
             txtOutputDir.Name = "txtOutputDir";
-            txtOutputDir.Size = new Size(541, 31);
+            txtOutputDir.Size = new Size(478, 31);
             txtOutputDir.TabIndex = 1;
             txtOutputDir.Text = "recordings";
             // 
@@ -298,10 +298,10 @@
             btnStop.Enabled = false;
             btnStop.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             btnStop.ForeColor = Color.White;
-            btnStop.Location = new Point(546, 873);
+            btnStop.Location = new Point(303, 873);
             btnStop.Margin = new Padding(4, 5, 4, 5);
             btnStop.Name = "btnStop";
-            btnStop.Size = new Size(249, 60);
+            btnStop.Size = new Size(264, 60);
             btnStop.TabIndex = 0;
             btnStop.Text = "■  Stop";
             btnStop.UseVisualStyleBackColor = false;
@@ -310,10 +310,10 @@
             // chkStayOnTop
             // 
             chkStayOnTop.AutoSize = true;
-            chkStayOnTop.Location = new Point(300, 885);
+            chkStayOnTop.Location = new Point(686, 904);
             chkStayOnTop.Margin = new Padding(4, 5, 4, 5);
             chkStayOnTop.Name = "chkStayOnTop";
-            chkStayOnTop.Size = new Size(212, 29);
+            chkStayOnTop.Size = new Size(131, 29);
             chkStayOnTop.TabIndex = 6;
             chkStayOnTop.Text = "Stay on Top";
             chkStayOnTop.UseVisualStyleBackColor = true;
