@@ -38,41 +38,56 @@ namespace EngineSimRecorder.Core
 
         /// <param name="sampleRate">Recording sample rate (44100 or 48000)</param>
         /// <param name="channels">1 = mono, 2 = stereo</param>
-        /// <param name="cutoffHz">Low-pass cutoff: 1500–3000</param>
-        /// <param name="width">Stereo width: 0.2 (narrow) to 1.0 (original)</param>
+        /// <param name="cutoffHz">Low-pass cutoff: 1000–4000</param>
+        /// <param name="width">Stereo width: 0.1 (narrow) to 1.0 (original)</param>
+        /// <param name="rumbleHz">Rumble boost center freq</param>
+        /// <param name="rumbleDb">Rumble boost gain in dB</param>
+        /// <param name="res1Hz">Resonance 1 center freq</param>
+        /// <param name="res1Db">Resonance 1 gain in dB</param>
+        /// <param name="res2Hz">Resonance 2 center freq</param>
+        /// <param name="res2Db">Resonance 2 gain in dB</param>
+        /// <param name="reverbMs">Reverb delay in ms</param>
+        /// <param name="reverbMix">Reverb wet mix 0–1</param>
+        /// <param name="compRatio">Compressor ratio</param>
+        /// <param name="compThreshDb">Compressor threshold in dB</param>
         public InteriorProcessor(int sampleRate, int channels,
-            float cutoffHz = 2000f, float width = 0.3f)
+            float cutoffHz = 2000f, float width = 0.3f,
+            float rumbleHz = 80f, float rumbleDb = 6f,
+            float res1Hz = 180f, float res1Db = 5f,
+            float res2Hz = 350f, float res2Db = 4f,
+            float reverbMs = 30f, float reverbMix = 0.07f,
+            float compRatio = 3f, float compThreshDb = -12f)
         {
             _channels = channels;
             _stereoWidth = width;
 
-            // 1. Structure-borne rumble — boost at 80 Hz
-            _rumble = NAudio.Dsp.BiQuadFilter.PeakingEQ(sampleRate, 80f, 1.2f, 6f);
+            // 1. Structure-borne rumble
+            _rumble = NAudio.Dsp.BiQuadFilter.PeakingEQ(sampleRate, rumbleHz, 1.2f, rumbleDb);
 
-            // 2. Cabin resonance — boost at 180 Hz
-            _res180 = NAudio.Dsp.BiQuadFilter.PeakingEQ(sampleRate, 180f, 1.5f, 5f);
+            // 2. Cabin resonance — boost at res1 Hz
+            _res180 = NAudio.Dsp.BiQuadFilter.PeakingEQ(sampleRate, res1Hz, 1.5f, res1Db);
 
-            // 3. Cabin resonance — boost at 350 Hz
-            _res350 = NAudio.Dsp.BiQuadFilter.PeakingEQ(sampleRate, 350f, 1.8f, 4f);
+            // 3. Cabin resonance — boost at res2 Hz
+            _res350 = NAudio.Dsp.BiQuadFilter.PeakingEQ(sampleRate, res2Hz, 1.8f, res2Db);
 
             // 4. Low-pass
             _lpf = NAudio.Dsp.BiQuadFilter.LowPassFilter(sampleRate, cutoffHz, 0.707f);
 
             // 5. Compressor settings
-            _compThreshold = DbToLinear(-12f);
-            _compRatio = 3f;
+            _compThreshold = DbToLinear(compThreshDb);
+            _compRatio = compRatio;
             _compAttack = 1f - (float)Math.Exp(-1.0 / (sampleRate * 0.015));  // ~15 ms
             _compRelease = 1f - (float)Math.Exp(-1.0 / (sampleRate * 0.080)); // ~80 ms
             _envL = 0f;
             _envR = 0f;
 
-            // 7. Reverb — ~30 ms comb filter
-            int delaySamples = (int)(sampleRate * 0.030);
+            // 7. Reverb — comb filter
+            int delaySamples = Math.Max(1, (int)(sampleRate * reverbMs / 1000f));
             _reverbBufL = new float[delaySamples];
             _reverbBufR = new float[delaySamples];
             _reverbPos = 0;
             _reverbFeedback = 0.25f;
-            _reverbMix = 0.07f;
+            _reverbMix = reverbMix;
         }
 
         /// <summary>

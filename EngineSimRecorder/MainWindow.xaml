@@ -344,17 +344,179 @@
                                                  Foreground="{StaticResource TextSecondaryBrush}"
                                                  Checked="rbMode_Checked" />
                                 </StackPanel>
-                                <StackPanel x:Name="pnlCutoff" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,8,0,0" Visibility="Collapsed">
-                                    <TextBlock Text="Car type:" VerticalAlignment="Center" FontSize="12"
-                                               Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,6,0" />
-                                    <ComboBox x:Name="cmbCarType" Width="140" FontSize="12">
-                                        <ComboBoxItem Content="Sedan" IsSelected="True" />
-                                        <ComboBoxItem Content="Coupe" />
-                                        <ComboBoxItem Content="SUV" />
-                                        <ComboBoxItem Content="Hatchback" />
-                                        <ComboBoxItem Content="Supercar" />
-                                        <ComboBoxItem Content="Truck" />
-                                    </ComboBox>
+                                <StackPanel x:Name="pnlCutoff" Margin="0,8,0,0" Visibility="Collapsed">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock Text="Car type:" VerticalAlignment="Center" FontSize="12"
+                                                   Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,6,0" />
+                                        <ComboBox x:Name="cmbCarType" Width="140" FontSize="12"
+                                                  SelectionChanged="cmbCarType_SelectionChanged">
+                                            <ComboBoxItem Content="Sedan" IsSelected="True" />
+                                            <ComboBoxItem Content="Coupe" />
+                                            <ComboBoxItem Content="SUV" />
+                                            <ComboBoxItem Content="Hatchback" />
+                                            <ComboBoxItem Content="Supercar" />
+                                            <ComboBoxItem Content="Truck" />
+                                            <ComboBoxItem Content="Custom" />
+                                        </ComboBox>
+                                    </StackPanel>
+
+                                    <!-- Custom parameter sliders -->
+                                    <Border x:Name="pnlCustom" Visibility="Collapsed"
+                                            Background="#F8F8FA" CornerRadius="6" Padding="10,8" Margin="0,8,0,0"
+                                            BorderBrush="#E0E0E4" BorderThickness="1">
+                                        <StackPanel>
+                                            <TextBlock Text="Cabin acoustics" FontSize="11" FontWeight="SemiBold"
+                                                       Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,6" />
+
+                                            <!-- LP Cutoff -->
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                <TextBlock Text="LP cutoff" Width="80" FontSize="11" VerticalAlignment="Center"
+                                                           Foreground="{StaticResource TextSecondaryBrush}" />
+                                                <Slider x:Name="slCutoff" Minimum="1000" Maximum="4000" Value="2000"
+                                                        Width="140" TickFrequency="100" IsSnapToTickEnabled="True"
+                                                        SmallChange="100" LargeChange="500" VerticalAlignment="Center"
+                                                        ValueChanged="slCustom_ValueChanged" />
+                                                <TextBlock x:Name="lblCutoff" Text="2000 Hz" Width="60" FontSize="11"
+                                                           VerticalAlignment="Center" Foreground="{StaticResource TextMutedBrush}" />
+                                            </StackPanel>
+
+                                            <!-- Rumble freq -->
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                <TextBlock Text="Rumble Hz" Width="80" FontSize="11" VerticalAlignment="Center"
+                                                           Foreground="{StaticResource TextSecondaryBrush}" />
+                                                <Slider x:Name="slRumbleHz" Minimum="40" Maximum="120" Value="80"
+                                                        Width="140" TickFrequency="5" IsSnapToTickEnabled="True"
+                                                        SmallChange="5" LargeChange="20" VerticalAlignment="Center"
+                                                        ValueChanged="slCustom_ValueChanged" />
+                                                <TextBlock x:Name="lblRumbleHz" Text="80 Hz" Width="60" FontSize="11"
+                                                           VerticalAlignment="Center" Foreground="{StaticResource TextMutedBrush}" />
+                                            </StackPanel>
+
+                                            <!-- Rumble dB -->
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                <TextBlock Text="Rumble dB" Width="80" FontSize="11" VerticalAlignment="Center"
+                                                           Foreground="{StaticResource TextSecondaryBrush}" />
+                                                <Slider x:Name="slRumbleDb" Minimum="0" Maximum="12" Value="6"
+                                                        Width="140" TickFrequency="1" IsSnapToTickEnabled="True"
+                                                        SmallChange="1" LargeChange="3" VerticalAlignment="Center"
+                                                        ValueChanged="slCustom_ValueChanged" />
+                                                <TextBlock x:Name="lblRumbleDb" Text="+6 dB" Width="60" FontSize="11"
+                                                           VerticalAlignment="Center" Foreground="{StaticResource TextMutedBrush}" />
+                                            </StackPanel>
+
+                                            <!-- Res 180 Hz -->
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                <TextBlock Text="Res 1 Hz" Width="80" FontSize="11" VerticalAlignment="Center"
+                                                           Foreground="{StaticResource TextSecondaryBrush}" />
+                                                <Slider x:Name="slRes1Hz" Minimum="100" Maximum="300" Value="180"
+                                                        Width="140" TickFrequency="10" IsSnapToTickEnabled="True"
+                                                        SmallChange="10" LargeChange="50" VerticalAlignment="Center"
+                                                        ValueChanged="slCustom_ValueChanged" />
+                                                <TextBlock x:Name="lblRes1Hz" Text="180 Hz" Width="60" FontSize="11"
+                                                           VerticalAlignment="Center" Foreground="{StaticResource TextMutedBrush}" />
+                                            </StackPanel>
+
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                <TextBlock Text="Res 1 dB" Width="80" FontSize="11" VerticalAlignment="Center"
+                                                           Foreground="{StaticResource TextSecondaryBrush}" />
+                                                <Slider x:Name="slRes1Db" Minimum="0" Maximum="10" Value="5"
+                                                        Width="140" TickFrequency="1" IsSnapToTickEnabled="True"
+                                                        SmallChange="1" LargeChange="2" VerticalAlignment="Center"
+                                                        ValueChanged="slCustom_ValueChanged" />
+                                                <TextBlock x:Name="lblRes1Db" Text="+5 dB" Width="60" FontSize="11"
+                                                           VerticalAlignment="Center" Foreground="{StaticResource TextMutedBrush}" />
+                                            </StackPanel>
+
+                                            <!-- Res 350 Hz -->
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                <TextBlock Text="Res 2 Hz" Width="80" FontSize="11" VerticalAlignment="Center"
+                                                           Foreground="{StaticResource TextSecondaryBrush}" />
+                                                <Slider x:Name="slRes2Hz" Minimum="200" Maximum="500" Value="350"
+                                                        Width="140" TickFrequency="10" IsSnapToTickEnabled="True"
+                                                        SmallChange="10" LargeChange="50" VerticalAlignment="Center"
+                                                        ValueChanged="slCustom_ValueChanged" />
+                                                <TextBlock x:Name="lblRes2Hz" Text="350 Hz" Width="60" FontSize="11"
+                                                           VerticalAlignment="Center" Foreground="{StaticResource TextMutedBrush}" />
+                                            </StackPanel>
+
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                <TextBlock Text="Res 2 dB" Width="80" FontSize="11" VerticalAlignment="Center"
+                                                           Foreground="{StaticResource TextSecondaryBrush}" />
+                                                <Slider x:Name="slRes2Db" Minimum="0" Maximum="8" Value="4"
+                                                        Width="140" TickFrequency="1" IsSnapToTickEnabled="True"
+                                                        SmallChange="1" LargeChange="2" VerticalAlignment="Center"
+                                                        ValueChanged="slCustom_ValueChanged" />
+                                                <TextBlock x:Name="lblRes2Db" Text="+4 dB" Width="60" FontSize="11"
+                                                           VerticalAlignment="Center" Foreground="{StaticResource TextMutedBrush}" />
+                                            </StackPanel>
+
+                                            <TextBlock Text="Stereo & reverb" FontSize="11" FontWeight="SemiBold"
+                                                       Foreground="{StaticResource TextPrimaryBrush}" Margin="0,4,0,6" />
+
+                                            <!-- Stereo width -->
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                <TextBlock Text="Width %" Width="80" FontSize="11" VerticalAlignment="Center"
+                                                           Foreground="{StaticResource TextSecondaryBrush}" />
+                                                <Slider x:Name="slWidth" Minimum="10" Maximum="100" Value="30"
+                                                        Width="140" TickFrequency="5" IsSnapToTickEnabled="True"
+                                                        SmallChange="5" LargeChange="20" VerticalAlignment="Center"
+                                                        ValueChanged="slCustom_ValueChanged" />
+                                                <TextBlock x:Name="lblWidth" Text="30%" Width="60" FontSize="11"
+                                                           VerticalAlignment="Center" Foreground="{StaticResource TextMutedBrush}" />
+                                            </StackPanel>
+
+                                            <!-- Reverb mix -->
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                <TextBlock Text="Reverb %" Width="80" FontSize="11" VerticalAlignment="Center"
+                                                           Foreground="{StaticResource TextSecondaryBrush}" />
+                                                <Slider x:Name="slReverbMix" Minimum="0" Maximum="20" Value="7"
+                                                        Width="140" TickFrequency="1" IsSnapToTickEnabled="True"
+                                                        SmallChange="1" LargeChange="5" VerticalAlignment="Center"
+                                                        ValueChanged="slCustom_ValueChanged" />
+                                                <TextBlock x:Name="lblReverbMix" Text="7%" Width="60" FontSize="11"
+                                                           VerticalAlignment="Center" Foreground="{StaticResource TextMutedBrush}" />
+                                            </StackPanel>
+
+                                            <!-- Reverb decay -->
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                <TextBlock Text="Rev ms" Width="80" FontSize="11" VerticalAlignment="Center"
+                                                           Foreground="{StaticResource TextSecondaryBrush}" />
+                                                <Slider x:Name="slReverbMs" Minimum="10" Maximum="80" Value="30"
+                                                        Width="140" TickFrequency="5" IsSnapToTickEnabled="True"
+                                                        SmallChange="5" LargeChange="10" VerticalAlignment="Center"
+                                                        ValueChanged="slCustom_ValueChanged" />
+                                                <TextBlock x:Name="lblReverbMs" Text="30 ms" Width="60" FontSize="11"
+                                                           VerticalAlignment="Center" Foreground="{StaticResource TextMutedBrush}" />
+                                            </StackPanel>
+
+                                            <TextBlock Text="Dynamics" FontSize="11" FontWeight="SemiBold"
+                                                       Foreground="{StaticResource TextPrimaryBrush}" Margin="0,4,0,6" />
+
+                                            <!-- Comp ratio -->
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                <TextBlock Text="Comp ratio" Width="80" FontSize="11" VerticalAlignment="Center"
+                                                           Foreground="{StaticResource TextSecondaryBrush}" />
+                                                <Slider x:Name="slCompRatio" Minimum="1" Maximum="8" Value="3"
+                                                        Width="140" TickFrequency="1" IsSnapToTickEnabled="True"
+                                                        SmallChange="1" LargeChange="2" VerticalAlignment="Center"
+                                                        ValueChanged="slCustom_ValueChanged" />
+                                                <TextBlock x:Name="lblCompRatio" Text="3:1" Width="60" FontSize="11"
+                                                           VerticalAlignment="Center" Foreground="{StaticResource TextMutedBrush}" />
+                                            </StackPanel>
+
+                                            <!-- Comp threshold -->
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                                                <TextBlock Text="Threshold" Width="80" FontSize="11" VerticalAlignment="Center"
+                                                           Foreground="{StaticResource TextSecondaryBrush}" />
+                                                <Slider x:Name="slCompThresh" Minimum="-24" Maximum="0" Value="-12"
+                                                        Width="140" TickFrequency="2" IsSnapToTickEnabled="True"
+                                                        SmallChange="1" LargeChange="6" VerticalAlignment="Center"
+                                                        ValueChanged="slCustom_ValueChanged" />
+                                                <TextBlock x:Name="lblCompThresh" Text="-12 dB" Width="60" FontSize="11"
+                                                           VerticalAlignment="Center" Foreground="{StaticResource TextMutedBrush}" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
                                 </StackPanel>
                             </StackPanel>
                         </GroupBox>

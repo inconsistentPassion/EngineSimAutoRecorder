@@ -163,6 +163,18 @@ namespace EngineSimRecorder
                 Channels = cmbChannels.SelectedIndex == 1 ? 1 : 2,
                 InteriorMode = rbInterior.IsChecked == true,
                 CarType = GetCarType(),
+                CustomCutoffHz = (float)slCutoff.Value,
+                CustomRumbleHz = (float)slRumbleHz.Value,
+                CustomRumbleDb = (float)slRumbleDb.Value,
+                CustomRes1Hz = (float)slRes1Hz.Value,
+                CustomRes1Db = (float)slRes1Db.Value,
+                CustomRes2Hz = (float)slRes2Hz.Value,
+                CustomRes2Db = (float)slRes2Db.Value,
+                CustomStereoWidth = (float)(slWidth.Value / 100.0),
+                CustomReverbMix = (float)(slReverbMix.Value / 100.0),
+                CustomReverbMs = (float)slReverbMs.Value,
+                CustomCompRatio = (float)slCompRatio.Value,
+                CustomCompThreshDb = (float)slCompThresh.Value,
             };
 
             btnStart.IsEnabled = false;
@@ -467,8 +479,21 @@ namespace EngineSimRecorder
             InteriorProcessor? interior = null;
             if (cfg.InteriorMode)
             {
-                var (cutoff, width) = InteriorProcessor.GetPreset(cfg.CarType);
-                interior = new InteriorProcessor(cfg.SampleRate, cfg.Channels, cutoff, width);
+                if (cfg.CarType == "Custom")
+                {
+                    interior = new InteriorProcessor(cfg.SampleRate, cfg.Channels,
+                        cfg.CustomCutoffHz, cfg.CustomStereoWidth,
+                        cfg.CustomRumbleHz, cfg.CustomRumbleDb,
+                        cfg.CustomRes1Hz, cfg.CustomRes1Db,
+                        cfg.CustomRes2Hz, cfg.CustomRes2Db,
+                        cfg.CustomReverbMs, cfg.CustomReverbMix,
+                        cfg.CustomCompRatio, cfg.CustomCompThreshDb);
+                }
+                else
+                {
+                    var (cutoff, width) = InteriorProcessor.GetPreset(cfg.CarType);
+                    interior = new InteriorProcessor(cfg.SampleRate, cfg.Channels, cutoff, width);
+                }
             }
 
             StartRecProgress(cfg.RecordSeconds);
@@ -724,6 +749,30 @@ namespace EngineSimRecorder
         {
             if (pnlCutoff != null)
                 pnlCutoff.Visibility = rbInterior.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private void cmbCarType_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (pnlCustom == null) return;
+            string? type = (cmbCarType.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Content?.ToString();
+            pnlCustom.Visibility = type == "Custom" ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private void slCustom_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (lblCutoff == null) return;
+            lblCutoff.Text = $"{(int)slCutoff.Value} Hz";
+            lblRumbleHz.Text = $"{(int)slRumbleHz.Value} Hz";
+            lblRumbleDb.Text = $"+{(int)slRumbleDb.Value} dB";
+            lblRes1Hz.Text = $"{(int)slRes1Hz.Value} Hz";
+            lblRes1Db.Text = $"+{(int)slRes1Db.Value} dB";
+            lblRes2Hz.Text = $"{(int)slRes2Hz.Value} Hz";
+            lblRes2Db.Text = $"+{(int)slRes2Db.Value} dB";
+            lblWidth.Text = $"{(int)slWidth.Value}%";
+            lblReverbMix.Text = $"{(int)slReverbMix.Value}%";
+            lblReverbMs.Text = $"{(int)slReverbMs.Value} ms";
+            lblCompRatio.Text = $"{(int)slCompRatio.Value}:1";
+            lblCompThresh.Text = $"{(int)slCompThresh.Value} dB";
         }
     }
 }
