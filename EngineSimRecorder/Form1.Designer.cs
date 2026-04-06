@@ -92,7 +92,7 @@ namespace EngineSimRecorder
             tabRecorder.Size = new Size(826, 1068);
             tabRecorder.TabIndex = 0;
             tabRecorder.Text = "Recorder";
-            tabRecorder.UseVisualStyleBackColor = true;
+            tabRecorder.UseVisualStyleBackColor = false;
 
             tabRecorder.Controls.Add(lblTitle);
             tabRecorder.Controls.Add(grpProcess);
@@ -499,7 +499,7 @@ namespace EngineSimRecorder
             chkStayOnTop.Size = new Size(131, 29);
             chkStayOnTop.TabIndex = 6;
             chkStayOnTop.Text = "Stay on Top";
-            chkStayOnTop.UseVisualStyleBackColor = true;
+            chkStayOnTop.UseVisualStyleBackColor = false;
             chkStayOnTop.CheckedChanged += chkStayOnTop_CheckedChanged;
 
             // ────────────────────────────────────────────────────────────
@@ -511,7 +511,7 @@ namespace EngineSimRecorder
             tabSettings.Size = new Size(826, 1068);
             tabSettings.TabIndex = 1;
             tabSettings.Text = "Settings";
-            tabSettings.UseVisualStyleBackColor = true;
+            tabSettings.UseVisualStyleBackColor = false;
 
             tabSettings.Controls.Add(grpTheme);
             tabSettings.Controls.Add(grpAudio);
@@ -537,7 +537,7 @@ namespace EngineSimRecorder
             rbThemeDark.Size = new Size(77, 29);
             rbThemeDark.TabIndex = 0;
             rbThemeDark.Text = "Dark";
-            rbThemeDark.UseVisualStyleBackColor = true;
+            rbThemeDark.UseVisualStyleBackColor = false;
             rbThemeDark.CheckedChanged += ThemeChanged;
             // 
             // rbThemeLight
@@ -548,7 +548,7 @@ namespace EngineSimRecorder
             rbThemeLight.Size = new Size(81, 29);
             rbThemeLight.TabIndex = 1;
             rbThemeLight.Text = "Light";
-            rbThemeLight.UseVisualStyleBackColor = true;
+            rbThemeLight.UseVisualStyleBackColor = false;
             rbThemeLight.CheckedChanged += ThemeChanged;
             // 
             // rbThemeSystem
@@ -559,7 +559,7 @@ namespace EngineSimRecorder
             rbThemeSystem.Size = new Size(165, 29);
             rbThemeSystem.TabIndex = 2;
             rbThemeSystem.Text = "System Default";
-            rbThemeSystem.UseVisualStyleBackColor = true;
+            rbThemeSystem.UseVisualStyleBackColor = false;
             rbThemeSystem.CheckedChanged += ThemeChanged;
             // 
             // grpAudio
