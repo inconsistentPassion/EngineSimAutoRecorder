@@ -193,20 +193,21 @@ namespace EngineSimRecorder
         {
             bool dark = theme == "dark";
 
-            Color bg = dark ? Color.FromArgb(30, 30, 30) : SystemColors.Window;
-            Color fg = dark ? Color.FromArgb(230, 230, 230) : SystemColors.ControlText;
-            Color groupBoxBg = dark ? Color.FromArgb(37, 37, 38) : SystemColors.Control;
-            Color inputBg = dark ? Color.FromArgb(45, 45, 48) : SystemColors.Window;
-            Color tabBg = dark ? Color.FromArgb(37, 37, 38) : SystemColors.Control;
+            Color bg = dark ? Color.FromArgb(32, 32, 36) : SystemColors.Window;
+            Color fg = dark ? Color.FromArgb(220, 220, 220) : SystemColors.ControlText;
+            Color groupBoxBg = dark ? Color.FromArgb(40, 40, 46) : SystemColors.Control;
+            Color inputBg = dark ? Color.FromArgb(50, 50, 58) : SystemColors.Window;
+            Color tabBg = dark ? Color.FromArgb(36, 36, 42) : SystemColors.Control;
+            Color borderBg = dark ? Color.FromArgb(55, 55, 64) : SystemColors.ControlDark;
 
             this.BackColor = bg;
             this.ForeColor = fg;
 
             ApplyThemeToControls(this.Controls, bg, fg, groupBoxBg, inputBg, tabBg, dark);
 
-            // Console log colors
-            txtLog.BackColor = dark ? Color.FromArgb(20, 20, 20) : Color.White;
-            txtLog.ForeColor = dark ? Color.FromArgb(0, 255, 0) : Color.FromArgb(0, 100, 0);
+            // Console log
+            txtLog.BackColor = dark ? Color.FromArgb(24, 24, 28) : Color.White;
+            txtLog.ForeColor = dark ? Color.FromArgb(152, 195, 121) : Color.FromArgb(0, 100, 0);
         }
 
         private void ApplyThemeToControls(Control.ControlCollection controls,
@@ -255,8 +256,10 @@ namespace EngineSimRecorder
                     // Keep Start/Stop colors, theme the rest
                     if (btn != btnStart && btn != btnStop)
                     {
-                        btn.BackColor = dark ? Color.FromArgb(60, 60, 60) : SystemColors.Control;
+                        btn.BackColor = dark ? Color.FromArgb(55, 55, 64) : SystemColors.Control;
                         btn.ForeColor = fg;
+                        btn.FlatStyle = dark ? FlatStyle.Flat : FlatStyle.Standard;
+                        if (dark) btn.FlatAppearance.BorderColor = Color.FromArgb(75, 75, 85);
                     }
                 }
                 else if (c is CheckBox || c is RadioButton || c is Label)
