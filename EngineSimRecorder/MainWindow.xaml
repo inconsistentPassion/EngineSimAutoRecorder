@@ -290,6 +290,53 @@
                     </Border>
                 </Grid>
             </TabItem>
+
+            <!-- ══ Tab 3: Options ══ -->
+            <TabItem>
+                <TabItem.Header>
+                    <TextBlock Text="⚙  Options" />
+                </TabItem.Header>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="4,4,4,4">
+                    <StackPanel>
+
+                        <!-- Profiles -->
+                        <GroupBox>
+                            <GroupBox.Header>
+                                <TextBlock Text="▸  Profiles" FontSize="12" FontWeight="SemiBold" />
+                            </GroupBox.Header>
+                            <StackPanel Margin="0,2">
+                                <TextBlock Text="Save and load RPM target sets + output settings."
+                                           FontSize="11" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,8" />
+
+                                <!-- Load -->
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                    <TextBlock Text="Load:" VerticalAlignment="Center" FontSize="12"
+                                               Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,8,0" />
+                                    <ComboBox x:Name="cmbProfiles" Width="200" FontSize="12" />
+                                    <Button Content="Load" Style="{StaticResource AccentButton}"
+                                            FontSize="11" Margin="6,0,0,0" Click="btnLoadProfile_Click" />
+                                    <Button Content="Delete" Style="{StaticResource FlatButton}"
+                                            FontSize="11" Margin="3,0,0,0" Click="btnDeleteProfile_Click" />
+                                </StackPanel>
+
+                                <!-- Save -->
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="Save:" VerticalAlignment="Center" FontSize="12"
+                                               Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,8,0" />
+                                    <TextBox x:Name="txtProfileName" Width="200" FontSize="12"
+                                             VerticalAlignment="Center" />
+                                    <Button Content="💾 Save" Style="{StaticResource AccentButton}"
+                                            FontSize="11" Margin="6,0,0,0" Click="btnSaveProfile_Click" />
+                                </StackPanel>
+
+                                <TextBlock x:Name="lblProfileStatus" Text="" FontSize="11"
+                                           Foreground="{StaticResource TextMutedBrush}" Margin="0,6,0,0" />
+                            </StackPanel>
+                        </GroupBox>
+
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
         </TabControl>
 
     </Grid>

@@ -458,6 +458,19 @@ namespace EngineSimRecorder
             _settings = AppSettings.Load();
             cmbSampleRate.SelectedIndex = _settings.SampleRate == 48000 ? 1 : 0;
             cmbChannels.SelectedIndex = _settings.Channels == 1 ? 1 : 0;
+
+            // Profiles
+            RefreshProfiles();
+            if (!string.IsNullOrEmpty(_settings.LastProfile))
+            {
+                int idx = -1;
+                for (int i = 0; i < cmbProfiles.Items.Count; i++)
+                {
+                    if (cmbProfiles.Items[i]?.ToString() == _settings.LastProfile)
+                    { idx = i; break; }
+                }
+                if (idx >= 0) cmbProfiles.SelectedIndex = idx;
+            }
         }
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
@@ -500,14 +513,102 @@ namespace EngineSimRecorder
             }
         }
 
-        private void pbarProgress_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-        {
+        // ── Profiles ──
 
+        private void RefreshProfiles()
+        {
+            cmbProfiles.Items.Clear();
+            foreach (string name in RpmProfile.GetProfileNames())
+                cmbProfiles.Items.Add(name);
         }
 
-        private void cmbChannels_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void btnSaveProfile_Click(object sender, RoutedEventArgs e)
         {
+            string name = txtProfileName.Text.Trim();
+            if (string.IsNullOrEmpty(name))
+            {
+                lblProfileStatus.Text = "Enter a profile name first.";
+                return;
+            }
 
+            var targets = new List<int>();
+            foreach (var item in lstTargetRpms.Items)
+                targets.Add(Convert.ToInt32(item));
+
+            var profile = new RpmProfile
+            {
+                Name = name,
+                CarName = txtCarName.Text.Trim(),
+                Prefix = txtPrefix.Text.Trim(),
+                OutputDir = txtOutputDir.Text.Trim(),
+                TargetRpms = targets,
+                SampleRate = cmbSampleRate.SelectedIndex == 1 ? 48000 : 44100,
+                Channels = cmbChannels.SelectedIndex == 1 ? 1 : 2,
+            };
+            profile.Save();
+
+            _settings.LastProfile = name;
+            RefreshProfiles();
+            for (int i = 0; i < cmbProfiles.Items.Count; i++)
+            {
+                if (cmbProfiles.Items[i]?.ToString() == name)
+                { cmbProfiles.SelectedIndex = i; break; }
+            }
+            lblProfileStatus.Text = $"Saved '{name}' ({targets.Count} RPM targets)";
         }
+
+        private void btnLoadProfile_Click(object sender, RoutedEventArgs e)
+        {
+            if (cmbProfiles.SelectedItem is not string name)
+            {
+                lblProfileStatus.Text = "Select a profile to load.";
+                return;
+            }
+
+            var profile = RpmProfile.Load(name);
+            if (profile == null)
+            {
+                lblProfileStatus.Text = $"Failed to load '{name}'.";
+                RefreshProfiles();
+                return;
+            }
+
+            txtCarName.Text = profile.CarName;
+            txtPrefix.Text = profile.Prefix;
+            txtOutputDir.Text = profile.OutputDir ?? "recordings";
+
+            lstTargetRpms.Items.Clear();
+            foreach (int rpm in profile.TargetRpms)
+                lstTargetRpms.Items.Add(rpm);
+
+            if (profile.SampleRate == 48000) cmbSampleRate.SelectedIndex = 1;
+            else cmbSampleRate.SelectedIndex = 0;
+
+            cmbChannels.SelectedIndex = profile.Channels == 1 ? 1 : 0;
+
+            _settings.LastProfile = name;
+            lblProfileStatus.Text = $"Loaded '{name}' ({profile.TargetRpms.Count} RPM targets)";
+        }
+
+        private void btnDeleteProfile_Click(object sender, RoutedEventArgs e)
+        {
+            if (cmbProfiles.SelectedItem is not string name)
+            {
+                lblProfileStatus.Text = "Select a profile to delete.";
+                return;
+            }
+
+            var result = MessageBox.Show($"Delete profile '{name}'?", "Confirm",
+                MessageBoxButton.YesNo, MessageBoxImage.Question);
+            if (result == MessageBoxResult.Yes)
+            {
+                RpmProfile.Delete(name);
+                RefreshProfiles();
+                lblProfileStatus.Text = $"Deleted '{name}'.";
+            }
+        }
+
+        private void pbarProgress_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e) { }
+        private void cmbChannels_SelectionChanged(object sender, SelectionChangedEventArgs e) { }
     }
 }
