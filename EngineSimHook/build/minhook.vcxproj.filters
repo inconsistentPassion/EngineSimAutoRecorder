@@ -1,0 +1,28 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="C:\Users\horac\source\repos\inconsistentPassion\EngineSimAutoRecorder\EngineSimHook\vendor\minhook\src\buffer.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\horac\source\repos\inconsistentPassion\EngineSimAutoRecorder\EngineSimHook\vendor\minhook\src\hook.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\horac\source\repos\inconsistentPassion\EngineSimAutoRecorder\EngineSimHook\vendor\minhook\src\trampoline.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\horac\source\repos\inconsistentPassion\EngineSimAutoRecorder\EngineSimHook\vendor\minhook\src\hde\hde32.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\horac\source\repos\inconsistentPassion\EngineSimAutoRecorder\EngineSimHook\vendor\minhook\src\hde\hde64.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\horac\source\repos\inconsistentPassion\EngineSimAutoRecorder\EngineSimHook\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{34B8DF83-18CB-3B1D-9F48-400CBDF51D53}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

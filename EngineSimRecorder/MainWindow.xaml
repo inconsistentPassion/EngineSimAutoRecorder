@@ -1,29 +1,29 @@
-<Window x:Class="EngineSimRecorder.MainWindow"
+<Window
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:av="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="av" x:Class="EngineSimRecorder.MainWindow"
         Title="Engine Simulator Auto-Recorder 2.0 Alpha"
         Width="580" Height="740"
         WindowStartupLocation="CenterScreen"
         ResizeMode="NoResize"
-        Background="{StaticResource BgBrush}"
         FontFamily="Segoe UI">
 
     <Window.Resources>
         <!-- Slim modern scrollbar -->
-        <Style x:Key="SlimScrollBar" TargetType="ScrollBar">
+        <Style x:Key="SlimScrollBar" TargetType="{x:Type ScrollBar}">
             <Setter Property="Width" Value="8" />
             <Setter Property="MinWidth" Value="8" />
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Template">
                 <Setter.Value>
-                    <ControlTemplate TargetType="ScrollBar">
+                    <ControlTemplate TargetType="{x:Type ScrollBar}">
                         <Grid>
                             <Track x:Name="PART_Track"
                                    IsDirectionReversed="True">
                                 <Track.Thumb>
                                     <Thumb>
                                         <Thumb.Template>
-                                            <ControlTemplate TargetType="Thumb">
+                                            <ControlTemplate TargetType="{x:Type Thumb}">
                                                 <Border CornerRadius="4"
                                                         Background="#C0C0C0"
                                                         Margin="1,0" />
@@ -37,10 +37,10 @@
                 </Setter.Value>
             </Setter>
         </Style>
-        <Style x:Key="SlimScrollViewer" TargetType="ScrollViewer">
+        <Style x:Key="SlimScrollViewer" TargetType="{x:Type ScrollViewer}">
             <Setter Property="Template">
                 <Setter.Value>
-                    <ControlTemplate TargetType="ScrollViewer">
+                    <ControlTemplate TargetType="{x:Type ScrollViewer}">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
@@ -58,7 +58,11 @@
         </Style>
     </Window.Resources>
 
-    <Grid Margin="20,10,20,6">
+    <Window.Background>
+        <StaticResource ResourceKey="BgBrush"/>
+    </Window.Background>
+
+    <Grid Margin="20,0,20,6">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -71,13 +75,13 @@
                        Foreground="{StaticResource TextPrimaryBrush}" ><Run Text="E"/><Run Language="en-ca" Text="S Recorder"/></TextBlock>
             <TextBlock
                        FontSize="11.5" Foreground="{StaticResource TextMutedBrush}"
-                       Margin="0,1,0,0" ><Run Text="Automated engine audio capture"/><Run Language="en-ca" Text=" for Assetto Corsa"/></TextBlock>
+                       Margin="0,1,0,0" ><Run Language="zh-cn" Text="Smart"/><Run Text=" engine audio capture"/><Run Text=" for Assetto Corsa"/></TextBlock>
         </StackPanel>
 
         <!-- ── Tab Control ── -->
         <TabControl Grid.Row="1" Margin="-20,0,-20,-6">
             <TabControl.Resources>
-                <Style TargetType="TabItem">
+                <Style TargetType="{x:Type TabItem}">
                     <Setter Property="FontSize" Value="12.5" />
                     <Setter Property="Padding" Value="12,6" />
                     <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
@@ -195,8 +199,8 @@
                                              FontFamily="Consolas" FontSize="11"
                                              BorderThickness="1" BorderBrush="{StaticResource ButtonBorderBrush}"
                                              SelectionChanged="lstTargetRpms_SelectionChanged"
-                                             MouseDoubleClick="btnEditRpm_Click" Margin="0,10,0,0"
-                                             MaxHeight="160" />
+                                             MouseDoubleClick="btnEditRpm_Click" Margin="0,-2,0,-8"
+                                             MaxHeight="160" av:ItemsSource="{av:SampleData ItemCount=5}" />
 
                                     <StackPanel Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Top">
                                         <!-- Quick adjust -->
@@ -206,20 +210,20 @@
                                                     Click="btnNudgeDown_Click" Width="60" />
                                             <Button Content="+250" Style="{StaticResource FlatButton}" FontSize="11"
                                                     Margin="3,0,0,0" Click="btnNudgeUp_Click" Width="60" />
-                                            <Button Content="⚡ Auto" Style="{StaticResource FlatButton}" FontSize="11"
+                                            <Button Content="Auto" Style="{StaticResource FlatButton}" FontSize="11"
                                                     Margin="3,0,0,0" Click="btnSmartRpm_Click" Width="60"
                                                     ToolTip="Auto-detect redline and fill RPM targets" />
                                         </StackPanel>
 
                                         <TextBlock Text="RPM value" FontSize="10" Foreground="{StaticResource TextMutedBrush}" Margin="0,8,0,2" />
-                                        <TextBox x:Name="txtRpmInput" Text="1000" Width="142" FontFamily="Consolas" FontSize="12" />
+                                        <TextBox x:Name="txtRpmInput" Text="1000" Width="186" FontFamily="Consolas" FontSize="12" />
                                         <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                            <Button Content="Add" Style="{StaticResource AccentButton}" FontSize="11" Click="btnAddRpm_Click" Width="70" />
-                                            <Button Content="Edit" Style="{StaticResource FlatButton}" FontSize="11" Margin="3,0,0,0" Click="btnEditRpm_Click" Width="70" />
+                                            <Button Content="Add" Style="{StaticResource AccentButton}" FontSize="11" Click="btnAddRpm_Click" Width="92" />
+                                            <Button Content="Edit" Style="{StaticResource FlatButton}" FontSize="11" Margin="3,0,0,0" Click="btnEditRpm_Click" Width="91" />
                                         </StackPanel>
                                         <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                                            <Button Content="Remove" Style="{StaticResource FlatButton}" FontSize="11" Click="btnRemoveRpm_Click" Width="70" />
-                                            <Button Content="Sort" Style="{StaticResource FlatButton}" FontSize="11" Margin="3,0,0,0" Click="btnSortRpm_Click" Width="70" />
+                                            <Button Content="Remove" Style="{StaticResource FlatButton}" FontSize="11" Click="btnRemoveRpm_Click" Width="92" />
+                                            <Button Content="Sort" Style="{StaticResource FlatButton}" FontSize="11" Margin="3,0,0,0" Click="btnSortRpm_Click" Width="91" />
                                         </StackPanel>
                                         <Button Content="Clear All" Style="{StaticResource FlatButton}" FontSize="11" Margin="0,2,0,0" Click="btnClearRpm_Click" />
                                     </StackPanel>
@@ -330,7 +334,7 @@
                                     <TextBox x:Name="txtProfileName" Width="200" FontSize="12"
                                              VerticalAlignment="Center" />
                                     <Button Content="💾" Style="{StaticResource AccentButton}"
-                                            FontSize="11" Margin="6,0,0,0" Click="btnSaveProfile_Click" />
+                                            FontSize="11" Margin="6,0,0,0" Click="btnSaveProfile_Click" Width="40" />
                                 </StackPanel>
 
                                 <TextBlock x:Name="lblProfileStatus" Text="" FontSize="11"
@@ -344,14 +348,14 @@
                                 <TextBlock Text="▸  Recording Mode" FontSize="12" FontWeight="SemiBold" />
                             </GroupBox.Header>
                             <StackPanel Margin="0,2">
-                                <TextBlock Text="Interior mode applies a low-pass filter to simulate cabin sound."
+                                <TextBlock Text="Interior mode applies a filter to simulate cabin sound."
                                            FontSize="11" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,8" />
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                     <RadioButton x:Name="rbExterior" Content=" Exterior" IsChecked="True"
                                                  GroupName="RecMode" FontSize="12" Margin="0,0,20,0"
                                                  Foreground="{StaticResource TextSecondaryBrush}"
                                                  Checked="rbMode_Checked" />
-                                    <RadioButton x:Name="rbInterior" Content=" Interior (low-pass)"
+                                    <RadioButton x:Name="rbInterior" Content=" Interior"
                                                  GroupName="RecMode" FontSize="12"
                                                  Foreground="{StaticResource TextSecondaryBrush}"
                                                  Checked="rbMode_Checked" />
@@ -564,15 +568,15 @@
                                 <TextBlock Text="▸  Extras" FontSize="12" FontWeight="SemiBold" />
                             </GroupBox.Header>
                             <StackPanel Margin="0,2">
-                                <CheckBox x:Name="chkRecordLimiter" Content=" Record engine limiter sound at redline"
+                                <CheckBox x:Name="chkRecordLimiter" Content=" Record engine limiter sound"
                                           FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"
                                           Margin="0,0,0,4" />
-                                <TextBlock Text="Records throttle held at redline (rev limiter). Output: engine_limiter.wav"
-                                           FontSize="11" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,8" />
-                                <CheckBox x:Name="chkGeneratePowerLut" Content=" Generate power.lut (Assetto Corsa)"
+                                <TextBlock
+                                           FontSize="11" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,8" ><Run Text="Records throttle held at rev limiter "/><Run Language="zh-cn" Text="as"/><Run Text=" engine_limiter.wav"/></TextBlock>
+                                <CheckBox x:Name="chkGeneratePowerLut" Content=" Generate power.lut"
                                           FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"
                                           Margin="0,0,0,4" />
-                                <TextBlock Text="Reads torque at each RPM target, outputs power.lut in N·m for AC."
+                                <TextBlock Text="Reads torque at each RPM target"
                                            FontSize="11" Foreground="{StaticResource TextMutedBrush}" />
                             </StackPanel>
                         </GroupBox>
