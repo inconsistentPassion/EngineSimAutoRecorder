@@ -26,166 +26,160 @@ namespace EngineSimRecorder.Backends.Keyboard
     /// </summary>
     public sealed class KeyboardBackend : IEngineBackend
     {
-   public string Name => "Keyboard + DLL RPM";
+        public string Name => "Keyboard + DLL RPM";
 
-        // ?? Win32: DLL Injection ??????????????????????????????????????
+        // ── Win32: DLL Injection ──────────────────────────────────────
 
         [DllImport("kernel32.dll")] private static extern IntPtr OpenProcess(uint a, bool b, int pid);
- [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] private static extern IntPtr GetProcAddress(IntPtr h, string p);
+        [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] private static extern IntPtr GetProcAddress(IntPtr h, string p);
         [DllImport("kernel32.dll", CharSet = CharSet.Auto)] private static extern IntPtr GetModuleHandle(string n);
         [DllImport("kernel32.dll", SetLastError = true)] private static extern IntPtr VirtualAllocEx(IntPtr h, IntPtr a, uint s, uint t, uint p);
-     [DllImport("kernel32.dll", SetLastError = true)] private static extern bool WriteProcessMemory(IntPtr h, IntPtr a, byte[] b, uint s, out int w);
+        [DllImport("kernel32.dll", SetLastError = true)] private static extern bool WriteProcessMemory(IntPtr h, IntPtr a, byte[] b, uint s, out int w);
         [DllImport("kernel32.dll")] private static extern IntPtr CreateRemoteThread(IntPtr h, IntPtr a, uint s, IntPtr fp, IntPtr p, uint c, out IntPtr tid);
         [DllImport("kernel32.dll")] private static extern uint WaitForSingleObject(IntPtr h, uint ms);
         [DllImport("kernel32.dll")] private static extern bool GetExitCodeThread(IntPtr h, out uint exitCode);
         [DllImport("kernel32.dll", SetLastError = true)] private static extern bool VirtualFreeEx(IntPtr h, IntPtr a, uint s, uint t);
-   [DllImport("kernel32.dll")] private static extern bool CloseHandle(IntPtr h);
+        [DllImport("kernel32.dll")] private static extern bool CloseHandle(IntPtr h);
 
         private const uint PROCESS_ALL_ACCESS = 0x001F0FFF;
         private const uint MEM_COMMIT_RESERVE = 0x00003000;
         private const uint PAGE_READWRITE = 4;
 
-        // ?? Pipe protocol (RPM reading only) ?????????????????????????
+        // ── Pipe protocol ─────────────────────────────────────────────
 
-  private const byte MSG_RPM_UPDATE = 0x01;
+        private const byte MSG_RPM_UPDATE = 0x01;
         private const byte MSG_MAX_RPM = 0x02;
         private const byte MSG_TORQUE_UPDATE = 0x03;
         private const string PIPE_NAME = "es-recorder-pipe";
 
-        // ?? State ?????????????????????????????????????????????????????
+        // ── State ─────────────────────────────────────────────────────
 
         /// <summary>The Engine Sim main window handle (for PostMessage).</summary>
-    public IntPtr Hwnd { get; private set; }
+        public IntPtr Hwnd { get; private set; }
         private Action<string>? _log;
 
         private NamedPipeClientStream? _pipe;
-   private readonly object _pipeLock = new object();
+        private readonly object _pipeLock = new object();
 
         // Background RPM reader
-  private Thread? _rpmReaderThread;
-      private volatile bool _rpmReaderRunning;
-  private double _latestRpm;
-  private double _maxRpm;
-  private double _torqueLbft;
+        private Thread? _rpmReaderThread;
+        private volatile bool _rpmReaderRunning;
+        private double _latestRpm;
+        private double _maxRpm;
+        private double _torqueLbft;
         private readonly object _rpmLock = new object();
 
         // Throttle hold thread
         private Thread? _throttleThread;
-      private volatile bool _throttleRunning;
-   private volatile bool _throttleKeyHeld;
+        private volatile bool _throttleRunning;
+        private volatile bool _throttleKeyHeld;
         private readonly object _throttleLock = new object();
 
-        // ?? IEngineBackend ????????????????????????????????????????????
+        // ── IEngineBackend ────────────────────────────────────────────
 
         public bool Initialize(RecorderConfig cfg, Action<string> log, CancellationToken ct)
         {
-   _log = log;
+            _log = log;
 
-   // 1. Find the Engine Sim window
-Hwnd = KeyboardSim.FindMainWindow(cfg.ProcessId);
-    if (Hwnd == IntPtr.Zero)
-  {
-  log("ERROR: Could not find Engine Sim window. Is it running?");
-   return false;
-      }
-    log($"Found Engine Sim window: 0x{Hwnd:X}");
-
-        // 2. Inject hook DLL for RPM reading
-         string? dllPath = FindDll("es_hook.dll");
-  if (dllPath == null)
-    {
-           log("ERROR: es_hook.dll not found. Build EngineSimHook first.");
-             return false;
+            // 1. Find the Engine Sim window
+            Hwnd = KeyboardSim.FindMainWindow(cfg.ProcessId);
+            if (Hwnd == IntPtr.Zero)
+            {
+                log("ERROR: Could not find Engine Sim window. Is it running?");
+                return false;
             }
-         log($"Injecting {dllPath}...");
-      if (!InjectDll(cfg.ProcessId, dllPath))
-    return false;
+            log($"Found Engine Sim window: 0x{Hwnd:X}");
 
-   // 3. Connect pipe with retry — the DLL creates the pipe server,
-   //    so we need to wait for it to be ready
-   log("Connecting to hook pipe...");
-  if (!ConnectPipeWithRetry(ct, maxAttempts: 10, delayMs: 500))
-    return false;
+            // 2. Inject hook DLL for RPM reading
+            string? dllPath = FindDll("es_hook.dll");
+            if (dllPath == null)
+            {
+                log("ERROR: es_hook.dll not found. Build EngineSimHook first.");
+                return false;
+            }
+            log($"Injecting {dllPath}...");
+            if (!InjectDll(cfg.ProcessId, dllPath))
+                return false;
 
-// 4. Start background RPM reader
-          _rpmReaderRunning = true;
- _rpmReaderThread = new Thread(RpmReaderLoop) { IsBackground = true, Name = "RPM-Reader" };
-  _rpmReaderThread.Start();
+            // 3. Connect pipe with retry
+            log("Connecting to hook pipe...");
+            if (!ConnectPipeWithRetry(ct, maxAttempts: 10, delayMs: 500))
+                return false;
+
+            // 4. Start background RPM reader
+            _rpmReaderRunning = true;
+            _rpmReaderThread = new Thread(RpmReaderLoop) { IsBackground = true, Name = "RPM-Reader" };
+            _rpmReaderThread.Start();
 
             // 5. Start throttle hold thread
-  _throttleRunning = true;
+            _throttleRunning = true;
             _throttleKeyHeld = false;
-     _throttleThread = new Thread(ThrottleHoldLoop) { IsBackground = true, Name = "Throttle-Hold" };
-      _throttleThread.Start();
+            _throttleThread = new Thread(ThrottleHoldLoop) { IsBackground = true, Name = "Throttle-Hold" };
+            _throttleThread.Start();
 
-         // 6. Wait for first RPM readings
-          ct.WaitHandle.WaitOne(1000);
-    double? testRpm = ReadRpm();
-     log($"Initial RPM: {(testRpm.HasValue ? testRpm.Value.ToString("F0") : "null")}");
-    log("Backend ready - keyboard control + pipe RPM.");
-     return true;
+            // 6. Wait for first RPM readings
+            ct.WaitHandle.WaitOne(1000);
+            double? testRpm = ReadRpm();
+            log($"Initial RPM: {(testRpm.HasValue ? testRpm.Value.ToString("F0") : "null")}");
+            log("Backend ready - keyboard control + pipe RPM.");
+            return true;
         }
 
-    public double? ReadRpm()
+        public double? ReadRpm()
         {
-    lock (_rpmLock) { return _latestRpm > 0 ? _latestRpm : null; }
-  }
+            lock (_rpmLock) { return _latestRpm > 0 ? _latestRpm : null; }
+        }
 
-    public double? ReadMaxRpm()
+        public double? ReadMaxRpm()
         {
-    lock (_rpmLock) { return _maxRpm > 0 ? _maxRpm : null; }
-  }
+            lock (_rpmLock) { return _maxRpm > 0 ? _maxRpm : null; }
+        }
 
-    public double? ReadTorque()
+        public double? ReadTorque()
         {
-    lock (_rpmLock) { return _torqueLbft > 0 ? _torqueLbft : null; }
-  }
+            lock (_rpmLock) { return _torqueLbft > 0 ? _torqueLbft : null; }
+        }
 
         /// <summary>
-   /// Set throttle: 0 = release R key, >0 = hold R key down.
+        /// Set throttle: 0 = release R key, >0 = hold R key down.
         /// The actual "analog" throttle doesn't exist in ES - it's binary (R held or not).
         /// Any value > 0.1 holds R down.
-    /// </summary>
+        /// </summary>
         public void SetThrottle(double throttle)
         {
-    lock (_throttleLock)
+            lock (_throttleLock)
             {
-        _throttleKeyHeld = throttle > 0.1;
+                _throttleKeyHeld = throttle > 0.1;
             }
-    }
+        }
 
         public void StartEngine(Action<string> log, CancellationToken ct)
         {
-            // Not used - Form1 drives the startup sequence directly
+            // Not used — MainWindow drives the startup sequence directly via keyboard commands.
         }
 
-     public void StopEngine()
+        public void StopEngine()
         {
             SetThrottle(0);
-          Thread.Sleep(100);
-            // Toggle dyno off
-         KeyboardSim.KeyPress(Hwnd, KeyboardSim.VK_D, 120);
-       Thread.Sleep(200);
-          // Toggle ignition off
-     KeyboardSim.KeyPress(Hwnd, KeyboardSim.VK_A, 120);
+            Thread.Sleep(100);
+            KeyboardSim.KeyPress(Hwnd, KeyboardSim.VK_D, 120);
+            Thread.Sleep(200);
+            KeyboardSim.KeyPress(Hwnd, KeyboardSim.VK_A, 120);
         }
 
         public void Dispose()
         {
-            // Stop throttle thread
             _throttleRunning = false;
             _throttleThread?.Join(2000);
-       // Make sure R key is released
-        KeyboardSim.KeyUp(Hwnd, KeyboardSim.VK_R);
+            KeyboardSim.KeyUp(Hwnd, KeyboardSim.VK_R);
 
-      // Stop RPM reader
             _rpmReaderRunning = false;
             _rpmReaderThread?.Join(2000);
-   try { _pipe?.Dispose(); } catch { }
-        _pipe = null;
-      }
+            try { _pipe?.Dispose(); } catch { }
+            _pipe = null;
+        }
 
-  // Throttle hold thread
+        // ── Throttle hold thread ──────────────────────────────────────
         // Engine Sim throttle (R key) is binary: held = full throttle, released = idle.
         // Send KeyDown once when throttle is requested, repeat every 200ms as a
         // safety net in case the game drops the key state. KeyUp on release.
@@ -206,7 +200,6 @@ Hwnd = KeyboardSim.FindMainWindow(cfg.ProcessId);
                         KeyboardSim.KeyDown(Hwnd, KeyboardSim.VK_R);
                         wasHeld = true;
                     }
-                    // Safety repeat every 200ms — not 20ms, that floods the input buffer
                     Thread.Sleep(200);
                 }
                 else
@@ -220,12 +213,11 @@ Hwnd = KeyboardSim.FindMainWindow(cfg.ProcessId);
                 }
             }
 
-            // Cleanup
             if (wasHeld)
                 KeyboardSim.KeyUp(Hwnd, KeyboardSim.VK_R);
         }
 
-  // RPM reader thread
+        // ── RPM reader thread ─────────────────────────────────────────
 
         private void RpmReaderLoop()
         {
@@ -263,14 +255,12 @@ Hwnd = KeyboardSim.FindMainWindow(cfg.ProcessId);
                     }
                     else if (n == 0)
                     {
-                        // Pipe disconnected
                         _log?.Invoke("RPM pipe disconnected.");
                         Thread.Sleep(100);
                     }
                 }
                 catch (IOException)
                 {
-                    // Pipe broken — will reconnect on next iteration
                     Thread.Sleep(100);
                 }
                 catch (Exception ex)
@@ -281,7 +271,7 @@ Hwnd = KeyboardSim.FindMainWindow(cfg.ProcessId);
             }
         }
 
-// Pipe connection (RPM only)
+        // ── Pipe connection ───────────────────────────────────────────
 
         private bool ConnectPipeWithRetry(CancellationToken ct, int maxAttempts = 10, int delayMs = 500)
         {
@@ -314,52 +304,63 @@ Hwnd = KeyboardSim.FindMainWindow(cfg.ProcessId);
             }
         }
 
-  // ?? DLL Injection ?????????????????????????????????????????????
+        // ── DLL Injection ─────────────────────────────────────────────
 
         private static string? FindDll(string name)
-    {
-            string[] candidates = {
-         Path.Combine(AppDomain.CurrentDomain.BaseDirectory, name),
-    Path.Combine(Environment.CurrentDirectory, name),
- Path.Combine(Environment.CurrentDirectory, "bin", name),
+        {
+            string[] candidates =
+            {
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, name),
+                Path.Combine(Environment.CurrentDirectory, name),
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "EngineSimHook", "build", "Release", name),
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "EngineSimHook", "build", "Debug", name),
             };
             foreach (var p in candidates)
-       if (File.Exists(p)) return p;
+            {
+                if (File.Exists(p)) return p;
+            }
             return null;
         }
 
         private bool InjectDll(int pid, string dllPath)
-   {
-     string full = Path.GetFullPath(dllPath);
-            if (!File.Exists(full)) { _log?.Invoke($"DLL not found: {full}"); return false; }
+        {
+            string full = Path.GetFullPath(dllPath);
+            if (!File.Exists(full))
+            {
+                _log?.Invoke($"DLL not found: {full}");
+                return false;
+            }
 
             IntPtr hProc = OpenProcess(PROCESS_ALL_ACCESS, false, pid);
-            if (hProc == IntPtr.Zero) { _log?.Invoke("Failed to open process (run as admin?)"); return false; }
-
-        IntPtr loadLib = GetProcAddress(GetModuleHandle("kernel32.dll"), "LoadLibraryA");
-       byte[] pathBytes = Encoding.ASCII.GetBytes(full + '\0');
-        IntPtr mem = VirtualAllocEx(hProc, IntPtr.Zero, (uint)pathBytes.Length, MEM_COMMIT_RESERVE, PAGE_READWRITE);
-     WriteProcessMemory(hProc, mem, pathBytes, (uint)pathBytes.Length, out _);
-            IntPtr thread = CreateRemoteThread(hProc, IntPtr.Zero, 0, loadLib, mem, 0, out _);
- if (thread == IntPtr.Zero)
-    {
-      _log?.Invoke("Failed to create remote thread");
-    CloseHandle(hProc);
-  return false;
-     }
-
-            // Wait for LoadLibraryA to complete and check result
-            uint waitResult = WaitForSingleObject(thread, 10000);
-            if (waitResult != 0x00000000) // WAIT_OBJECT_0
+            if (hProc == IntPtr.Zero)
             {
-                _log?.Invoke($"Remote thread wait failed: 0x{waitResult:X} (timeout or error)");
-                CloseHandle(thread);
-                VirtualFreeEx(hProc, mem, 0, 0x8000); // MEM_RELEASE
+                _log?.Invoke("Failed to open process (run as admin?)");
+                return false;
+            }
+
+            IntPtr loadLib = GetProcAddress(GetModuleHandle("kernel32.dll"), "LoadLibraryA");
+            byte[] pathBytes = Encoding.ASCII.GetBytes(full + '\0');
+            IntPtr mem = VirtualAllocEx(hProc, IntPtr.Zero, (uint)pathBytes.Length, MEM_COMMIT_RESERVE, PAGE_READWRITE);
+            WriteProcessMemory(hProc, mem, pathBytes, (uint)pathBytes.Length, out _);
+            IntPtr thread = CreateRemoteThread(hProc, IntPtr.Zero, 0, loadLib, mem, 0, out _);
+
+            if (thread == IntPtr.Zero)
+            {
+                _log?.Invoke("Failed to create remote thread");
                 CloseHandle(hProc);
                 return false;
             }
 
-            // LoadLibraryA returns HMODULE (non-zero on success)
+            uint waitResult = WaitForSingleObject(thread, 10000);
+            if (waitResult != 0x00000000)
+            {
+                _log?.Invoke($"Remote thread wait failed: 0x{waitResult:X} (timeout or error)");
+                CloseHandle(thread);
+                VirtualFreeEx(hProc, mem, 0, 0x8000);
+                CloseHandle(hProc);
+                return false;
+            }
+
             if (!GetExitCodeThread(thread, out uint exitCode) || exitCode == 0)
             {
                 _log?.Invoke($"DLL init failed — LoadLibraryA returned 0x{exitCode:X} (bad path or missing deps?)");
@@ -369,11 +370,11 @@ Hwnd = KeyboardSim.FindMainWindow(cfg.ProcessId);
                 return false;
             }
 
-    VirtualFreeEx(hProc, mem, 0, 0x8000);
-CloseHandle(thread);
+            VirtualFreeEx(hProc, mem, 0, 0x8000);
+            CloseHandle(thread);
             CloseHandle(hProc);
-    _log?.Invoke($"DLL injected into PID {pid} (module base: 0x{exitCode:X})");
-    return true;
-}
+            _log?.Invoke($"DLL injected into PID {pid} (module base: 0x{exitCode:X})");
+            return true;
+        }
     }
 }

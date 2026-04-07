@@ -24,8 +24,8 @@ namespace EngineSimRecorder.Core
         private float _envL, _envR;
         private readonly float _compThreshold;  // linear
         private readonly float _compRatio;
-        private readonly float _compAttack;
-        private readonly float _compRelease;
+        private readonly float _compAttackCoeff;
+        private readonly float _compReleaseCoeff;
 
         // Simple reverb (comb filter)
         private readonly float[] _reverbBufL;
@@ -73,11 +73,11 @@ namespace EngineSimRecorder.Core
             // 4. Low-pass
             _lpf = NAudio.Dsp.BiQuadFilter.LowPassFilter(sampleRate, cutoffHz, 0.707f);
 
-            // 5. Compressor settings
+            // 5. Compressor — one-pole smoothing coefficients
             _compThreshold = DbToLinear(compThreshDb);
             _compRatio = compRatio;
-            _compAttack = 1f - (float)Math.Exp(-1.0 / (sampleRate * 0.015));  // ~15 ms
-            _compRelease = 1f - (float)Math.Exp(-1.0 / (sampleRate * 0.080)); // ~80 ms
+            _compAttackCoeff = 1f - (float)Math.Exp(-1.0 / (sampleRate * 0.015));   // ~15 ms attack
+            _compReleaseCoeff = 1f - (float)Math.Exp(-1.0 / (sampleRate * 0.080));   // ~80 ms release
             _envL = 0f;
             _envR = 0f;
 
@@ -97,7 +97,6 @@ namespace EngineSimRecorder.Core
         {
             if (_channels >= 2)
             {
-                // Interleaved stereo: L R L R ...
                 for (int i = 0; i < count - 1; i += 2)
                 {
                     float L = samples[i];
@@ -138,7 +137,6 @@ namespace EngineSimRecorder.Core
             }
             else
             {
-                // Mono — skip stereo/reverb steps
                 for (int i = 0; i < count; i++)
                 {
                     float s = samples[i];
@@ -155,16 +153,16 @@ namespace EngineSimRecorder.Core
         private float Compress(float input, ref float envelope)
         {
             float abs = Math.Abs(input);
-            // Peak detector with asymmetric attack/release
-            if (abs > envelope)
-                envelope = abs; // instant attack (clamped by _compAttack below)
-            else
-                envelope = envelope * 0.999f + abs * 0.001f; // smooth release
 
-            float env = envelope;
-            if (env > _compThreshold)
+            // Asymmetric peak detector using computed attack/release coefficients
+            if (abs > envelope)
+                envelope += (abs - envelope) * _compAttackCoeff;   // fast attack
+            else
+                envelope += (abs - envelope) * _compReleaseCoeff;  // slow release
+
+            if (envelope > _compThreshold)
             {
-                float overDb = 20f * (float)Math.Log10(env / _compThreshold);
+                float overDb = 20f * (float)Math.Log10(envelope / _compThreshold);
                 float gainDb = overDb * (1f / _compRatio - 1f); // negative gain
                 float gainLinear = DbToLinear(gainDb);
                 input *= gainLinear;
@@ -180,13 +178,13 @@ namespace EngineSimRecorder.Core
         /// </summary>
         public static (float cutoff, float width) GetPreset(string carType) => carType switch
         {
-            "Sedan"      => (2200f, 0.30f),
-            "Coupe"      => (2000f, 0.25f),
-            "SUV"        => (2500f, 0.35f),
-            "Hatchback"  => (2000f, 0.25f),
-            "Supercar"   => (1800f, 0.20f),
-            "Truck"      => (2800f, 0.40f),
-            _            => (2000f, 0.30f),
+            "Sedan"     => (2200f, 0.30f),
+            "Coupe"     => (2000f, 0.25f),
+            "SUV"       => (2500f, 0.35f),
+            "Hatchback" => (2000f, 0.25f),
+            "Supercar"  => (1800f, 0.20f),
+            "Truck"     => (2800f, 0.40f),
+            _           => (2000f, 0.30f),
         };
     }
 }

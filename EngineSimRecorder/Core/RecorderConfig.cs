@@ -20,18 +20,23 @@ namespace EngineSimRecorder.Core
         public bool RecordLimiter { get; set; } = false;
         public bool GeneratePowerLut { get; set; } = false;
 
-        // Custom interior params
-        public float CustomCutoffHz { get; set; } = 2000f;
-        public float CustomRumbleHz { get; set; } = 80f;
-        public float CustomRumbleDb { get; set; } = 6f;
-        public float CustomRes1Hz { get; set; } = 180f;
-        public float CustomRes1Db { get; set; } = 5f;
-        public float CustomRes2Hz { get; set; } = 350f;
-        public float CustomRes2Db { get; set; } = 4f;
-        public float CustomStereoWidth { get; set; } = 0.3f;
-        public float CustomReverbMix { get; set; } = 0.07f;
-        public float CustomReverbMs { get; set; } = 30f;
-        public float CustomCompRatio { get; set; } = 3f;
-        public float CustomCompThreshDb { get; set; } = -12f;
+        /// <summary>Custom interior acoustics parameters (only used when CarType == "Custom").</summary>
+        public InteriorSettings Interior { get; set; } = new();
+    }
+
+    public sealed class InteriorSettings
+    {
+        public float CutoffHz { get; set; } = 2000f;
+        public float RumbleHz { get; set; } = 80f;
+        public float RumbleDb { get; set; } = 6f;
+        public float Res1Hz { get; set; } = 180f;
+        public float Res1Db { get; set; } = 5f;
+        public float Res2Hz { get; set; } = 350f;
+        public float Res2Db { get; set; } = 4f;
+        public float StereoWidth { get; set; } = 0.3f;
+        public float ReverbMix { get; set; } = 0.07f;
+        public float ReverbMs { get; set; } = 30f;
+        public float CompRatio { get; set; } = 3f;
+        public float CompThreshDb { get; set; } = -12f;
     }
 }
