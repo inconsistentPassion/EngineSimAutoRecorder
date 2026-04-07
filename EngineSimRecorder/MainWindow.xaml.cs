@@ -589,6 +589,10 @@ namespace EngineSimRecorder
                     backend.SetThrottle(1.0);
                     WaitForRpm(backend, cfg, limiterRpm, ct);
 
+                    // Let the limiter engage before recording
+                    Log("Waiting 0.2s for rev limiter to engage...");
+                    ct.WaitHandle.WaitOne(200);
+
                     if (!ct.IsCancellationRequested)
                     {
                         string limiterBaseName = string.IsNullOrEmpty(carName) ? "" : $"{prefix}{carName}_";
