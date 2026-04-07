@@ -69,7 +69,7 @@ static void ResumeThreads(const std::vector<DWORD>& threadIds) {
 __int64 __fastcall ignitionModuleHk(__int64 a1, double a2) {
     if (State::attached.load()) {
         State::ignitionInstance.store(a1);
-
+        // Crankshaft Pointer 
         uintptr_t crankshaftPtr = *(uintptr_t*)(a1 + 0x60);
         if (crankshaftPtr) {
             double velocity = *(double*)(crankshaftPtr + 0x30);
@@ -88,7 +88,7 @@ __int64 __fastcall ignitionModuleHk(__int64 a1, double a2) {
 void __fastcall simProcessHk(__int64 a1, float a2) {
     if (State::attached.load()) {
         State::appInstance.store(a1);
-
+        
         uintptr_t simInst = *(uintptr_t*)(a1 + 0x1618);
         uintptr_t engInst = *(uintptr_t*)(a1 + 0x1600);
 
@@ -101,7 +101,7 @@ void __fastcall simProcessHk(__int64 a1, float a2) {
                 std::lock_guard<std::mutex> lock(State::throttleMutex);
                 throttle = State::targetThrottle;
             }
-            *(double*)(engInst + 0x188) = 1.0 - throttle;
+            *(double*)(engInst + 0x188) = 1.0 - throttle; //Throttle Position
         }
     }
     oSimProcess(a1, a2);
