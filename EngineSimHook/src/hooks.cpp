@@ -109,8 +109,8 @@ void __fastcall simProcessHk(__int64 a1, float a2) {
 
 unsigned __int64* __fastcall updateHpAndTorqueHk(__int64 instance, float dt) {
     if (State::attached.load()) {
-        // instance + 0xA0 = torque (lb·ft), instance + 0xA8 = power
-        double torque = *(double*)(instance + 0xA0);
+        // instance + 0xA0 = power (hp), instance + 0xA8 = torque (lb·ft)
+        double torque = *(double*)(instance + 0xA8);
         State::torqueLbft.store(torque);
     }
     return oUpdateHpAndTorque(instance, dt);

@@ -508,19 +508,20 @@ namespace EngineSimRecorder
                             $"delta={Math.Abs(rpmAfterHold.Value - rpmAtHold.Value):F0} RPM");
                     }
 
-                    // Read torque for power.lut (already in N·m from Engine Sim)
+                    // Read torque for power.lut (Engine Sim reports lb·ft, convert to N·m)
                     if (cfg.GeneratePowerLut)
                     {
                         ct.WaitHandle.WaitOne(500); // let torque stabilize
-                        double? torqueNm = backend.ReadTorque();
-                        if (torqueNm.HasValue && torqueNm.Value > 0)
+                        double? torqueLbft = backend.ReadTorque();
+                        if (torqueLbft.HasValue && torqueLbft.Value > 0)
                         {
-                            torqueData.Add((target, torqueNm.Value));
-                            Log($"Torque at {target} RPM: {torqueNm.Value:F1} N·m");
+                            double torqueNm = torqueLbft.Value * 1.35582;
+                            torqueData.Add((target, torqueNm));
+                            Log($"Torque at {target} RPM: {torqueNm:F1} N·m ({torqueLbft.Value:F1} lb·ft)");
                         }
                         else
                         {
-                            Log($"Warning: no torque reading at {target} RPM");
+                            Log($"Warning: no torque reading at {target} RPM (limiter pattern may not have matched)");
                         }
                     }
 
