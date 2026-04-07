@@ -564,6 +564,11 @@
                                           FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"
                                           Margin="0,0,0,4" />
                                 <TextBlock Text="Records throttle held at redline (rev limiter). Output: engine_limiter.wav"
+                                           FontSize="11" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,8" />
+                                <CheckBox x:Name="chkGeneratePowerLut" Content=" Generate power.lut (Assetto Corsa)"
+                                          FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"
+                                          Margin="0,0,0,4" />
+                                <TextBlock Text="Reads torque at each RPM target, outputs power.lut in N·m for AC."
                                            FontSize="11" Foreground="{StaticResource TextMutedBrush}" />
                             </StackPanel>
                         </GroupBox>

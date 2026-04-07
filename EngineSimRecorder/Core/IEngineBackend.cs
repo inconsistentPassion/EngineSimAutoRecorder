@@ -14,6 +14,7 @@ namespace EngineSimRecorder.Core
         bool Initialize(RecorderConfig config, Action<string> log, CancellationToken ct);
         double? ReadRpm();
         double? ReadMaxRpm();
+        double? ReadTorque();
         void SetThrottle(double throttle);
         void StartEngine(Action<string> log, CancellationToken ct);
         void StopEngine();

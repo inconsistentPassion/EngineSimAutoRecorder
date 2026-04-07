@@ -13,6 +13,7 @@ namespace State {
 
     std::atomic<double> currentRpm{0.0};
     std::atomic<double> maxRpm{0.0};
+    std::atomic<double> torqueLbft{0.0};
 
     std::mutex throttleMutex;
     double targetThrottle = 0.0;

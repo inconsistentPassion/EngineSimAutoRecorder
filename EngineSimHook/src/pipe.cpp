@@ -49,6 +49,7 @@ static void PipeServerLoop() {
 
   DWORD lastRpmSend = 0;
         double lastMaxRpmSent = 0.0;
+        double lastTorqueSent = 0.0;
 
         while (pipeRunning.load()) {
         DWORD now = GetTickCount();
@@ -80,6 +81,19 @@ static void PipeServerLoop() {
             DWORD written;
             WriteFile(hPipe, &maxMsg, sizeof(maxMsg), &written, NULL);
             lastMaxRpmSent = curMax;
+        }
+    }
+
+    // ── Send torque when it changes significantly ──────────────
+    {
+        double curTorque = State::torqueLbft.load();
+        if (std::abs(curTorque - lastTorqueSent) > 0.5) {
+            MsgTorqueUpdate tMsg;
+            tMsg.type = MSG_TORQUE_UPDATE;
+            tMsg.torqueLbft = curTorque;
+            DWORD written;
+            WriteFile(hPipe, &tMsg, sizeof(tMsg), &written, NULL);
+            lastTorqueSent = curTorque;
         }
     }
 

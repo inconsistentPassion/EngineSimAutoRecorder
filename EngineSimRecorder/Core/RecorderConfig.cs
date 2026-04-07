@@ -18,6 +18,7 @@ namespace EngineSimRecorder.Core
         public bool InteriorMode { get; set; } = false;
         public string CarType { get; set; } = "Sedan";
         public bool RecordLimiter { get; set; } = false;
+        public bool GeneratePowerLut { get; set; } = false;
 
         // Custom interior params
         public float CustomCutoffHz { get; set; } = 2000f;

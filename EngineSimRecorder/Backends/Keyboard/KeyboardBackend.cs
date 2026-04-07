@@ -49,6 +49,7 @@ namespace EngineSimRecorder.Backends.Keyboard
 
   private const byte MSG_RPM_UPDATE = 0x01;
         private const byte MSG_MAX_RPM = 0x02;
+        private const byte MSG_TORQUE_UPDATE = 0x03;
         private const string PIPE_NAME = "es-recorder-pipe";
 
         // ?? State ?????????????????????????????????????????????????????
@@ -65,6 +66,7 @@ namespace EngineSimRecorder.Backends.Keyboard
       private volatile bool _rpmReaderRunning;
   private double _latestRpm;
   private double _maxRpm;
+  private double _torqueLbft;
         private readonly object _rpmLock = new object();
 
         // Throttle hold thread
@@ -132,6 +134,11 @@ Hwnd = KeyboardSim.FindMainWindow(cfg.ProcessId);
     public double? ReadMaxRpm()
         {
     lock (_rpmLock) { return _maxRpm > 0 ? _maxRpm : null; }
+  }
+
+    public double? ReadTorque()
+        {
+    lock (_rpmLock) { return _torqueLbft > 0 ? _torqueLbft : null; }
   }
 
         /// <summary>
@@ -248,6 +255,11 @@ Hwnd = KeyboardSim.FindMainWindow(cfg.ProcessId);
                         double maxRpm = BitConverter.ToDouble(buf, 1);
                         lock (_rpmLock) { _maxRpm = maxRpm; }
                         _log?.Invoke($"Engine redline detected: {maxRpm:F0} RPM");
+                    }
+                    else if (n >= 9 && buf[0] == MSG_TORQUE_UPDATE)
+                    {
+                        double torque = BitConverter.ToDouble(buf, 1);
+                        lock (_rpmLock) { _torqueLbft = torque; }
                     }
                     else if (n == 0)
                     {

@@ -267,6 +267,7 @@ namespace EngineSimRecorder
                 InteriorMode = rbInterior.IsChecked == true,
                 CarType = GetCarType(),
                 RecordLimiter = chkRecordLimiter.IsChecked == true,
+                GeneratePowerLut = chkGeneratePowerLut.IsChecked == true,
                 CustomCutoffHz = (float)slCutoff.Value,
                 CustomRumbleHz = (float)slRumbleHz.Value,
                 CustomRumbleDb = (float)slRumbleDb.Value,
@@ -465,6 +466,9 @@ namespace EngineSimRecorder
                 int completedTargets = 0;
                 var overallSw = Stopwatch.StartNew();
 
+                // Torque data collection for power.lut
+                var torqueData = new List<(int rpm, double torqueNm)>();
+
                 // Step 4: Record each target RPM
                 string prefix = cfg.CustomPrefix ?? "";
                 string carName = cfg.CustomName ?? "";
@@ -495,6 +499,23 @@ namespace EngineSimRecorder
                     {
                         Log($"Hold verified: before={rpmAtHold.Value:F0}, after={rpmAfterHold.Value:F0}, " +
                             $"delta={Math.Abs(rpmAfterHold.Value - rpmAtHold.Value):F0} RPM");
+                    }
+
+                    // Read torque for power.lut
+                    if (cfg.GeneratePowerLut)
+                    {
+                        ct.WaitHandle.WaitOne(500); // let torque stabilize
+                        double? torqueLbft = backend.ReadTorque();
+                        if (torqueLbft.HasValue && torqueLbft.Value > 0)
+                        {
+                            double torqueNm = torqueLbft.Value * 1.355818;
+                            torqueData.Add((target, torqueNm));
+                            Log($"Torque at {target} RPM: {torqueLbft.Value:F1} lb·ft = {torqueNm:F1} N·m");
+                        }
+                        else
+                        {
+                            Log($"Warning: no torque reading at {target} RPM");
+                        }
                     }
 
                     string baseName = string.IsNullOrEmpty(carName) ? "" : $"{prefix}{carName}_";
@@ -573,6 +594,31 @@ namespace EngineSimRecorder
                     }
 
                     backend.SetThrottle(0);
+                }
+
+                // Step 6 (optional): Generate power.lut
+                if (cfg.GeneratePowerLut && torqueData.Count > 0 && !ct.IsCancellationRequested)
+                {
+                    string lutPath = Path.Combine(cfg.OutputDir, "power.lut");
+                    Log($"=== GENERATING power.lut ({torqueData.Count} points) ===");
+                    try
+                    {
+                        using var writer = new StreamWriter(lutPath);
+                        writer.WriteLine("[HEADER]");
+                        writer.WriteLine("VERSION=1");
+                        writer.WriteLine("[DATA]");
+                        foreach (var (rpm, torqueNm) in torqueData)
+                        {
+                            writer.WriteLine($"{rpm}|{torqueNm:F2}");
+                        }
+                        Log($"Saved: {lutPath}");
+                        foreach (var (rpm, torqueNm) in torqueData)
+                            Log($"  {rpm} RPM = {torqueNm:F2} N·m");
+                    }
+                    catch (Exception ex)
+                    {
+                        Log($"Error writing power.lut: {ex.Message}");
+                    }
                 }
 
                 // Shutdown
@@ -742,6 +788,7 @@ public ProcessItem(Process p) { ProcessId = p.Id; DisplayName = $"{p.ProcessName
   rbExterior.IsChecked = !_settings.InteriorMode;
        pnlCutoff.Visibility = _settings.InteriorMode ? Visibility.Visible : Visibility.Collapsed;
             chkRecordLimiter.IsChecked = _settings.RecordLimiter;
+            chkGeneratePowerLut.IsChecked = _settings.GeneratePowerLut;
             // Select car type
             for (int i = 0; i < cmbCarType.Items.Count; i++)
       {
@@ -773,6 +820,7 @@ if (idx >= 0) cmbProfiles.SelectedIndex = idx;
     _settings.InteriorMode = rbInterior.IsChecked == true;
             _settings.CarType = GetCarType();
             _settings.RecordLimiter = chkRecordLimiter.IsChecked == true;
+            _settings.GeneratePowerLut = chkGeneratePowerLut.IsChecked == true;
 _settings.Save();
         }
 
