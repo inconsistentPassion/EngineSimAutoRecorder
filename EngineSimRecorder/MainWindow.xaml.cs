@@ -111,7 +111,10 @@ namespace EngineSimRecorder
 
                         double? maxRpm = backend.ReadMaxRpm();
                         if (maxRpm.HasValue)
+                        {
                             Log($"Connected. Engine redline: {maxRpm.Value:F0} RPM");
+                            lblRedline.Text = $"(redline: {maxRpm.Value:F0})";
+                        }
                         else
                             Log("Connected. Waiting for redline data...");
                     }
@@ -134,6 +137,7 @@ namespace EngineSimRecorder
             btnRefresh.Content = "Connect";
             btnStart.IsEnabled = true;
             lblCurrentRpm.Text = "RPM: ---";
+            lblRedline.Text = "";
             Log("Disconnected.");
         }
 
@@ -207,10 +211,10 @@ namespace EngineSimRecorder
 
             int redlineMinus250 = (int)maxRpm.Value - 250;
 
-            lstTargetRpms.Items.Clear();
-            lstTargetRpms.Items.Add(redlineMinus250);
+            if (!lstTargetRpms.Items.Contains(redlineMinus250))
+                lstTargetRpms.Items.Add(redlineMinus250);
 
-            Log($"Auto RPM: redline={maxRpm.Value:F0}, target={redlineMinus250}");
+            Log($"Auto RPM: redline={maxRpm.Value:F0}, added {redlineMinus250}");
         }
 
         private void btnEditRpm_Click(object sender, RoutedEventArgs e)
@@ -401,7 +405,10 @@ namespace EngineSimRecorder
                 // Log redline if detected
                 double? maxRpm = backend.ReadMaxRpm();
                 if (maxRpm.HasValue)
+                {
                     Log($"Engine redline: {maxRpm.Value:F0} RPM (max target: {maxRpm.Value - 250:F0})");
+                    Dispatcher.BeginInvoke(() => lblRedline.Text = $"(redline: {maxRpm.Value:F0})");
+                }
 
                 IntPtr hwnd = backend.Hwnd;
                 _engineSimHwnd = hwnd;
@@ -501,16 +508,15 @@ namespace EngineSimRecorder
                             $"delta={Math.Abs(rpmAfterHold.Value - rpmAtHold.Value):F0} RPM");
                     }
 
-                    // Read torque for power.lut
+                    // Read torque for power.lut (already in N·m from Engine Sim)
                     if (cfg.GeneratePowerLut)
                     {
                         ct.WaitHandle.WaitOne(500); // let torque stabilize
-                        double? torqueLbft = backend.ReadTorque();
-                        if (torqueLbft.HasValue && torqueLbft.Value > 0)
+                        double? torqueNm = backend.ReadTorque();
+                        if (torqueNm.HasValue && torqueNm.Value > 0)
                         {
-                            double torqueNm = torqueLbft.Value * 1.355818;
-                            torqueData.Add((target, torqueNm));
-                            Log($"Torque at {target} RPM: {torqueLbft.Value:F1} lb·ft = {torqueNm:F1} N·m");
+                            torqueData.Add((target, torqueNm.Value));
+                            Log($"Torque at {target} RPM: {torqueNm.Value:F1} N·m");
                         }
                         else
                         {
@@ -548,8 +554,9 @@ namespace EngineSimRecorder
                     double elapsed = overallSw.Elapsed.TotalSeconds;
                     double avgPerTarget = elapsed / completedTargets;
                     double remaining = avgPerTarget * (cfg.TargetRpms.Count - completedTargets);
+                    double totalEst = elapsed + remaining;
                     if (completedTargets < cfg.TargetRpms.Count)
-                        SetEta($"ETA: {remaining:F0}s");
+                        SetEta($"ETA: {remaining:F0}s / {totalEst:F0}s");
 
                     if (i < cfg.TargetRpms.Count - 1)
                     {
