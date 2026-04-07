@@ -612,9 +612,6 @@ namespace EngineSimRecorder
                     try
                     {
                         using var writer = new StreamWriter(lutPath);
-                        writer.WriteLine("[HEADER]");
-                        writer.WriteLine("VERSION=1");
-                        writer.WriteLine("[DATA]");
                         foreach (var (rpm, torqueNm) in torqueData)
                         {
                             writer.WriteLine($"{rpm}|{torqueNm:F2}");
