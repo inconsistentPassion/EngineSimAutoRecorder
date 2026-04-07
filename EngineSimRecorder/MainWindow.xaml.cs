@@ -205,20 +205,12 @@ namespace EngineSimRecorder
                 return;
             }
 
-            // Set max 250 RPM below redline
-            int topRpm = ((int)(maxRpm.Value - 250) / 500) * 500;
-            if (topRpm < 1000) topRpm = 1000;
+            int redlineMinus250 = (int)maxRpm.Value - 250;
 
             lstTargetRpms.Items.Clear();
-            for (int rpm = 1000; rpm <= topRpm; rpm += 1000)
-                lstTargetRpms.Items.Add(rpm);
+            lstTargetRpms.Items.Add(redlineMinus250);
 
-            // Add redline-250 entry
-            int redlineMinus250 = (int)maxRpm.Value - 250;
-            if (!lstTargetRpms.Items.Contains(redlineMinus250))
-                lstTargetRpms.Items.Add(redlineMinus250);
-
-            Log($"Auto RPM: redline={maxRpm.Value:F0}, targets up to {redlineMinus250} (redline-250)");
+            Log($"Auto RPM: redline={maxRpm.Value:F0}, target={redlineMinus250}");
         }
 
         private void btnEditRpm_Click(object sender, RoutedEventArgs e)
