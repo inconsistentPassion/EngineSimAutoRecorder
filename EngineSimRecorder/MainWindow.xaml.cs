@@ -213,7 +213,12 @@ namespace EngineSimRecorder
             for (int rpm = 1000; rpm <= topRpm; rpm += 1000)
                 lstTargetRpms.Items.Add(rpm);
 
-            Log($"Auto RPM: redline={maxRpm.Value:F0}, targets 1000-{topRpm} (step 1000)");
+            // Add redline-250 entry
+            int redlineMinus250 = (int)maxRpm.Value - 250;
+            if (!lstTargetRpms.Items.Contains(redlineMinus250))
+                lstTargetRpms.Items.Add(redlineMinus250);
+
+            Log($"Auto RPM: redline={maxRpm.Value:F0}, targets up to {redlineMinus250} (redline-250)");
         }
 
         private void btnEditRpm_Click(object sender, RoutedEventArgs e)
