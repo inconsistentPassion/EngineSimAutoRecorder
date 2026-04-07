@@ -73,6 +73,12 @@ __int64 __fastcall ignitionModuleHk(__int64 a1, double a2) {
             double velocity = *(double*)(crankshaftPtr + 0x30);
             State::currentRpm.store(toRpm(std::fabs(velocity)));
         }
+
+        // Read max RPM (redline) from ignition instance +0x88
+        double maxRpmRad = *(double*)(a1 + 0x88);
+        if (maxRpmRad > 0) {
+            State::maxRpm.store(toRpm(maxRpmRad));
+        }
     }
     return oIgnitionModule(a1, a2);
 }

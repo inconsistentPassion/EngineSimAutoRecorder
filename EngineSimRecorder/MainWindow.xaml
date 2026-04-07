@@ -178,7 +178,8 @@
                                     <Button Content="8K" Style="{StaticResource ChipButton}" Click="btnPreset_Click" Margin="3,0,0,0" />
                                     <Button Content="9K" Style="{StaticResource ChipButton}" Click="btnPreset_Click" Margin="3,0,0,0" />
                                     <Button Content="10K" Style="{StaticResource ChipButton}" Click="btnPreset_Click" Margin="3,0,0,0" />
-
+                                    <Button Content="⚡ Auto" Style="{StaticResource ChipButton}" Click="btnSmartRpm_Click" Margin="6,0,0,0"
+                                            ToolTip="Auto-detect redline and fill RPM targets" />
                                 </StackPanel>
 
                                 <!-- List + Controls -->
@@ -235,9 +236,14 @@
                                     <TextBlock x:Name="lblStatus" Text="Idle..."
                                                VerticalAlignment="Center" FontSize="12"
                                                Foreground="{StaticResource TextSecondaryBrush}" Grid.Column="0" />
-                                    <TextBlock x:Name="lblCurrentRpm" Text="RPM: ---"
-                                               FontFamily="Consolas" FontSize="13" FontWeight="Bold"
-                                               Foreground="{StaticResource AccentBrush}" Grid.Column="1" />
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
+                                        <TextBlock x:Name="lblEta" Text=""
+                                                   VerticalAlignment="Center" FontSize="11"
+                                                   Foreground="{StaticResource TextMutedBrush}" Margin="0,0,8,0" />
+                                        <TextBlock x:Name="lblCurrentRpm" Text="RPM: ---"
+                                                   FontFamily="Consolas" FontSize="13" FontWeight="Bold"
+                                                   Foreground="{StaticResource AccentBrush}" />
+                                    </StackPanel>
                                 </Grid>
                                 <ProgressBar x:Name="pbarProgress" Height="5" Margin="0,4,0,0"
                                              Minimum="0" Maximum="1" Value="0"
@@ -544,6 +550,20 @@
                                         <ComboBoxItem Content="Mono" />
                                     </ComboBox>
                                 </StackPanel>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <!-- ══ Extras ══ -->
+                        <GroupBox Margin="0,6,0,6">
+                            <GroupBox.Header>
+                                <TextBlock Text="▸  Extras" FontSize="12" FontWeight="SemiBold" />
+                            </GroupBox.Header>
+                            <StackPanel Margin="0,2">
+                                <CheckBox x:Name="chkRecordLimiter" Content=" Record engine limiter sound at redline"
+                                          FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"
+                                          Margin="0,0,0,4" />
+                                <TextBlock Text="Records throttle held at redline (rev limiter). Output: engine_limiter.wav"
+                                           FontSize="11" Foreground="{StaticResource TextMutedBrush}" />
                             </StackPanel>
                         </GroupBox>
 

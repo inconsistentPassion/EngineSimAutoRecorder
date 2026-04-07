@@ -12,6 +12,7 @@ namespace State {
     std::atomic<uintptr_t> ignitionInstance{0};
 
     std::atomic<double> currentRpm{0.0};
+    std::atomic<double> maxRpm{0.0};
 
     std::mutex throttleMutex;
     double targetThrottle = 0.0;

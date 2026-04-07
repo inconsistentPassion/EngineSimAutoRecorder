@@ -48,6 +48,7 @@ static void PipeServerLoop() {
         std::cout << "[+] Client connected to pipe\n";
 
   DWORD lastRpmSend = 0;
+        double lastMaxRpmSent = 0.0;
 
         while (pipeRunning.load()) {
         DWORD now = GetTickCount();
@@ -68,6 +69,19 @@ static void PipeServerLoop() {
                 }
      lastRpmSend = now;
    }
+
+    // ── Send max RPM when it changes (once after hook reads it) ──
+    {
+        double curMax = State::maxRpm.load();
+        if (curMax > 0 && curMax != lastMaxRpmSent) {
+            MsgMaxRpm maxMsg;
+            maxMsg.type = MSG_MAX_RPM;
+            maxMsg.maxRpm = curMax;
+            DWORD written;
+            WriteFile(hPipe, &maxMsg, sizeof(maxMsg), &written, NULL);
+            lastMaxRpmSent = curMax;
+        }
+    }
 
       // ── Read incoming commands (non-blocking) ─────────────────
 uint8_t buf[PIPE_BUFFER_SIZE];

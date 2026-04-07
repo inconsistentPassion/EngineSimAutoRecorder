@@ -11,6 +11,7 @@ namespace EngineSimRecorder.Core
         public string LastProfile { get; set; } = "";
         public bool InteriorMode { get; set; } = false;
         public string CarType { get; set; } = "Sedan";
+        public bool RecordLimiter { get; set; } = false;
 
         private static string FilePath =>
             Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json");

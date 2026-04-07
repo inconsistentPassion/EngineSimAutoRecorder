@@ -17,6 +17,7 @@ namespace EngineSimRecorder.Core
         public int Channels { get; set; } = 2; // 1=mono, 2=stereo
         public bool InteriorMode { get; set; } = false;
         public string CarType { get; set; } = "Sedan";
+        public bool RecordLimiter { get; set; } = false;
 
         // Custom interior params
         public float CustomCutoffHz { get; set; } = 2000f;

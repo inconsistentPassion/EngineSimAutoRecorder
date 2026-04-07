@@ -26,6 +26,7 @@ namespace EngineSimRecorder
         private IntPtr _engineSimHwnd = IntPtr.Zero;
         private bool _focusWarned = false;
         private AppSettings _settings = new();
+        private KeyboardBackend? _backend;
 
         public MainWindow()
         {
@@ -110,6 +111,29 @@ namespace EngineSimRecorder
             lstTargetRpms.Items.Clear();
         }
 
+        private void btnSmartRpm_Click(object sender, RoutedEventArgs e)
+        {
+            double? maxRpm = _backend?.ReadMaxRpm();
+            if (!maxRpm.HasValue || maxRpm.Value <= 0)
+            {
+                MessageBox.Show(
+                    "Redline not detected. Connect to Engine Simulator first,\nthen wait for the redline reading.",
+                    "No Redline Data",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            // Set max 250 RPM below redline
+            int topRpm = ((int)(maxRpm.Value - 250) / 500) * 500;
+            if (topRpm < 1000) topRpm = 1000;
+
+            lstTargetRpms.Items.Clear();
+            for (int rpm = 1000; rpm <= topRpm; rpm += 1000)
+                lstTargetRpms.Items.Add(rpm);
+
+            Log($"Auto RPM: redline={maxRpm.Value:F0}, targets 1000-{topRpm} (step 1000)");
+        }
+
         private void btnEditRpm_Click(object sender, RoutedEventArgs e)
         {
             if (lstTargetRpms.SelectedItem is not int selected) return;
@@ -163,6 +187,7 @@ namespace EngineSimRecorder
                 Channels = cmbChannels.SelectedIndex == 1 ? 1 : 2,
                 InteriorMode = rbInterior.IsChecked == true,
                 CarType = GetCarType(),
+                RecordLimiter = chkRecordLimiter.IsChecked == true,
                 CustomCutoffHz = (float)slCutoff.Value,
                 CustomRumbleHz = (float)slRumbleHz.Value,
                 CustomRumbleDb = (float)slRumbleDb.Value,
@@ -209,6 +234,7 @@ namespace EngineSimRecorder
 
         private void SetStatus(string t) => Dispatcher.BeginInvoke(() => lblStatus.Text = t);
         private void SetRpm(string t) => Dispatcher.BeginInvoke(() => lblCurrentRpm.Text = t);
+        private void SetEta(string t) => Dispatcher.BeginInvoke(() => lblEta.Text = t);
 
         private void StartRecProgress(double durationSec)
         {
@@ -273,6 +299,7 @@ namespace EngineSimRecorder
             try
             {
                 backend = new KeyboardBackend();
+                _backend = backend;
                 Log($"Mode: {backend.Name}");
 
                 if (!backend.Initialize(cfg, Log, ct))
@@ -280,6 +307,11 @@ namespace EngineSimRecorder
                     Log("Backend initialization failed.");
                     return;
                 }
+
+                // Log redline if detected
+                double? maxRpm = backend.ReadMaxRpm();
+                if (maxRpm.HasValue)
+                    Log($"Engine redline: {maxRpm.Value:F0} RPM (max target: {maxRpm.Value - 250:F0})");
 
                 IntPtr hwnd = backend.Hwnd;
                 _engineSimHwnd = hwnd;
@@ -340,6 +372,10 @@ namespace EngineSimRecorder
                 Log("Released S");
                 ct.WaitHandle.WaitOne(300);
 
+                // ETA tracking
+                int completedTargets = 0;
+                var overallSw = Stopwatch.StartNew();
+
                 // Step 4: Record each target RPM
                 string prefix = cfg.CustomPrefix ?? "";
                 string carName = cfg.CustomName ?? "";
@@ -351,6 +387,7 @@ namespace EngineSimRecorder
                     Log($"=== TARGET {i + 1}/{cfg.TargetRpms.Count}: {target} RPM ===");
 
                     SetStatus($"Revving to {target} RPM...");
+                    SetEta("");
                     Log($"Holding R to rev to {target} RPM...");
                     backend.SetThrottle(1.0);
                     WaitForRpm(backend, cfg, target, ct);
@@ -395,6 +432,14 @@ namespace EngineSimRecorder
                     Log($"Saved: {noloadPath}");
 
                     Log($"Target {target} RPM complete!");
+                    completedTargets++;
+
+                    // ETA update
+                    double elapsed = overallSw.Elapsed.TotalSeconds;
+                    double avgPerTarget = elapsed / completedTargets;
+                    double remaining = avgPerTarget * (cfg.TargetRpms.Count - completedTargets);
+                    if (completedTargets < cfg.TargetRpms.Count)
+                        SetEta($"ETA: {remaining:F0}s");
 
                     if (i < cfg.TargetRpms.Count - 1)
                     {
@@ -410,8 +455,40 @@ namespace EngineSimRecorder
                     }
                 }
 
+                // Step 5 (optional): Record engine limiter at redline
+                if (cfg.RecordLimiter && !ct.IsCancellationRequested)
+                {
+                    double? detectedMaxRpm = backend.ReadMaxRpm();
+                    int limiterRpm = detectedMaxRpm.HasValue
+                        ? (int)detectedMaxRpm.Value
+                        : (cfg.TargetRpms.Count > 0 ? cfg.TargetRpms[^1] + 250 : 7000);
+
+                    Log($"=== RECORDING ENGINE LIMITER at {limiterRpm} RPM ===");
+                    SetStatus($"Revving to redline ({limiterRpm} RPM) for limiter recording...");
+                    SetEta("");
+
+                    // Re-engage dyno if needed, rev to limiter
+                    backend.SetThrottle(1.0);
+                    WaitForRpm(backend, cfg, limiterRpm, ct);
+
+                    if (!ct.IsCancellationRequested)
+                    {
+                        string limiterBaseName = string.IsNullOrEmpty(carName) ? "" : $"{prefix}{carName}_";
+                        string limiterModePrefix = cfg.InteriorMode ? "int_" : "";
+                        string limiterFile = $"{limiterBaseName}{limiterModePrefix}engine_limiter.wav";
+                        string limiterPath = Path.Combine(cfg.OutputDir, limiterFile);
+                        SetStatus($"Recording engine limiter ({limiterRpm} RPM)...");
+                        Log($"Recording LIMITER for {cfg.RecordSeconds}s -> {limiterPath}");
+                        RecordAudio(backend, limiterPath, cfg, ct);
+                        Log($"Saved: {limiterPath}");
+                    }
+
+                    backend.SetThrottle(0);
+                }
+
                 // Shutdown
                 Log("=== SHUTTING DOWN ===");
+                SetEta("");
                 backend.SetThrottle(0);
                 Thread.Sleep(200);
                 KeyboardSim.KeyPress(hwnd, KeyboardSim.VK_D, 120);
@@ -433,6 +510,7 @@ namespace EngineSimRecorder
             {
                 try { backend?.SetThrottle(0); } catch { }
                 backend?.Dispose();
+                _backend = null;
                 Dispatcher.BeginInvoke(() =>
                 {
                     _focusMonitor?.Stop();
@@ -440,6 +518,7 @@ namespace EngineSimRecorder
                 });
                 _engineSimHwnd = IntPtr.Zero;
                 StopRecProgress();
+                SetEta("");
                 ResetControls();
             }
         }
@@ -565,6 +644,7 @@ public ProcessItem(Process p) { ProcessId = p.Id; DisplayName = $"{p.ProcessName
    rbInterior.IsChecked = _settings.InteriorMode;
   rbExterior.IsChecked = !_settings.InteriorMode;
        pnlCutoff.Visibility = _settings.InteriorMode ? Visibility.Visible : Visibility.Collapsed;
+            chkRecordLimiter.IsChecked = _settings.RecordLimiter;
             // Select car type
             for (int i = 0; i < cmbCarType.Items.Count; i++)
       {
@@ -593,6 +673,7 @@ if (idx >= 0) cmbProfiles.SelectedIndex = idx;
             _settings.Channels = cmbChannels.SelectedIndex == 1 ? 1 : 2;
     _settings.InteriorMode = rbInterior.IsChecked == true;
             _settings.CarType = GetCarType();
+            _settings.RecordLimiter = chkRecordLimiter.IsChecked == true;
 _settings.Save();
         }
 
