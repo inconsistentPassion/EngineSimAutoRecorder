@@ -39,11 +39,13 @@ namespace EngineSimRecorder
             // Default RPM targets
             foreach (int rpm in new[] { 1500, 2000, 3000, 4000, 5000, 6000 })
                 lstTargetRpms.Items.Add(rpm);
+
+            btnStart.IsEnabled = false;
         }
 
         // ── Process ──
 
-        private void btnRefresh_Click(object sender, RoutedEventArgs e)
+        private void RefreshProcessList()
         {
             cmbProcess.Items.Clear();
             foreach (var name in new[] { "engine-sim-app", "engine-sim", "engine_sim", "EngineSimulator" })
@@ -53,6 +55,86 @@ namespace EngineSimRecorder
             }
             if (cmbProcess.Items.Count > 0)
                 cmbProcess.SelectedIndex = 0;
+        }
+
+        private void btnRefresh_Click(object sender, RoutedEventArgs e)
+        {
+            // If already connected, disconnect
+            if (_backend != null)
+            {
+                if (_cts != null)
+                {
+                    MessageBox.Show("Stop recording first.", "Busy",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+                Disconnect();
+                return;
+            }
+
+            // Scan processes
+            RefreshProcessList();
+            if (cmbProcess.Items.Count == 0)
+            {
+                MessageBox.Show("No Engine Simulator process found.", "Not Found",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (cmbProcess.SelectedItem is not ProcessItem sel)
+            {
+                MessageBox.Show("Select a process.", "No Selection",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            // Connect: inject DLL + open pipe
+            btnRefresh.IsEnabled = false;
+            btnRefresh.Content = "Connecting...";
+            txtLog.Text = "";
+
+            var cfg = new RecorderConfig { ProcessId = sel.ProcessId };
+
+            Task.Run(() =>
+            {
+                var backend = new KeyboardBackend();
+                bool ok = backend.Initialize(cfg, msg => Log(msg), CancellationToken.None);
+
+                Dispatcher.BeginInvoke(() =>
+                {
+                    if (ok)
+                    {
+                        _backend = backend;
+                        btnRefresh.Content = "Disconnect";
+                        btnRefresh.IsEnabled = true;
+                        btnStart.IsEnabled = true;
+
+                        double? maxRpm = backend.ReadMaxRpm();
+                        if (maxRpm.HasValue)
+                            Log($"Connected. Engine redline: {maxRpm.Value:F0} RPM");
+                        else
+                            Log("Connected. Waiting for redline data...");
+                    }
+                    else
+                    {
+                        backend.Dispose();
+                        btnRefresh.Content = "Connect";
+                        btnRefresh.IsEnabled = true;
+                        btnStart.IsEnabled = true;
+                        Log("Connection failed.");
+                    }
+                });
+            });
+        }
+
+        private void Disconnect()
+        {
+            _backend?.Dispose();
+            _backend = null;
+            btnRefresh.Content = "Connect";
+            btnStart.IsEnabled = true;
+            lblCurrentRpm.Text = "RPM: ---";
+            Log("Disconnected.");
         }
 
         // ── Output ──
@@ -161,9 +243,9 @@ namespace EngineSimRecorder
                 return;
             }
 
-            if (cmbProcess.SelectedItem is not ProcessItem sel)
+            if (_backend == null)
             {
-                MessageBox.Show("Select an Engine Simulator process.", "No process",
+                MessageBox.Show("Connect to Engine Simulator first.", "Not connected",
                     MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
@@ -179,7 +261,7 @@ namespace EngineSimRecorder
             var cfg = new RecorderConfig
             {
                 OutputDir = outputDir,
-                ProcessId = sel.ProcessId,
+                ProcessId = 0, // backend already connected
                 TargetRpms = targets,
                 CustomName = txtCarName.Text.Trim(),
                 CustomPrefix = GetPrefix(),
@@ -207,7 +289,6 @@ namespace EngineSimRecorder
             pbarProgress.BeginAnimation(ProgressBar.ValueProperty, null);
             pbarProgress.Value = 0;
             pbarProgress.Foreground = (Brush)FindResource("AccentBrush");
-            txtLog.Text = "";
 
             _cts = new CancellationTokenSource();
             _workerTask = Task.Run(() => RunAsync(cfg, _cts.Token));
@@ -296,16 +377,27 @@ namespace EngineSimRecorder
         private void RunAsync(RecorderConfig cfg, CancellationToken ct)
         {
             KeyboardBackend? backend = null;
+            bool ownsBackend = false;
             try
             {
-                backend = new KeyboardBackend();
-                _backend = backend;
-                Log($"Mode: {backend.Name}");
-
-                if (!backend.Initialize(cfg, Log, ct))
+                if (_backend != null)
                 {
-                    Log("Backend initialization failed.");
-                    return;
+                    // Reuse existing connection
+                    backend = _backend;
+                    Log($"Mode: {backend.Name}");
+                }
+                else
+                {
+                    // Fallback: create new backend (shouldn't happen in normal flow)
+                    backend = new KeyboardBackend();
+                    ownsBackend = true;
+                    Log($"Mode: {backend.Name}");
+
+                    if (!backend.Initialize(cfg, Log, ct))
+                    {
+                        Log("Backend initialization failed.");
+                        return;
+                    }
                 }
 
                 // Log redline if detected
@@ -508,9 +600,17 @@ namespace EngineSimRecorder
             }
             finally
             {
-                try { backend?.SetThrottle(0); } catch { }
-                backend?.Dispose();
-                _backend = null;
+                if (ownsBackend)
+                {
+                    try { backend?.SetThrottle(0); } catch { }
+                    backend?.Dispose();
+                }
+                else
+                {
+                    // Reused backend — just release throttle, keep connection alive
+                    try { backend?.SetThrottle(0); } catch { }
+                }
+                _backend = ownsBackend ? null : backend;
                 Dispatcher.BeginInvoke(() =>
                 {
                     _focusMonitor?.Stop();
@@ -669,6 +769,8 @@ if (idx >= 0) cmbProfiles.SelectedIndex = idx;
     private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
             _cts?.Cancel();
+            _backend?.Dispose();
+            _backend = null;
             _settings.SampleRate = cmbSampleRate.SelectedIndex == 1 ? 48000 : 44100;
             _settings.Channels = cmbChannels.SelectedIndex == 1 ? 1 : 2;
     _settings.InteriorMode = rbInterior.IsChecked == true;
