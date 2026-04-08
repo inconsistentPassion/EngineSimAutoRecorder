@@ -103,9 +103,12 @@ public partial class RecorderPage : Page
         Dispatcher.BeginInvoke(() =>
         {
             LogPage.Instance?.AppendLog(line);
-            // Also show last message in Recorder page status
+            // Show last message in Recorder page status
             lblStatus.Text = msg;
         });
+        // Buffer for LogPage if it doesn't exist yet
+        if (LogPage.Instance == null)
+            LogPage.AppendBuffered(line);
     }
 
     // ── Process ──
@@ -132,6 +135,7 @@ public partial class RecorderPage : Page
         btnConnect.IsEnabled = false;
         btnConnect.Content = "Connecting...";
         LogPage.Instance?.Clear();
+        LogPage.ClearBuffer();
 
         var cfg = new RecorderConfig { ProcessId = sel.ProcessId };
         Task.Run(() =>
@@ -150,7 +154,7 @@ public partial class RecorderPage : Page
                     if (maxRpm.HasValue) { Log($"Connected. Engine redline: {maxRpm.Value:F0} RPM"); lblRedline.Text = $"(redline: {maxRpm.Value:F0})"; }
                     else Log("Connected. Waiting for redline data...");
                 }
-                else { backend.Dispose(); btnConnect.Content = "Connect"; btnConnect.IsEnabled = true; Log("Connection failed."); MessageBox.Show("Connection to Engine Simulator failed.\nCheck the Log tab for details.", "Connection Failed", MessageBoxButton.OK, MessageBoxImage.Error); }
+                else { backend.Dispose(); btnConnect.Content = "Connect"; btnConnect.IsEnabled = true; Log("Connection failed."); MessageBox.Show($"Connection to Engine Simulator failed.\n\nSee status below or the Log tab for details.", "Connection Failed", MessageBoxButton.OK, MessageBoxImage.Error); }
             });
         });
     }
