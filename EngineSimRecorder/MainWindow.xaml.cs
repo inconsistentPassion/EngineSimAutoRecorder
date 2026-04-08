@@ -59,7 +59,7 @@ namespace EngineSimRecorder
             _optionsPage.Loaded += OptionsPage_Loaded;
         }
 
-        private void RootNavigation_SelectedChanged(NavigationView sender, RoutedEventArgs args)
+        private void RootNavigation_SelectionChanged(NavigationView sender, RoutedEventArgs args)
         {
             if (sender.SelectedItem is NavigationViewItem item)
             {
