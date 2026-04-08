@@ -17,7 +17,7 @@
         <ui:TitleBar x:Name="TitleBar"
                      Title="ES Recorder"
                      Grid.Row="0"
-                     Icon="icon.ico" />
+                     Icon="/icon.ico" />
 
         <ui:NavigationView x:Name="RootNavigation"
                            Grid.Row="1"

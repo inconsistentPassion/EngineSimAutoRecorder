@@ -4,7 +4,7 @@
       xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
       HorizontalContentAlignment="Stretch">
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="20,12,20,12">
+    <ScrollViewer HorizontalAlignment="Stretch" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="20,12,20,12">
         <StackPanel MinWidth="0">
             <TextBlock Text="Options" FontSize="20" FontWeight="Bold" Margin="0,0,0,2" />
             <TextBlock Text="Configure recording settings" FontSize="12" Opacity="0.6" Margin="0,0,0,12" />
@@ -68,7 +68,7 @@
                         </StackPanel>
                         <Border x:Name="pnlCustom" Visibility="Collapsed"
                                 Background="{DynamicResource ControlFillColorDefaultBrush}" CornerRadius="6" Padding="12,10" Margin="0,10,0,0"
-                                BorderBrush="{DynamicResource ControlElevationBorderBrush}" BorderThickness="1">
+                                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="1">
                             <StackPanel>
                                 <TextBlock Text="Cabin acoustics" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8" />
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,6">

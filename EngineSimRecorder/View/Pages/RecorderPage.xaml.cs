@@ -22,7 +22,7 @@ namespace EngineSimRecorder.View.Pages;
 public partial class RecorderPage : Page
 {
     public static RecorderPage? Instance { get; private set; }
-    private CancellationTokenSource? _cts;
+    internal CancellationTokenSource? _cts;
     private Task? _workerTask;
     private DispatcherTimer? _progressTimer;
     private Stopwatch? _progressSw;
