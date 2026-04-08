@@ -1,14 +1,13 @@
-<ui:UiPage x:Class="EngineSimRecorder.Pages.OptionsPage"
-           xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-           xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-           xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
+<Page x:Class="EngineSimRecorder.Pages.OptionsPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
 
     <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="20,12,20,12">
         <StackPanel>
             <TextBlock Text="Options" FontSize="20" FontWeight="Bold" Margin="0,0,0,2" />
             <TextBlock Text="Configure recording settings" FontSize="12" Opacity="0.6" Margin="0,0,0,12" />
 
-            <!-- Profiles -->
             <ui:Card Margin="0,0,0,8">
                 <StackPanel>
                     <TextBlock Text="Profiles" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8" />
@@ -21,13 +20,12 @@
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Save:" VerticalAlignment="Center" FontSize="12" Opacity="0.6" Margin="0,0,8,0" />
                         <TextBox x:Name="txtProfileName" Width="200" FontSize="12" VerticalAlignment="Center" />
-                        <ui:Button x:Name="btnSaveProfile" Content="&#x1F4BE;" Appearance="Primary" FontSize="11" Margin="6,0,0,0" Width="40" />
+                        <ui:Button x:Name="btnSaveProfile" Content="Save" Appearance="Primary" FontSize="11" Margin="6,0,0,0" Width="50" />
                     </StackPanel>
-                    <TextBlock x:Name="lblProfileStatus" Text="" FontSize="11" Opacity="0.5" Margin="0,6,0,0" />
+                    <TextBlock x:Name="lblProfileStatus" FontSize="11" Opacity="0.5" Margin="0,6,0,0" />
                 </StackPanel>
             </ui:Card>
 
-            <!-- Recording Mode -->
             <ui:Card Margin="0,0,0,8">
                 <StackPanel>
                     <TextBlock Text="Recording Mode" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8" />
@@ -112,7 +110,7 @@
                                     <Slider x:Name="slCompRatio" Minimum="1" Maximum="8" Value="3" Width="140" TickFrequency="1" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="2" VerticalAlignment="Center" />
                                     <TextBlock x:Name="lblCompRatio" Text="3:1" Width="60" FontSize="11" VerticalAlignment="Center" Opacity="0.5" />
                                 </StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="0,0,0,0">
+                                <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="Threshold" Width="80" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
                                     <Slider x:Name="slCompThresh" Minimum="-24" Maximum="0" Value="-12" Width="140" TickFrequency="2" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="6" VerticalAlignment="Center" />
                                     <TextBlock x:Name="lblCompThresh" Text="-12 dB" Width="60" FontSize="11" VerticalAlignment="Center" Opacity="0.5" />
@@ -123,7 +121,6 @@
                 </StackPanel>
             </ui:Card>
 
-            <!-- Audio Quality -->
             <ui:Card Margin="0,0,0,8">
                 <StackPanel>
                     <TextBlock Text="Audio Quality" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8" />
@@ -142,20 +139,15 @@
                 </StackPanel>
             </ui:Card>
 
-            <!-- Extras -->
             <ui:Card Margin="0,0,0,12">
                 <StackPanel>
                     <TextBlock Text="Extras" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8" />
-                    <CheckBox x:Name="chkRecordLimiter" Content=" Record engine limiter sound"
-                              FontSize="12" Opacity="0.6" Margin="0,0,0,4" />
-                    <TextBlock FontSize="11" Opacity="0.5" Margin="0,0,0,8">
-                        <Run Text="Records throttle held at rev limiter as engine_limiter.wav"/>
-                    </TextBlock>
-                    <CheckBox x:Name="chkGeneratePowerLut" Content=" Generate power.lut"
-                              FontSize="12" Opacity="0.6" Margin="0,0,0,4" />
+                    <CheckBox x:Name="chkRecordLimiter" Content=" Record engine limiter sound" FontSize="12" Opacity="0.6" Margin="0,0,0,4" />
+                    <TextBlock FontSize="11" Opacity="0.5" Margin="0,0,0,8" Text="Records throttle held at rev limiter as engine_limiter.wav" />
+                    <CheckBox x:Name="chkGeneratePowerLut" Content=" Generate power.lut" FontSize="12" Opacity="0.6" Margin="0,0,0,4" />
                     <TextBlock Text="Reads torque at each RPM target" FontSize="11" Opacity="0.5" />
                 </StackPanel>
             </ui:Card>
         </StackPanel>
     </ScrollViewer>
-</ui:UiPage>
+</Page>

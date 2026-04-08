@@ -8,12 +8,17 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using EngineSimRecorder.Backends.Keyboard;
 using EngineSimRecorder.Core;
 using EngineSimRecorder.Pages;
 using NAudio.Wave;
 using Wpf.Ui.Controls;
+using MessageBox = System.Windows.MessageBox;
+using MessageBoxButton = System.Windows.MessageBoxButton;
+using MessageBoxImage = System.Windows.MessageBoxImage;
+using MessageBoxResult = System.Windows.MessageBoxResult;
 
 namespace EngineSimRecorder
 {
@@ -27,12 +32,9 @@ namespace EngineSimRecorder
         private double _progressDurationSec;
         private IntPtr _engineSimHwnd = IntPtr.Zero;
         private bool _focusWarned = false;
+        private bool _optionsLoaded = false;
         private AppSettings _settings = new();
         private KeyboardBackend? _backend;
-
-        private RecorderPage? _recorderPage;
-        private LogPage? _logPage;
-        private OptionsPage? _optionsPage;
 
         public MainWindow()
         {
@@ -42,76 +44,59 @@ namespace EngineSimRecorder
             if (File.Exists(iconPath))
                 Icon = new BitmapImage(new Uri(iconPath));
 
-            // Create pages
-            _recorderPage = new RecorderPage();
-            _logPage = new LogPage();
-            _optionsPage = new OptionsPage();
-
-            // Wire recorder page events
-            WireRecorderEvents();
-            WireOptionsEvents();
-
-            // Set initial page
-            RootNavigation.Content = _recorderPage;
-
-            // Window events
             Loaded += Window_Loaded;
             Closing += Window_Closing;
         }
 
         // ══════════════════════════════════════════════════════════
-        //  NAVIGATION
+        //  NAVIGATION — pages are created by NavigationView via TargetPageType
+        //  and register themselves in PageContext.
         // ══════════════════════════════════════════════════════════
 
-        private void OnNavigationSelectionChanged(NavigationView sender, RoutedEventArgs args)
-        {
-            if (sender.SelectedItem is not NavigationViewItem item) return;
-
-            switch (item.Tag?.ToString())
-            {
-                case "recorder": RootNavigation.Content = _recorderPage; break;
-                case "log":      RootNavigation.Content = _logPage;      break;
-                case "options":  RootNavigation.Content = _optionsPage;  break;
-            }
-        }
-
-        // ══════════════════════════════════════════════════════════
-        //  EVENT WIRING
-        // ══════════════════════════════════════════════════════════
 
         private void WireRecorderEvents()
         {
-            var p = _recorderPage!;
+            var p = PageContext.Recorder!;
+            // Prevent double-wiring
+            p.btnRefresh.Click -= btnRefresh_Click;
             p.btnRefresh.Click += btnRefresh_Click;
+            p.btnBrowseOutput.Click -= btnBrowseOutput_Click;
             p.btnBrowseOutput.Click += btnBrowseOutput_Click;
+            p.btnOpenOutput.Click -= btnOpenOutput_Click;
             p.btnOpenOutput.Click += btnOpenOutput_Click;
+            p.btnAddRpm.Click -= btnAddRpm_Click;
             p.btnAddRpm.Click += btnAddRpm_Click;
+            p.btnEditRpm.Click -= btnEditRpm_Click;
             p.btnEditRpm.Click += btnEditRpm_Click;
+            p.btnRemoveRpm.Click -= btnRemoveRpm_Click;
             p.btnRemoveRpm.Click += btnRemoveRpm_Click;
+            p.btnSortRpm.Click -= btnSortRpm_Click;
             p.btnSortRpm.Click += btnSortRpm_Click;
+            p.btnClearRpm.Click -= btnClearRpm_Click;
             p.btnClearRpm.Click += btnClearRpm_Click;
+            p.btnNudgeUp.Click -= btnNudgeUp_Click;
+            p.btnNudgeUp.Click += btnNudgeUp_Click;
+            p.btnNudgeDown.Click -= btnNudgeDown_Click;
+            p.btnNudgeDown.Click += btnNudgeDown_Click;
+            p.btnSmartRpm.Click -= btnSmartRpm_Click;
+            p.btnSmartRpm.Click += btnSmartRpm_Click;
+            p.btnStart.Click -= btnStart_Click;
             p.btnStart.Click += btnStart_Click;
+            p.btnStop.Click -= btnStop_Click;
             p.btnStop.Click += btnStop_Click;
+            p.chkStayOnTop.Checked -= chkStayOnTop_Changed;
+            p.chkStayOnTop.Unchecked -= chkStayOnTop_Changed;
             p.chkStayOnTop.Checked += chkStayOnTop_Changed;
             p.chkStayOnTop.Unchecked += chkStayOnTop_Changed;
+            p.lstTargetRpms.SelectionChanged -= lstTargetRpms_SelectionChanged;
             p.lstTargetRpms.SelectionChanged += lstTargetRpms_SelectionChanged;
+            p.lstTargetRpms.MouseDoubleClick -= btnEditRpm_Click;
             p.lstTargetRpms.MouseDoubleClick += btnEditRpm_Click;
 
-            // Preset buttons (Tag contains the RPM value)
-            foreach (var child in FindVisualChildren<ui.Controls.Button>(p))
+            // Preset buttons (Tag = RPM value)
+            foreach (var child in FindVisualChildren<System.Windows.Controls.Button>(p))
                 if (child.Tag is string tagStr && int.TryParse(tagStr, out _))
-                    child.Click += btnPreset_Click;
-
-            // Quick edit buttons by content
-            foreach (var child in FindVisualChildren<ui.Controls.Button>(p))
-            {
-                switch (child.Content?.ToString())
-                {
-                    case "-250": child.Click += btnNudgeDown_Click; break;
-                    case "+250": child.Click += btnNudgeUp_Click; break;
-                    case "Auto": child.Click += btnSmartRpm_Click; break;
-                }
-            }
+                { child.Click -= btnPreset_Click; child.Click += btnPreset_Click; }
 
             // Default RPM targets
             if (p.lstTargetRpms.Items.Count == 0)
@@ -119,17 +104,28 @@ namespace EngineSimRecorder
                     p.lstTargetRpms.Items.Add(rpm);
 
             p.btnStart.IsEnabled = false;
+
+            // Wire options page events
+            WireOptionsEvents();
         }
 
         private void WireOptionsEvents()
         {
-            var o = _optionsPage!;
+            var o = PageContext.Options;
+            if (o == null) return;
+            o.btnLoadProfile.Click -= btnLoadProfile_Click;
             o.btnLoadProfile.Click += btnLoadProfile_Click;
+            o.btnDeleteProfile.Click -= btnDeleteProfile_Click;
             o.btnDeleteProfile.Click += btnDeleteProfile_Click;
+            o.btnSaveProfile.Click -= btnSaveProfile_Click;
             o.btnSaveProfile.Click += btnSaveProfile_Click;
+            o.rbExterior.Checked -= rbMode_Checked;
             o.rbExterior.Checked += rbMode_Checked;
+            o.rbInterior.Checked -= rbMode_Checked;
             o.rbInterior.Checked += rbMode_Checked;
+            o.cmbCarType.SelectionChanged -= cmbCarType_SelectionChanged;
             o.cmbCarType.SelectionChanged += cmbCarType_SelectionChanged;
+            o.cmbChannels.SelectionChanged -= cmbChannels_SelectionChanged;
             o.cmbChannels.SelectionChanged += cmbChannels_SelectionChanged;
 
             foreach (var sl in new[] {
@@ -138,6 +134,7 @@ namespace EngineSimRecorder
                 o.slWidth, o.slReverbMix, o.slReverbMs,
                 o.slCompRatio, o.slCompThresh })
             {
+                sl.ValueChanged -= slCustom_ValueChanged;
                 sl.ValueChanged += slCustom_ValueChanged;
             }
         }
@@ -145,9 +142,9 @@ namespace EngineSimRecorder
         private static IEnumerable<T> FindVisualChildren<T>(DependencyObject depObj) where T : DependencyObject
         {
             if (depObj == null) yield break;
-            for (int i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(depObj); i++)
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(depObj); i++)
             {
-                var child = System.Windows.Media.VisualTreeHelper.GetChild(depObj, i);
+                var child = VisualTreeHelper.GetChild(depObj, i);
                 if (child is T t) yield return t;
                 foreach (var childOfChild in FindVisualChildren<T>(child))
                     yield return childOfChild;
@@ -160,7 +157,7 @@ namespace EngineSimRecorder
 
         private void RefreshProcessList()
         {
-            var p = _recorderPage!;
+            var p = PageContext.Recorder!;
             p.cmbProcess.Items.Clear();
             foreach (var name in new[] { "engine-sim-app", "engine-sim", "engine_sim", "EngineSimulator" })
                 foreach (var proc in Process.GetProcessesByName(name))
@@ -171,12 +168,11 @@ namespace EngineSimRecorder
 
         private void btnRefresh_Click(object sender, RoutedEventArgs e)
         {
-            var p = _recorderPage!;
+            var p = PageContext.Recorder!;
             if (_backend != null)
             {
                 if (_cts != null) { MessageBox.Show("Stop recording first.", "Busy", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
-                Disconnect();
-                return;
+                Disconnect(); return;
             }
 
             RefreshProcessList();
@@ -185,7 +181,7 @@ namespace EngineSimRecorder
 
             p.btnRefresh.IsEnabled = false;
             p.btnRefresh.Content = "Connecting...";
-            _logPage?.Clear();
+            PageContext.Log?.Clear();
 
             var cfg = new RecorderConfig { ProcessId = sel.ProcessId };
             Task.Run(() =>
@@ -204,26 +200,17 @@ namespace EngineSimRecorder
                         if (maxRpm.HasValue) { Log($"Connected. Engine redline: {maxRpm.Value:F0} RPM"); p.lblRedline.Text = $"(redline: {maxRpm.Value:F0})"; }
                         else Log("Connected. Waiting for redline data...");
                     }
-                    else
-                    {
-                        backend.Dispose();
-                        p.btnRefresh.Content = "Connect";
-                        p.btnRefresh.IsEnabled = true;
-                        Log("Connection failed.");
-                    }
+                    else { backend.Dispose(); p.btnRefresh.Content = "Connect"; p.btnRefresh.IsEnabled = true; Log("Connection failed."); }
                 });
             });
         }
 
         private void Disconnect()
         {
-            var p = _recorderPage!;
-            _backend?.Dispose();
-            _backend = null;
-            p.btnRefresh.Content = "Connect";
-            p.btnStart.IsEnabled = true;
-            p.lblCurrentRpm.Text = "RPM: ---";
-            p.lblRedline.Text = "";
+            var p = PageContext.Recorder!;
+            _backend?.Dispose(); _backend = null;
+            p.btnRefresh.Content = "Connect"; p.btnStart.IsEnabled = true;
+            p.lblCurrentRpm.Text = "RPM: ---"; p.lblRedline.Text = "";
             Log("Disconnected.");
         }
 
@@ -235,12 +222,12 @@ namespace EngineSimRecorder
         {
             var dlg = new System.Windows.Forms.FolderBrowserDialog { Description = "Select output folder" };
             if (dlg.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-                _recorderPage!.txtOutputDir.Text = dlg.SelectedPath;
+                PageContext.Recorder!.txtOutputDir.Text = dlg.SelectedPath;
         }
 
         private void btnOpenOutput_Click(object sender, RoutedEventArgs e)
         {
-            string dir = _recorderPage!.txtOutputDir.Text.Trim();
+            string dir = PageContext.Recorder!.txtOutputDir.Text.Trim();
             if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
             Process.Start("explorer.exe", dir);
         }
@@ -251,28 +238,27 @@ namespace EngineSimRecorder
 
         private void btnAddRpm_Click(object sender, RoutedEventArgs e)
         {
-            var p = _recorderPage!;
+            var p = PageContext.Recorder!;
             if (int.TryParse(p.txtRpmInput.Text, out int rpm) && !p.lstTargetRpms.Items.Contains(rpm))
                 p.lstTargetRpms.Items.Add(rpm);
         }
 
         private void btnRemoveRpm_Click(object sender, RoutedEventArgs e)
         {
-            if (_recorderPage!.lstTargetRpms.SelectedItem != null)
-                _recorderPage!.lstTargetRpms.Items.Remove(_recorderPage!.lstTargetRpms.SelectedItem);
+            if (PageContext.Recorder!.lstTargetRpms.SelectedItem != null)
+                PageContext.Recorder!.lstTargetRpms.Items.Remove(PageContext.Recorder!.lstTargetRpms.SelectedItem);
         }
 
         private void btnPreset_Click(object sender, RoutedEventArgs e)
         {
-            var p = _recorderPage!;
+            var p = PageContext.Recorder!;
             if (sender is FrameworkElement btn && int.TryParse(btn.Tag?.ToString(), out int rpm))
-                if (!p.lstTargetRpms.Items.Contains(rpm))
-                    p.lstTargetRpms.Items.Add(rpm);
+                if (!p.lstTargetRpms.Items.Contains(rpm)) p.lstTargetRpms.Items.Add(rpm);
         }
 
         private void btnSortRpm_Click(object sender, RoutedEventArgs e)
         {
-            var p = _recorderPage!;
+            var p = PageContext.Recorder!;
             var items = new List<int>();
             foreach (var item in p.lstTargetRpms.Items) items.Add(Convert.ToInt32(item));
             items.Sort();
@@ -280,30 +266,30 @@ namespace EngineSimRecorder
             foreach (var rpm in items) p.lstTargetRpms.Items.Add(rpm);
         }
 
-        private void btnClearRpm_Click(object sender, RoutedEventArgs e) => _recorderPage!.lstTargetRpms.Items.Clear();
+        private void btnClearRpm_Click(object sender, RoutedEventArgs e) => PageContext.Recorder!.lstTargetRpms.Items.Clear();
 
         private void btnSmartRpm_Click(object sender, RoutedEventArgs e)
         {
             double? maxRpm = _backend?.ReadMaxRpm();
-            if (!maxRpm.HasValue || maxRpm.Value <= 0) { MessageBox.Show("Redline not detected. Connect first, then wait for redline reading.", "No Redline Data", MessageBoxButton.OK, MessageBoxImage.Information); return; }
-            int redlineMinus250 = (int)maxRpm.Value - 250;
-            var p = _recorderPage!;
-            if (!p.lstTargetRpms.Items.Contains(redlineMinus250)) p.lstTargetRpms.Items.Add(redlineMinus250);
-            Log($"Auto RPM: redline={maxRpm.Value:F0}, added {redlineMinus250}");
+            if (!maxRpm.HasValue || maxRpm.Value <= 0) { MessageBox.Show("Redline not detected. Connect first.", "No Redline Data", MessageBoxButton.OK, MessageBoxImage.Information); return; }
+            int target = (int)maxRpm.Value - 250;
+            var p = PageContext.Recorder!;
+            if (!p.lstTargetRpms.Items.Contains(target)) p.lstTargetRpms.Items.Add(target);
+            Log($"Auto RPM: redline={maxRpm.Value:F0}, added {target}");
         }
 
         private void btnEditRpm_Click(object sender, RoutedEventArgs e)
         {
-            var p = _recorderPage!;
-            if (p.lstTargetRpms.SelectedItem is not int selected) return;
+            var p = PageContext.Recorder!;
+            if (p.lstTargetRpms.SelectedItem is not int) return;
             if (int.TryParse(p.txtRpmInput.Text, out int newVal))
                 p.lstTargetRpms.Items[p.lstTargetRpms.SelectedIndex] = newVal;
         }
 
         private void lstTargetRpms_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (_recorderPage!.lstTargetRpms.SelectedItem is int selected)
-                _recorderPage!.txtRpmInput.Text = selected.ToString();
+            if (PageContext.Recorder?.lstTargetRpms.SelectedItem is int selected)
+                PageContext.Recorder!.txtRpmInput.Text = selected.ToString();
         }
 
         // ══════════════════════════════════════════════════════════
@@ -312,8 +298,8 @@ namespace EngineSimRecorder
 
         private void btnStart_Click(object sender, RoutedEventArgs e)
         {
-            var p = _recorderPage!;
-            var o = _optionsPage!;
+            var p = PageContext.Recorder!;
+            var o = PageContext.Options!;
 
             if (p.lstTargetRpms.Items.Count == 0) { MessageBox.Show("Add at least one target RPM.", "No targets", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
             if (_backend == null) { MessageBox.Show("Connect to Engine Simulator first.", "Not connected", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
@@ -327,11 +313,8 @@ namespace EngineSimRecorder
 
             var cfg = new RecorderConfig
             {
-                OutputDir = outputDir,
-                ProcessId = 0,
-                TargetRpms = targets,
-                CustomName = p.txtCarName.Text.Trim(),
-                CustomPrefix = GetPrefix(),
+                OutputDir = outputDir, ProcessId = 0, TargetRpms = targets,
+                CustomName = p.txtCarName.Text.Trim(), CustomPrefix = GetPrefix(),
                 SampleRate = o.cmbSampleRate.SelectedIndex == 1 ? 48000 : 44100,
                 Channels = o.cmbChannels.SelectedIndex == 1 ? 1 : 2,
                 InteriorMode = o.rbInterior.IsChecked == true,
@@ -340,23 +323,16 @@ namespace EngineSimRecorder
                 GeneratePowerLut = o.chkGeneratePowerLut.IsChecked == true,
                 Interior = new InteriorSettings
                 {
-                    CutoffHz = (float)o.slCutoff.Value,
-                    RumbleHz = (float)o.slRumbleHz.Value,
-                    RumbleDb = (float)o.slRumbleDb.Value,
-                    Res1Hz = (float)o.slRes1Hz.Value,
-                    Res1Db = (float)o.slRes1Db.Value,
-                    Res2Hz = (float)o.slRes2Hz.Value,
-                    Res2Db = (float)o.slRes2Db.Value,
-                    StereoWidth = (float)(o.slWidth.Value / 100.0),
-                    ReverbMix = (float)(o.slReverbMix.Value / 100.0),
-                    ReverbMs = (float)o.slReverbMs.Value,
-                    CompRatio = (float)o.slCompRatio.Value,
-                    CompThreshDb = (float)o.slCompThresh.Value,
+                    CutoffHz = (float)o.slCutoff.Value, RumbleHz = (float)o.slRumbleHz.Value,
+                    RumbleDb = (float)o.slRumbleDb.Value, Res1Hz = (float)o.slRes1Hz.Value,
+                    Res1Db = (float)o.slRes1Db.Value, Res2Hz = (float)o.slRes2Hz.Value,
+                    Res2Db = (float)o.slRes2Db.Value, StereoWidth = (float)(o.slWidth.Value / 100.0),
+                    ReverbMix = (float)(o.slReverbMix.Value / 100.0), ReverbMs = (float)o.slReverbMs.Value,
+                    CompRatio = (float)o.slCompRatio.Value, CompThreshDb = (float)o.slCompThresh.Value,
                 },
             };
 
-            p.btnStart.IsEnabled = false;
-            p.btnStop.IsEnabled = true;
+            p.btnStart.IsEnabled = false; p.btnStop.IsEnabled = true;
             p.pbarProgress.BeginAnimation(ProgressBar.ValueProperty, null);
             p.pbarProgress.Value = 0;
 
@@ -366,24 +342,26 @@ namespace EngineSimRecorder
 
         private void btnStop_Click(object sender, RoutedEventArgs e) => _cts?.Cancel();
 
-        private void chkStayOnTop_Changed(object sender, RoutedEventArgs e) => Topmost = _recorderPage!.chkStayOnTop.IsChecked == true;
+        private void chkStayOnTop_Changed(object sender, RoutedEventArgs e)
+            => Topmost = PageContext.Recorder!.chkStayOnTop.IsChecked == true;
 
         // ══════════════════════════════════════════════════════════
         //  UI HELPERS
         // ══════════════════════════════════════════════════════════
 
-        private void Log(string msg) => Dispatcher.BeginInvoke(() => _logPage?.AppendLog($"[{DateTime.Now:HH:mm:ss}] {msg}"));
-        private void SetStatus(string t) => Dispatcher.BeginInvoke(() => _recorderPage!.lblStatus.Text = t);
-        private void SetRpm(string t) => Dispatcher.BeginInvoke(() => _recorderPage!.lblCurrentRpm.Text = t);
-        private void SetEta(string t) => Dispatcher.BeginInvoke(() => _recorderPage!.lblEta.Text = t);
+        private void Log(string msg) => Dispatcher.BeginInvoke(() => PageContext.Log?.AppendLog($"[{DateTime.Now:HH:mm:ss}] {msg}"));
+        private void SetStatus(string t) => Dispatcher.BeginInvoke(() => { if (PageContext.Recorder != null) PageContext.Recorder.lblStatus.Text = t; });
+        private void SetRpm(string t) => Dispatcher.BeginInvoke(() => { if (PageContext.Recorder != null) PageContext.Recorder.lblCurrentRpm.Text = t; });
+        private void SetEta(string t) => Dispatcher.BeginInvoke(() => { if (PageContext.Recorder != null) PageContext.Recorder.lblEta.Text = t; });
 
         private void StartRecProgress(double durationSec)
         {
             Dispatcher.BeginInvoke(() =>
             {
+                var p = PageContext.Recorder; if (p == null) return;
                 _progressDurationSec = durationSec;
-                _recorderPage!.pbarProgress.BeginAnimation(ProgressBar.ValueProperty, null);
-                _recorderPage!.pbarProgress.Value = 0;
+                p.pbarProgress.BeginAnimation(ProgressBar.ValueProperty, null);
+                p.pbarProgress.Value = 0;
                 _progressSw = Stopwatch.StartNew();
                 _progressTimer?.Stop();
                 _progressTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(60) };
@@ -396,10 +374,10 @@ namespace EngineSimRecorder
         {
             Dispatcher.BeginInvoke(() =>
             {
-                _progressTimer?.Stop();
-                _progressTimer = null;
-                _recorderPage!.pbarProgress.BeginAnimation(ProgressBar.ValueProperty, null);
-                _recorderPage!.pbarProgress.Value = 0;
+                _progressTimer?.Stop(); _progressTimer = null;
+                var p = PageContext.Recorder; if (p == null) return;
+                p.pbarProgress.BeginAnimation(ProgressBar.ValueProperty, null);
+                p.pbarProgress.Value = 0;
             });
         }
 
@@ -407,26 +385,26 @@ namespace EngineSimRecorder
         {
             Dispatcher.BeginInvoke(() =>
             {
-                _progressTimer?.Stop();
-                _progressTimer = null;
-                _recorderPage!.pbarProgress.BeginAnimation(ProgressBar.ValueProperty, null);
-                _recorderPage!.pbarProgress.Value = 1;
-                _recorderPage!.pbarProgress.Foreground = (Brush)FindResource("DoneBrush");
+                _progressTimer?.Stop(); _progressTimer = null;
+                var p = PageContext.Recorder; if (p == null) return;
+                p.pbarProgress.BeginAnimation(ProgressBar.ValueProperty, null);
+                p.pbarProgress.Value = 1;
+                p.pbarProgress.Foreground = (Brush)FindResource("DoneBrush");
             });
         }
 
         private void ProgressTimer_Tick(object? sender, EventArgs e)
         {
-            if (_progressSw == null || _progressDurationSec <= 0) return;
+            if (_progressSw == null || _progressDurationSec <= 0 || PageContext.Recorder == null) return;
             double fraction = Math.Min(_progressSw.Elapsed.TotalSeconds / _progressDurationSec, 1.0);
-            _recorderPage!.pbarProgress.BeginAnimation(ProgressBar.ValueProperty, new DoubleAnimation(fraction, new Duration(TimeSpan.FromMilliseconds(60))));
+            PageContext.Recorder.pbarProgress.BeginAnimation(ProgressBar.ValueProperty, new DoubleAnimation(fraction, new Duration(TimeSpan.FromMilliseconds(60))));
         }
 
         private void ResetControls() => Dispatcher.BeginInvoke(() =>
         {
-            _recorderPage!.btnStart.IsEnabled = true;
-            _recorderPage!.btnStop.IsEnabled = false;
-            _recorderPage!.lblStatus.Text = "Done.";
+            var p = PageContext.Recorder; if (p == null) return;
+            p.btnStart.IsEnabled = true; p.btnStop.IsEnabled = false;
+            p.lblStatus.Text = "Done.";
         });
 
         // ══════════════════════════════════════════════════════════
@@ -448,7 +426,7 @@ namespace EngineSimRecorder
                 }
 
                 double? maxRpm = backend.ReadMaxRpm();
-                if (maxRpm.HasValue) { Log($"Engine redline: {maxRpm.Value:F0} RPM (max target: {maxRpm.Value - 250:F0})"); Dispatcher.BeginInvoke(() => _recorderPage!.lblRedline.Text = $"(redline: {maxRpm.Value:F0})"); }
+                if (maxRpm.HasValue) { Log($"Engine redline: {maxRpm.Value:F0} RPM (max target: {maxRpm.Value - 250:F0})"); Dispatcher.BeginInvoke(() => { if (PageContext.Recorder != null) PageContext.Recorder.lblRedline.Text = $"(redline: {maxRpm.Value:F0})"; }); }
 
                 IntPtr hwnd = backend.Hwnd;
                 _engineSimHwnd = hwnd;
@@ -507,7 +485,6 @@ namespace EngineSimRecorder
                 var overallSw = Stopwatch.StartNew();
                 var torqueData = new List<(int rpm, double torqueNm)>();
 
-                // Step 4: Record each target RPM
                 string prefix = cfg.CustomPrefix ?? "";
                 string carName = cfg.CustomName ?? "";
                 for (int i = 0; i < cfg.TargetRpms.Count; i++)
@@ -545,7 +522,6 @@ namespace EngineSimRecorder
                     string baseName = string.IsNullOrEmpty(carName) ? "" : $"{prefix}{carName}_";
                     string modePrefix = cfg.InteriorMode ? "int_" : "";
 
-                    // Record LOAD
                     string loadFile = $"{baseName}{modePrefix}on_{target}.wav";
                     string loadPath = Path.Combine(cfg.OutputDir, loadFile);
                     SetStatus($"Recording {target} RPM (load)...");
@@ -554,7 +530,6 @@ namespace EngineSimRecorder
                     if (ct.IsCancellationRequested) break;
                     Log($"Saved: {loadPath}");
 
-                    // Record NO-LOAD
                     backend.SetThrottle(0);
                     Log("Waiting 2s for engine to settle...");
                     ct.WaitHandle.WaitOne(2000);
@@ -586,22 +561,19 @@ namespace EngineSimRecorder
                     else KeyboardSim.KeyPress(hwnd, KeyboardSim.VK_H, 120);
                 }
 
-                // Step 5: Engine limiter (optional)
                 if (cfg.RecordLimiter && !ct.IsCancellationRequested)
                 {
                     double? detectedMaxRpm = backend.ReadMaxRpm();
                     int limiterRpm = detectedMaxRpm.HasValue ? (int)detectedMaxRpm.Value : (cfg.TargetRpms.Count > 0 ? cfg.TargetRpms[^1] + 250 : 7000);
                     Log($"=== RECORDING ENGINE LIMITER at {limiterRpm} RPM ===");
-                    SetStatus($"Revving to redline ({limiterRpm} RPM)...");
-                    SetEta("");
+                    SetStatus($"Revving to redline ({limiterRpm} RPM)..."); SetEta("");
                     backend.SetThrottle(1.0);
                     WaitForRpm(backend, cfg, limiterRpm, ct);
                     Log("Waiting 0.2s for rev limiter to engage...");
                     ct.WaitHandle.WaitOne(200);
                     if (!ct.IsCancellationRequested)
                     {
-                        string limiterBaseName = string.IsNullOrEmpty(carName) ? "" : $"{prefix}{carName}_";
-                        string limiterFile = $"{limiterBaseName}{(cfg.InteriorMode ? "int_" : "")}engine_limiter.wav";
+                        string limiterFile = $"{(string.IsNullOrEmpty(carName) ? "" : $"{prefix}{carName}_")}{(cfg.InteriorMode ? "int_" : "")}engine_limiter.wav";
                         string limiterPath = Path.Combine(cfg.OutputDir, limiterFile);
                         Log($"Recording LIMITER for {cfg.RecordSeconds}s -> {limiterPath}");
                         RecordAudio(backend, limiterPath, cfg, ct);
@@ -610,7 +582,6 @@ namespace EngineSimRecorder
                     backend.SetThrottle(0);
                 }
 
-                // Step 6: power.lut (optional)
                 if (cfg.GeneratePowerLut && torqueData.Count > 0 && !ct.IsCancellationRequested)
                 {
                     string lutPath = Path.Combine(cfg.OutputDir, "power.lut");
@@ -618,14 +589,12 @@ namespace EngineSimRecorder
                     try
                     {
                         using var writer = new StreamWriter(lutPath);
-                        foreach (var (rpm, torqueNm) in torqueData)
-                            writer.WriteLine($"{rpm}|{torqueNm:F2}");
+                        foreach (var (rpm, torqueNm) in torqueData) writer.WriteLine($"{rpm}|{torqueNm:F2}");
                         Log($"Saved: {lutPath}");
                     }
                     catch (Exception ex) { Log($"Error writing power.lut: {ex.Message}"); }
                 }
 
-                // Shutdown
                 Log("=== SHUTTING DOWN ===");
                 SetEta("");
                 backend.SetThrottle(0);
@@ -651,15 +620,9 @@ namespace EngineSimRecorder
                 _backend = ownsBackend ? null : backend;
                 Dispatcher.BeginInvoke(() => { _focusMonitor?.Stop(); _focusMonitor = null; });
                 _engineSimHwnd = IntPtr.Zero;
-                StopRecProgress();
-                SetEta("");
-                ResetControls();
+                StopRecProgress(); SetEta(""); ResetControls();
             }
         }
-
-        // ══════════════════════════════════════════════════════════
-        //  RECORDING
-        // ══════════════════════════════════════════════════════════
 
         private void WaitForRpm(KeyboardBackend backend, RecorderConfig cfg, int targetRpm, CancellationToken ct)
         {
@@ -733,8 +696,8 @@ namespace EngineSimRecorder
         //  HELPERS
         // ══════════════════════════════════════════════════════════
 
-        private string GetPrefix() { string p = _recorderPage!.txtPrefix.Text.Trim(); return string.IsNullOrEmpty(p) ? "" : p.EndsWith("_") ? p : p + "_"; }
-        private string GetCarType() => (_optionsPage!.cmbCarType.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Sedan";
+        private string GetPrefix() { string p = PageContext.Recorder!.txtPrefix.Text.Trim(); return string.IsNullOrEmpty(p) ? "" : p.EndsWith("_") ? p : p + "_"; }
+        private string GetCarType() => (PageContext.Options!.cmbCarType.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Sedan";
 
         private sealed class ProcessItem
         {
@@ -751,7 +714,21 @@ namespace EngineSimRecorder
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
             _settings = AppSettings.Load();
-            var o = _optionsPage!;
+
+            // Subscribe to page-loaded callbacks for event wiring
+            PageContext.RecorderLoaded += WireRecorderEvents;
+            PageContext.OptionsLoaded += () => { WireOptionsEvents(); LoadOptionsSettings(); };
+
+            // If pages already loaded (edge case), wire immediately
+            if (PageContext.Recorder != null) WireRecorderEvents();
+        }
+
+        private void LoadOptionsSettings()
+        {
+            var o = PageContext.Options;
+            if (o == null || _optionsLoaded) return;
+            _optionsLoaded = true;
+
             o.cmbSampleRate.SelectedIndex = _settings.SampleRate == 48000 ? 1 : 0;
             o.cmbChannels.SelectedIndex = _settings.Channels == 1 ? 1 : 0;
             o.rbInterior.IsChecked = _settings.InteriorMode;
@@ -763,7 +740,6 @@ namespace EngineSimRecorder
                 if ((o.cmbCarType.Items[i] as ComboBoxItem)?.Content?.ToString() == _settings.CarType)
                 { o.cmbCarType.SelectedIndex = i; break; }
 
-            RefreshProfiles();
             if (!string.IsNullOrEmpty(_settings.LastProfile))
                 for (int i = 0; i < o.cmbProfiles.Items.Count; i++)
                     if (o.cmbProfiles.Items[i]?.ToString() == _settings.LastProfile)
@@ -773,15 +749,17 @@ namespace EngineSimRecorder
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
             _cts?.Cancel();
-            _backend?.Dispose();
-            _backend = null;
-            var o = _optionsPage!;
-            _settings.SampleRate = o.cmbSampleRate.SelectedIndex == 1 ? 48000 : 44100;
-            _settings.Channels = o.cmbChannels.SelectedIndex == 1 ? 1 : 2;
-            _settings.InteriorMode = o.rbInterior.IsChecked == true;
-            _settings.CarType = GetCarType();
-            _settings.RecordLimiter = o.chkRecordLimiter.IsChecked == true;
-            _settings.GeneratePowerLut = o.chkGeneratePowerLut.IsChecked == true;
+            _backend?.Dispose(); _backend = null;
+            var o = PageContext.Options;
+            if (o != null)
+            {
+                _settings.SampleRate = o.cmbSampleRate.SelectedIndex == 1 ? 48000 : 44100;
+                _settings.Channels = o.cmbChannels.SelectedIndex == 1 ? 1 : 2;
+                _settings.InteriorMode = o.rbInterior.IsChecked == true;
+                _settings.CarType = GetCarType();
+                _settings.RecordLimiter = o.chkRecordLimiter.IsChecked == true;
+                _settings.GeneratePowerLut = o.chkGeneratePowerLut.IsChecked == true;
+            }
             _settings.Save();
         }
 
@@ -794,15 +772,15 @@ namespace EngineSimRecorder
 
         private void FocusMonitor_Tick(object? sender, EventArgs e)
         {
-            if (_engineSimHwnd == IntPtr.Zero) return;
+            if (_engineSimHwnd == IntPtr.Zero || PageContext.Recorder == null) return;
             IntPtr focused = GetForegroundWindow();
             bool recorderFocused = (focused == new System.Windows.Interop.WindowInteropHelper(this).Handle);
             bool simFocused = (focused == _engineSimHwnd);
             if (!recorderFocused && !simFocused)
             {
-                if (!_focusWarned) { _focusWarned = true; _recorderPage!.lblStatus.Foreground = new SolidColorBrush(Colors.OrangeRed); Log("⚠ Neither window focused — click this or Engine Sim"); }
+                if (!_focusWarned) { _focusWarned = true; PageContext.Recorder.lblStatus.Foreground = new SolidColorBrush(Colors.OrangeRed); Log("Warning: Neither window focused"); }
             }
-            else if (_focusWarned) { _focusWarned = false; _recorderPage!.lblStatus.Foreground = Brushes.Gray; }
+            else if (_focusWarned) { _focusWarned = false; PageContext.Recorder.lblStatus.Foreground = Brushes.Gray; }
         }
 
         // ══════════════════════════════════════════════════════════
@@ -811,14 +789,15 @@ namespace EngineSimRecorder
 
         private void RefreshProfiles()
         {
-            var o = _optionsPage!;
+            var o = PageContext.Options;
+            if (o == null) return;
             o.cmbProfiles.Items.Clear();
             foreach (string name in RpmProfile.GetProfileNames()) o.cmbProfiles.Items.Add(name);
         }
 
         private void btnSaveProfile_Click(object sender, RoutedEventArgs e)
         {
-            var p = _recorderPage!; var o = _optionsPage!;
+            var p = PageContext.Recorder!; var o = PageContext.Options!;
             string name = o.txtProfileName.Text.Trim();
             if (string.IsNullOrEmpty(name)) { o.lblProfileStatus.Text = "Enter a profile name first."; return; }
             var targets = new List<int>();
@@ -834,12 +813,11 @@ namespace EngineSimRecorder
 
         private void btnLoadProfile_Click(object sender, RoutedEventArgs e)
         {
-            var p = _recorderPage!; var o = _optionsPage!;
+            var p = PageContext.Recorder!; var o = PageContext.Options!;
             if (o.cmbProfiles.SelectedItem is not string name) { o.lblProfileStatus.Text = "Select a profile to load."; return; }
             var profile = RpmProfile.Load(name);
             if (profile == null) { o.lblProfileStatus.Text = $"Failed to load '{name}'."; RefreshProfiles(); return; }
-            p.txtCarName.Text = profile.CarName;
-            p.txtPrefix.Text = profile.Prefix;
+            p.txtCarName.Text = profile.CarName; p.txtPrefix.Text = profile.Prefix;
             p.txtOutputDir.Text = profile.OutputDir ?? "recordings";
             p.lstTargetRpms.Items.Clear();
             foreach (int rpm in profile.TargetRpms) p.lstTargetRpms.Items.Add(rpm);
@@ -851,7 +829,7 @@ namespace EngineSimRecorder
 
         private void btnDeleteProfile_Click(object sender, RoutedEventArgs e)
         {
-            var o = _optionsPage!;
+            var o = PageContext.Options!;
             if (o.cmbProfiles.SelectedItem is not string name) { o.lblProfileStatus.Text = "Select a profile to delete."; return; }
             if (MessageBox.Show($"Delete profile '{name}'?", "Confirm", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
             { RpmProfile.Delete(name); RefreshProfiles(); o.lblProfileStatus.Text = $"Deleted '{name}'."; }
@@ -859,14 +837,14 @@ namespace EngineSimRecorder
 
         private void btnNudgeUp_Click(object sender, RoutedEventArgs e)
         {
-            var p = _recorderPage!;
+            var p = PageContext.Recorder!;
             if (p.lstTargetRpms.SelectedItem is int selected)
                 p.lstTargetRpms.Items[p.lstTargetRpms.SelectedIndex] = selected + 250;
         }
 
         private void btnNudgeDown_Click(object sender, RoutedEventArgs e)
         {
-            var p = _recorderPage!;
+            var p = PageContext.Recorder!;
             if (p.lstTargetRpms.SelectedItem is int selected)
             { int newVal = selected - 250; if (newVal > 0) p.lstTargetRpms.Items[p.lstTargetRpms.SelectedIndex] = newVal; }
         }
@@ -875,21 +853,22 @@ namespace EngineSimRecorder
 
         private void rbMode_Checked(object sender, RoutedEventArgs e)
         {
-            if (_optionsPage?.pnlCutoff != null)
-                _optionsPage!.pnlCutoff.Visibility = _optionsPage!.rbInterior.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+            var o = PageContext.Options;
+            if (o?.pnlCutoff != null)
+                o.pnlCutoff.Visibility = o.rbInterior.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private void cmbCarType_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            var o = _optionsPage!;
-            if (o.pnlCustom == null) return;
+            var o = PageContext.Options;
+            if (o?.pnlCustom == null) return;
             string? type = (o.cmbCarType.SelectedItem as ComboBoxItem)?.Content?.ToString();
             o.pnlCustom.Visibility = type == "Custom" ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private void slCustom_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-            var o = _optionsPage!;
+            var o = PageContext.Options;
             if (!IsLoaded || o == null) return;
             o.lblCutoff.Text = $"{(int)o.slCutoff.Value} Hz";
             o.lblRumbleHz.Text = $"{(int)o.slRumbleHz.Value} Hz";

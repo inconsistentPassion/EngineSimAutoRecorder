@@ -1,10 +1,14 @@
-using Wpf.Ui.Controls;
+using System.Windows.Controls;
 
 namespace EngineSimRecorder.Pages
 {
-    public partial class LogPage : UiPage
+    public partial class LogPage : Page
     {
-        public LogPage() => InitializeComponent();
+        public LogPage()
+        {
+            InitializeComponent();
+            PageContext.Log = this;
+        }
 
         public void AppendLog(string line)
         {

@@ -1,9 +1,15 @@
-using Wpf.Ui.Controls;
+using System.Windows;
+using System.Windows.Controls;
 
 namespace EngineSimRecorder.Pages
 {
-    public partial class RecorderPage : UiPage
+    public partial class RecorderPage : Page
     {
-        public RecorderPage() => InitializeComponent();
+        public RecorderPage()
+        {
+            InitializeComponent();
+            PageContext.Recorder = this;
+            Loaded += (s, e) => PageContext.RaiseRecorderLoaded();
+        }
     }
 }
