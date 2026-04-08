@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Windows;
 using System.Windows.Controls;
 
 namespace EngineSimRecorder.View.Pages;
@@ -17,6 +19,10 @@ public partial class LogPage : Page
         InitializeComponent();
         Instance = this;
 
+        // Wire up buttons
+        btnCopyLog.Click += BtnCopyLog_Click;
+        btnClearLog.Click += (s, e) => Clear();
+
         // Flush any buffered messages
         lock (_bufferLock)
         {
@@ -27,6 +33,25 @@ public partial class LogPage : Page
                 if (_buffer.Count > 0)
                     txtLog.ScrollToEnd();
             }
+        }
+    }
+
+    private void BtnCopyLog_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrEmpty(txtLog.Text))
+        {
+            MessageBox.Show("Log is empty.", "Nothing to Copy", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        try
+        {
+            Clipboard.SetText(txtLog.Text);
+            MessageBox.Show("Log copied to clipboard!", "Copied", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Failed to copy: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -47,7 +72,10 @@ public partial class LogPage : Page
 
     public void Clear()
     {
-        txtLog.Text = "";
+        Dispatcher.BeginInvoke(() =>
+        {
+            txtLog.Text = "";
+        });
         lock (_bufferLock) { _buffer.Clear(); _bufferCleared = true; }
     }
 

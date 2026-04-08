@@ -1,5 +1,6 @@
 using System.IO;
 using System.Windows;
+using EngineSimRecorder.Core;
 using EngineSimRecorder.View;
 using EngineSimRecorder.View.Pages;
 using EngineSimRecorder.ViewModel;
@@ -7,6 +8,7 @@ using EngineSimRecorder.ViewModel.Pages;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Wpf.Ui;
+using Wpf.Ui.Appearance;
 using Wpf.Ui.DependencyInjection;
 
 namespace EngineSimRecorder;
@@ -25,13 +27,13 @@ public partial class App : Application
             services.AddSingleton<MainWindow>();
             services.AddSingleton<MainWindowViewModel>();
 
-            // Pages + ViewModels
-            services.AddTransient<RecorderPage>();
-            services.AddTransient<RecorderPageViewModel>();
-            services.AddTransient<LogPage>();
-            services.AddTransient<LogPageViewModel>();
-            services.AddTransient<OptionsPage>();
-            services.AddTransient<OptionsPageViewModel>();
+            // Pages + ViewModels - Use Singleton to persist state across navigation
+            services.AddSingleton<RecorderPage>();
+            services.AddSingleton<RecorderPageViewModel>();
+            services.AddSingleton<LogPage>();
+            services.AddSingleton<LogPageViewModel>();
+            services.AddSingleton<OptionsPage>();
+            services.AddSingleton<OptionsPageViewModel>();
         })
         .Build();
 
@@ -44,9 +46,19 @@ public partial class App : Application
         base.OnStartup(e);
         await _host.StartAsync();
 
+        // Load saved theme and apply before showing window
+        var settings = AppSettings.Load();
+        ApplicationTheme themeToApply = settings.Theme == "Light" 
+            ? ApplicationTheme.Light 
+            : ApplicationTheme.Dark;
+        ApplicationThemeManager.Apply(themeToApply);
+
         var mainWindow = Services.GetRequiredService<MainWindow>();
         mainWindow.DataContext = Services.GetRequiredService<MainWindowViewModel>();
         mainWindow.Show();
+
+        // Navigate to Recorder page on startup
+        mainWindow.Navigate(typeof(RecorderPage));
     }
 
     protected override async void OnExit(ExitEventArgs e)

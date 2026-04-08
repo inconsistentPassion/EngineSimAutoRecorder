@@ -1,7 +1,10 @@
 <Page x:Class="EngineSimRecorder.View.Pages.RecorderPage"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      xmlns:helpers="clr-namespace:EngineSimRecorder.Helpers"
+      Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ui:FluentWindow}}"
+      ScrollViewer.CanContentScroll="False">
 
     <Grid>
         <Grid.RowDefinitions>
@@ -10,10 +13,22 @@
         </Grid.RowDefinitions>
 
         <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
-                      Padding="20,12,20,0">
+                      Padding="20,12,20,0"
+                      helpers:MouseWheelHelper.EnableForwarding="True"
+                      ScrollViewer.PanningMode="VerticalOnly"
+                      ScrollViewer.CanContentScroll="False">
+            <ScrollViewer.Resources>
+                <Storyboard x:Key="SmoothScroll">
+                    <DoubleAnimation Storyboard.TargetProperty="(ScrollViewer.VerticalOffset)"
+                                   Duration="0:0:0.3"
+                                   To="0" />
+                </Storyboard>
+            </ScrollViewer.Resources>
             <StackPanel MinWidth="0">
-                <TextBlock FontSize="20" FontWeight="Bold" Margin="0,0,0,2" Text="ES Recorder" />
-                <TextBlock FontSize="12" Opacity="0.6" Margin="0,0,0,12" Text="Smart engine audio capture for Assetto Corsa" />
+                <TextBlock FontSize="20" FontWeight="Bold" Margin="0,0,0,2" Text="ES Recorder"
+                           Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                <TextBlock FontSize="12" Opacity="0.6" Margin="0,0,0,12" Text="Smart engine audio capture for Assetto Corsa"
+                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
 
                 <!-- Process -->
                 <ui:Card Margin="0,0,0,8">
@@ -21,11 +36,11 @@
                         <TextBlock Text="Process" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8" />
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="100" />
                                 <ColumnDefinition Width="*" MinWidth="100" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="Target:" Grid.Column="0" VerticalAlignment="Center" Opacity="0.6" FontSize="12" Margin="0,0,8,0" />
+                            <TextBlock Text="Target:" Grid.Column="0" VerticalAlignment="Center" Opacity="0.6" FontSize="12" />
                             <ComboBox x:Name="cmbProcess" Grid.Column="1" IsEditable="False" VerticalAlignment="Center" FontSize="12" />
                             <ui:Button x:Name="btnConnect" Grid.Column="2" Content="Connect" Appearance="Primary" Margin="8,0,0,0" FontSize="12" />
                         </Grid>
@@ -36,28 +51,34 @@
                 <ui:Card Margin="0,0,0,8">
                     <StackPanel>
                         <TextBlock Text="Output" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8" />
-                        <Grid Margin="0,0,0,6">
+                        <Grid Margin="0,0,0,8">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" MinWidth="72" />
+                                <ColumnDefinition Width="100" />
                                 <ColumnDefinition Width="*" MinWidth="100" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="Directory:" Grid.Column="0" VerticalAlignment="Center" FontSize="12" Opacity="0.6" />
-                            <TextBox x:Name="txtOutputDir" Grid.Column="1" Text="recordings" VerticalAlignment="Center" FontSize="12" Margin="8,0" />
-                            <StackPanel Grid.Column="2" Orientation="Horizontal">
-                                <ui:Button x:Name="btnBrowse" Content="Browse" FontSize="11" />
-                                <ui:Button x:Name="btnOpenFolder" Content="Open" Margin="4,0,0,0" FontSize="11" />
+                            <TextBox x:Name="txtOutputDir" Grid.Column="1" Text="recordings" VerticalAlignment="Center" FontSize="12" />
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="8,0,0,0">
+                                <ui:Button x:Name="btnBrowse" Content="Browse" FontSize="12" />
+                                <ui:Button x:Name="btnOpenFolder" Content="Open" Margin="4,0,0,0" FontSize="12" />
                             </StackPanel>
                         </Grid>
-                        <Grid Margin="0,0,0,4">
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" MinWidth="72" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="100" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
                             <TextBlock Text="Car Name:" Grid.Column="0" VerticalAlignment="Center" FontSize="12" Opacity="0.6" />
-                            <TextBox x:Name="txtCarName" Grid.Column="1" VerticalAlignment="Center" FontSize="12" Margin="8,0,0,0" />
+                            <TextBox x:Name="txtCarName" Grid.Column="1" VerticalAlignment="Center" FontSize="12" />
                         </Grid>
                         <Grid>
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" MinWidth="72" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="100" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
                             <TextBlock Text="Prefix:" Grid.Column="0" VerticalAlignment="Center" FontSize="12" Opacity="0.6" />
-                            <TextBox x:Name="txtPrefix" Grid.Column="1" VerticalAlignment="Center" FontSize="12" Margin="8,0,0,0" />
+                            <TextBox x:Name="txtPrefix" Grid.Column="1" VerticalAlignment="Center" FontSize="12" />
                         </Grid>
                     </StackPanel>
                 </ui:Card>
@@ -90,22 +111,22 @@
                             <ListBox x:Name="lstRpm" Grid.Column="0" FontFamily="Consolas" FontSize="11" MaxHeight="160" />
                             <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Top">
                                 <TextBlock Text="Quick Edit" FontSize="10" Opacity="0.5" Margin="0,0,0,4" />
-                                <StackPanel Orientation="Horizontal">
-                                    <ui:Button x:Name="btnNudgeDown" Content="-250" FontSize="11" Width="60" />
-                                    <ui:Button x:Name="btnNudgeUp" Content="+250" FontSize="11" Margin="3,0,0,0" Width="60" />
-                                    <ui:Button x:Name="btnAuto" Content="Auto" FontSize="11" Margin="3,0,0,0" Width="60" />
-                                </StackPanel>
+                                <UniformGrid Columns="3" HorizontalAlignment="Stretch">
+                                    <ui:Button x:Name="btnNudgeDown" Content="-250" FontSize="11" HorizontalAlignment="Stretch" Margin="0,0,2,0" />
+                                    <ui:Button x:Name="btnNudgeUp" Content="+250" FontSize="11" HorizontalAlignment="Stretch" Margin="1,0" />
+                                    <ui:Button x:Name="btnAuto" Content="Auto" FontSize="11" HorizontalAlignment="Stretch" Margin="2,0,0,0" />
+                                </UniformGrid>
                                 <TextBlock Text="RPM value" FontSize="10" Opacity="0.5" Margin="0,10,0,4" />
-                                <TextBox x:Name="txtRpm" Text="1000" Width="186" FontFamily="Consolas" FontSize="12" />
-                                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                    <ui:Button x:Name="btnAdd" Content="Add" Appearance="Primary" FontSize="11" Width="92" />
-                                    <ui:Button x:Name="btnEdit" Content="Edit" FontSize="11" Margin="3,0,0,0" Width="91" />
-                                </StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                                    <ui:Button x:Name="btnRemove" Content="Remove" FontSize="11" Width="92" />
-                                    <ui:Button x:Name="btnSort" Content="Sort" FontSize="11" Margin="3,0,0,0" Width="91" />
-                                </StackPanel>
-                                <ui:Button x:Name="btnClear" Content="Clear All" FontSize="11" Margin="0,2,0,0" />
+                                <TextBox x:Name="txtRpm" Text="1000" HorizontalAlignment="Stretch" FontFamily="Consolas" FontSize="12" />
+                                <UniformGrid Columns="2" HorizontalAlignment="Stretch" Margin="0,4,0,0">
+                                    <ui:Button x:Name="btnAdd" Content="Add" Appearance="Primary" FontSize="11" HorizontalAlignment="Stretch" Margin="0,0,2,0" />
+                                    <ui:Button x:Name="btnEdit" Content="Edit" FontSize="11" HorizontalAlignment="Stretch" Margin="2,0,0,0" />
+                                </UniformGrid>
+                                <UniformGrid Columns="2" HorizontalAlignment="Stretch" Margin="0,2,0,0">
+                                    <ui:Button x:Name="btnRemove" Content="Remove" FontSize="11" HorizontalAlignment="Stretch" Margin="0,0,2,0" />
+                                    <ui:Button x:Name="btnSort" Content="Sort" FontSize="11" HorizontalAlignment="Stretch" Margin="2,0,0,0" />
+                                </UniformGrid>
+                                <ui:Button x:Name="btnClear" Content="Clear All" FontSize="11" Margin="0,2,0,0" HorizontalAlignment="Stretch" />
                             </StackPanel>
                         </Grid>
                     </StackPanel>
@@ -130,12 +151,18 @@
         </ScrollViewer>
 
         <!-- Actions pinned bottom -->
-        <Border Grid.Row="1" Padding="20,8,20,8" Background="{DynamicResource ApplicationBackgroundBrush}">
-            <StackPanel Orientation="Horizontal">
-                <ui:Button x:Name="btnStart" Content="Start" Appearance="Success" FontSize="15" Padding="24,10" />
-                <ui:Button x:Name="btnStop" Content="Stop" Appearance="Danger" FontSize="15" Padding="24,10" Margin="10,0,0,0" IsEnabled="False" />
-                <CheckBox x:Name="chkTop" Content=" Stay on Top" VerticalAlignment="Center" Margin="180,0,0,0" Opacity="0.6" />
-            </StackPanel>
+        <Border Grid.Row="1" Padding="20,8,20,8" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <ui:Button x:Name="btnStart" Content="Start" Appearance="Success" FontSize="15" Padding="24,10" />
+                    <ui:Button x:Name="btnStop" Content="Stop" Appearance="Danger" FontSize="15" Padding="24,10" Margin="10,0,0,0" IsEnabled="False" />
+                </StackPanel>
+                <CheckBox Grid.Column="1" x:Name="chkTop" Content="Stay on Top" HorizontalAlignment="Right" VerticalAlignment="Center" Opacity="0.6" />
+            </Grid>
         </Border>
     </Grid>
 </Page>

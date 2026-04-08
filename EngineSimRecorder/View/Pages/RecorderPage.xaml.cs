@@ -125,8 +125,37 @@ public partial class RecorderPage : Page
     {
         if (_backend != null)
         {
-            if (_cts != null) { MessageBox.Show("Stop recording first.", "Busy", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
-            Disconnect(); return;
+            // Show confirmation if recording is in progress
+            if (_cts != null && !_cts.IsCancellationRequested)
+            {
+                var result = MessageBox.Show(
+                    "A recording is currently in progress. Do you want to stop it and disconnect?",
+                    "Stop Recording & Disconnect",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+                
+                if (result != MessageBoxResult.Yes)
+                    return;
+                    
+                // Stop recording first before disconnecting
+                _cts?.Cancel();
+                Log("Stopping recording before disconnect...");
+                lblStatus.Text = "Stopping recording...";
+                btnConnect.IsEnabled = false;
+                btnConnect.Content = "Disconnecting...";
+                
+                // Wait a moment for the recording to stop gracefully
+                _ = Task.Run(async () =>
+                {
+                    await Task.Delay(800);
+                    Dispatcher.BeginInvoke(() => Disconnect());
+                });
+                return;
+            }
+            
+            // Normal disconnect (no active recording)
+            Disconnect();
+            return;
         }
         RefreshProcessList();
         if (cmbProcess.Items.Count == 0) { MessageBox.Show("No Engine Simulator process found.", "Not Found", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
@@ -174,10 +203,48 @@ public partial class RecorderPage : Page
 
     private void Disconnect()
     {
-        _backend?.Dispose(); _backend = null;
-        btnConnect.Content = "Connect"; btnStart.IsEnabled = false;
-        lblRpm.Text = "RPM: ---"; lblRedline.Text = "";
-        Log("Disconnected.");
+        try
+        {
+            // Stop any background tasks first
+            if (_workerTask != null && !_workerTask.IsCompleted)
+            {
+                _cts?.Cancel();
+                try
+                {
+                    _workerTask.Wait(TimeSpan.FromSeconds(3));
+                }
+                catch (Exception ex)
+                {
+                    Log($"Warning while stopping worker: {ex.Message}");
+                }
+            }
+
+            // Dispose backend and clear state
+            _backend?.Dispose();
+            _backend = null;
+
+            // Reset UI state
+            btnConnect.Content = "Connect";
+            btnConnect.IsEnabled = true;
+            btnStart.IsEnabled = false;
+            btnStop.IsEnabled = false;
+            lblRpm.Text = "RPM: ---";
+            lblRedline.Text = "";
+            lblStatus.Text = "Disconnected.";
+            pbar.Value = 0;
+
+            Log("Disconnected from Engine Simulator.");
+        }
+        catch (Exception ex)
+        {
+            Log($"Error during disconnect: {ex.Message}");
+            // Force reset UI even on error
+            _backend = null;
+            btnConnect.Content = "Connect";
+            btnConnect.IsEnabled = true;
+            btnStart.IsEnabled = false;
+            btnStop.IsEnabled = false;
+        }
     }
 
     // ── Output ──

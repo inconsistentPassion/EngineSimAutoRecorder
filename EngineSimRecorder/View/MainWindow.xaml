@@ -18,7 +18,7 @@
                      Title="ES Recorder"
                      Grid.Row="0">
             <ui:TitleBar.Header>
-                <StackPanel Orientation="Horizontal" Margin="8,0,0,0" VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal" Margin="-16,0,0,0" VerticalAlignment="Center">
                     <Image Source="/icon.ico"
                            Width="16" Height="16" Margin="0,0,6,0" />
                     <TextBlock Text="ES Recorder" VerticalAlignment="Center" FontSize="12" Opacity="0.9" />
@@ -32,6 +32,7 @@
                            FooterMenuItemsSource="{Binding FooterMenuItems}"
                            IsBackButtonVisible="Collapsed"
                            IsPaneToggleVisible="True"
+                           IsPaneOpen="False"
                            IsTopSeparatorVisible="False"
                            IsFooterSeparatorVisible="False"
                            OpenPaneLength="180"
