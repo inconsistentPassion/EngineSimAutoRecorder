@@ -6,7 +6,6 @@ using EngineSimRecorder.ViewModel;
 using EngineSimRecorder.View.Pages;
 using Wpf.Ui;
 using Wpf.Ui.Abstractions;
-using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
 
 namespace EngineSimRecorder.View;
@@ -32,27 +31,6 @@ public partial class MainWindow : FluentWindow, INavigationWindow
         Application.Current.MainWindow = this;
         Loaded += (s, e) => Activate();
         Closing += OnClosing;
-
-        UpdateThemeButton();
-        btnTheme.Click += BtnTheme_Click;
-    }
-
-    // ── Theme ──
-    private int _themeIndex = 0;
-    private void BtnTheme_Click(object sender, RoutedEventArgs e)
-    {
-        _themeIndex = (_themeIndex + 1) % 3;
-        switch (_themeIndex)
-        {
-            case 0: ApplicationThemeManager.Apply(ApplicationTheme.Dark); break;
-            case 1: ApplicationThemeManager.Apply(ApplicationTheme.Light); break;
-            case 2: ApplicationThemeManager.Apply(ApplicationTheme.Unknown); break;
-        }
-        UpdateThemeButton();
-    }
-    private void UpdateThemeButton()
-    {
-        btnTheme.Content = _themeIndex switch { 0 => "Dark", 1 => "Light", _ => "System" };
     }
 
     // ── Focus Monitor ──
@@ -91,7 +69,7 @@ public partial class MainWindow : FluentWindow, INavigationWindow
     // ── Closing ──
     private void OnClosing(object sender, System.ComponentModel.CancelEventArgs e)
     {
-        RecorderPage.Instance?.Cts?.Cancel();
+        RecorderPage.Instance?._cts?.Cancel();
         RecorderPage.Instance?.Backend?.Dispose();
         OptionsPage.Instance?.SaveSettings();
     }

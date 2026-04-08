@@ -3,6 +3,7 @@
                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                  xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
                  Title="ES Recorder"
+                 MinWidth="580" MinHeight="600"
                  Width="620" Height="700"
                  ExtendsContentIntoTitleBar="True"
                  WindowStartupLocation="CenterScreen"
@@ -16,14 +17,7 @@
         <ui:TitleBar x:Name="TitleBar"
                      Title="ES Recorder"
                      Grid.Row="0"
-                     Icon="icon.ico">
-            <ui:TitleBar.Header>
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
-                    <ui:Button x:Name="btnTheme" FontSize="11" Padding="8,4"
-                               ToolTip="Toggle theme" />
-                </StackPanel>
-            </ui:TitleBar.Header>
-        </ui:TitleBar>
+                     Icon="icon.ico" />
 
         <ui:NavigationView x:Name="RootNavigation"
                            Grid.Row="1"

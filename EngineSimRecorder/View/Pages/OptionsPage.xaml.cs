@@ -2,6 +2,7 @@ using System;
 using System.Windows;
 using System.Windows.Controls;
 using EngineSimRecorder.Core;
+using Wpf.Ui.Appearance;
 
 namespace EngineSimRecorder.View.Pages;
 
@@ -21,6 +22,9 @@ public partial class OptionsPage : Page
     {
         if (_wired) return;
         _wired = true;
+
+        // Theme
+        cmbTheme.SelectionChanged += cmbTheme_SelectionChanged;
 
         rbExterior.Checked += rbMode_Checked;
         rbInterior.Checked += rbMode_Checked;
@@ -42,6 +46,9 @@ public partial class OptionsPage : Page
             if ((cmbCarType.Items[i] as ComboBoxItem)?.Content?.ToString() == settings.CarType)
             { cmbCarType.SelectedIndex = i; break; }
 
+        // Theme
+        cmbTheme.SelectedIndex = settings.Theme switch { "Light" => 1, "System" => 2, _ => 0 };
+
         // Profiles
         btnLoadProfile.Click += btnLoadProfile_Click;
         btnDeleteProfile.Click += btnDeleteProfile_Click;
@@ -51,6 +58,19 @@ public partial class OptionsPage : Page
             for (int i = 0; i < cmbProfiles.Items.Count; i++)
                 if (cmbProfiles.Items[i]?.ToString() == settings.LastProfile)
                 { cmbProfiles.SelectedIndex = i; break; }
+    }
+
+    private void cmbTheme_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!IsLoaded) return;
+        string theme = cmbTheme.SelectedIndex switch { 1 => "Light", 2 => "System", _ => "Dark" };
+        var appTheme = theme switch
+        {
+            "Light" => ApplicationTheme.Light,
+            "System" => ApplicationTheme.Unknown,
+            _ => ApplicationTheme.Dark
+        };
+        ApplicationThemeManager.Apply(appTheme);
     }
 
     private void rbMode_Checked(object sender, RoutedEventArgs e)
@@ -82,7 +102,6 @@ public partial class OptionsPage : Page
         lblCompThresh.Text = $"{(int)slCompThresh.Value} dB";
     }
 
-    // ── Profiles ──
     private void RefreshProfiles()
     {
         cmbProfiles.Items.Clear();
@@ -146,6 +165,7 @@ public partial class OptionsPage : Page
         settings.CarType = (cmbCarType.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Sedan";
         settings.RecordLimiter = chkRecordLimiter.IsChecked == true;
         settings.GeneratePowerLut = chkGeneratePowerLut.IsChecked == true;
+        settings.Theme = cmbTheme.SelectedIndex switch { 1 => "Light", 2 => "System", _ => "Dark" };
         settings.Save();
     }
 }

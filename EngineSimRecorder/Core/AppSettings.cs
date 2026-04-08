@@ -13,6 +13,7 @@ namespace EngineSimRecorder.Core
         public string CarType { get; set; } = "Sedan";
         public bool RecordLimiter { get; set; } = false;
         public bool GeneratePowerLut { get; set; } = false;
+        public string Theme { get; set; } = "Dark";
 
         private static string FilePath =>
             Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json");
