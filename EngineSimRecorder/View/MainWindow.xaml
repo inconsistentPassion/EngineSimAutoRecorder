@@ -16,8 +16,15 @@
 
         <ui:TitleBar x:Name="TitleBar"
                      Title="ES Recorder"
-                     Grid.Row="0"
-                     Icon="/icon.ico" />
+                     Grid.Row="0">
+            <ui:TitleBar.Header>
+                <StackPanel Orientation="Horizontal" Margin="8,0,0,0" VerticalAlignment="Center">
+                    <Image Source="/icon.ico"
+                           Width="16" Height="16" Margin="0,0,6,0" />
+                    <TextBlock Text="ES Recorder" VerticalAlignment="Center" FontSize="12" Opacity="0.9" />
+                </StackPanel>
+            </ui:TitleBar.Header>
+        </ui:TitleBar>
 
         <ui:NavigationView x:Name="RootNavigation"
                            Grid.Row="1"
