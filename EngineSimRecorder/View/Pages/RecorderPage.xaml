@@ -78,6 +78,10 @@
                             <ui:Button Content="4K" FontSize="11" Padding="10,4" Tag="4000" Margin="3,0,0,0" />
                             <ui:Button Content="5K" FontSize="11" Padding="10,4" Tag="5000" Margin="3,0,0,0" />
                             <ui:Button Content="6K" FontSize="11" Padding="10,4" Tag="6000" Margin="3,0,0,0" />
+                            <ui:Button Content="7K" FontSize="11" Padding="10,4" Tag="7000" Margin="3,0,0,0" />
+                            <ui:Button Content="8K" FontSize="11" Padding="10,4" Tag="8000" Margin="3,0,0,0" />
+                            <ui:Button Content="9K" FontSize="11" Padding="10,4" Tag="9000" Margin="3,0,0,0" />
+                            <ui:Button Content="10K" FontSize="11" Padding="10,4" Tag="10000" Margin="3,0,0,0" />
                         </StackPanel>
                         <Grid>
                             <Grid.ColumnDefinitions>

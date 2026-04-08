@@ -16,16 +16,24 @@
         <ui:TitleBar x:Name="TitleBar"
                      Title="ES Recorder"
                      Grid.Row="0"
-                     Icon="icon.ico" />
+                     Icon="icon.ico">
+            <ui:TitleBar.Header>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
+                    <ui:Button x:Name="btnTheme" FontSize="11" Padding="8,4"
+                               ToolTip="Toggle theme" />
+                </StackPanel>
+            </ui:TitleBar.Header>
+        </ui:TitleBar>
 
         <ui:NavigationView x:Name="RootNavigation"
                            Grid.Row="1"
                            MenuItemsSource="{Binding MenuItems}"
                            FooterMenuItemsSource="{Binding FooterMenuItems}"
                            IsBackButtonVisible="Collapsed"
-                           IsPaneToggleVisible="False"
+                           IsPaneToggleVisible="True"
                            IsTopSeparatorVisible="False"
                            IsFooterSeparatorVisible="False"
-                           OpenPaneLength="180" />
+                           OpenPaneLength="180"
+                           CompactPaneLength="48" />
     </Grid>
 </ui:FluentWindow>
