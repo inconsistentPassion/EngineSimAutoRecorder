@@ -2,8 +2,8 @@
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-      xmlns:vm="clr-namespace:EngineSimRecorder.ViewModel.Pages"
-      x:DataType="vm:RecorderPageViewModel">
+     
+     >
 
     <Grid Margin="20,12,20,6">
         <Grid.RowDefinitions>
