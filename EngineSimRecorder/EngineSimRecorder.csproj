@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
@@ -12,42 +11,18 @@
     <ApplicationIcon>icon.ico</ApplicationIcon>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
-    <PublishSingleFile>true</PublishSingleFile>
-    <SelfContained>false</SelfContained>
-    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-    <PublishTrimmed>false</PublishTrimmed>
-    <DebugType>none</DebugType>
-    <DebugSymbols>false</DebugSymbols>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.0" />
     <PackageReference Include="NAudio" Version="2.2.1" />
     <PackageReference Include="WPF-UI" Version="4.2.0" />
     <PackageReference Include="WPF-UI.DependencyInjection" Version="4.2.0" />
   </ItemGroup>
 
-  <!-- Auto-build es_hook.dll via CMake -->
-  <PropertyGroup>
-    <EngineSimHookBuildDir>$(MSBuildThisFileDirectory)..\EngineSimHook\build</EngineSimHookBuildDir>
-    <EngineSimHookDll>$(MSBuildThisFileDirectory)..\EngineSimHook\bin\$(Configuration)\es_hook.dll</EngineSimHookDll>
-    <_CMakePath Condition="'$(_CMakePath)' == '' AND Exists('$(VsInstallRoot)\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe')">$(VsInstallRoot)\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe</_CMakePath>
-    <_CMakePath Condition="'$(_CMakePath)' == ''">cmake</_CMakePath>
-  </PropertyGroup>
-
-  <Target Name="BuildEngineSimHook" BeforeTargets="BeforeBuild"
-          Inputs="..\EngineSimHook\CMakeLists.txt;..\EngineSimHook\src\dllmain.cpp;..\EngineSimHook\src\hooks.cpp;..\EngineSimHook\src\memory.cpp;..\EngineSimHook\src\pipe.cpp"
-          Outputs="$(EngineSimHookDll)">
-    <Message Importance="high" Text="=== Building es_hook.dll via CMake ===" />
-    <Exec Command="&quot;$(_CMakePath)&quot; -S &quot;$(MSBuildThisFileDirectory)..\EngineSimHook&quot; -B &quot;$(EngineSimHookBuildDir)&quot; -G &quot;Visual Studio 17 2022&quot; -A x64"
-          ConsoleToMSBuild="true" />
-    <Exec Command="&quot;$(_CMakePath)&quot; --build &quot;$(EngineSimHookBuildDir)&quot; --config $(Configuration)"
-          ConsoleToMSBuild="true" />
-    <Message Importance="high" Text="=== es_hook.dll built successfully ===" />
-  </Target>
-
   <ItemGroup>
-    <None Include="$(EngineSimHookDll)" CopyToOutputDirectory="PreserveNewest" />
     <None Include="icon.ico" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
-
 </Project>
