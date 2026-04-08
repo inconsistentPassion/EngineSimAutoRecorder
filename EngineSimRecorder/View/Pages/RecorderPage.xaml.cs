@@ -140,22 +140,35 @@ public partial class RecorderPage : Page
         var cfg = new RecorderConfig { ProcessId = sel.ProcessId };
         Task.Run(() =>
         {
-            var backend = new KeyboardBackend();
-            bool ok = backend.Initialize(cfg, msg => Log(msg), CancellationToken.None);
-            Dispatcher.BeginInvoke(() =>
+            try
             {
-                if (ok)
+                var backend = new KeyboardBackend();
+                bool ok = backend.Initialize(cfg, msg => Log(msg), CancellationToken.None);
+                Dispatcher.BeginInvoke(() =>
                 {
-                    _backend = backend;
-                    btnConnect.Content = "Disconnect";
+                    if (ok)
+                    {
+                        _backend = backend;
+                        btnConnect.Content = "Disconnect";
+                        btnConnect.IsEnabled = true;
+                        btnStart.IsEnabled = true;
+                        double? maxRpm = backend.ReadMaxRpm();
+                        if (maxRpm.HasValue) { Log($"Connected. Engine redline: {maxRpm.Value:F0} RPM"); lblRedline.Text = $"(redline: {maxRpm.Value:F0})"; }
+                        else Log("Connected. Waiting for redline data...");
+                    }
+                    else { backend.Dispose(); btnConnect.Content = "Connect"; btnConnect.IsEnabled = true; Log("Connection failed."); MessageBox.Show("Connection to Engine Simulator failed.\nSee the status label above or the Log tab for details.", "Connection Failed", MessageBoxButton.OK, MessageBoxImage.Error); }
+                });
+            }
+            catch (Exception ex)
+            {
+                Log($"Connection error: {ex.Message}");
+                Dispatcher.BeginInvoke(() =>
+                {
+                    btnConnect.Content = "Connect";
                     btnConnect.IsEnabled = true;
-                    btnStart.IsEnabled = true;
-                    double? maxRpm = backend.ReadMaxRpm();
-                    if (maxRpm.HasValue) { Log($"Connected. Engine redline: {maxRpm.Value:F0} RPM"); lblRedline.Text = $"(redline: {maxRpm.Value:F0})"; }
-                    else Log("Connected. Waiting for redline data...");
-                }
-                else { backend.Dispose(); btnConnect.Content = "Connect"; btnConnect.IsEnabled = true; Log("Connection failed."); MessageBox.Show($"Connection to Engine Simulator failed.\n\nSee status below or the Log tab for details.", "Connection Failed", MessageBoxButton.OK, MessageBoxImage.Error); }
-            });
+                    MessageBox.Show($"Connection error:\n{ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                });
+            }
         });
     }
 

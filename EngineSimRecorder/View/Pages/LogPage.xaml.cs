@@ -9,6 +9,7 @@ public partial class LogPage : Page
 
     // Buffer for messages logged before LogPage is created
     private static readonly List<string> _buffer = new();
+    private static readonly object _bufferLock = new();
     private static bool _bufferCleared;
 
     public LogPage()
@@ -17,28 +18,22 @@ public partial class LogPage : Page
         Instance = this;
 
         // Flush any buffered messages
-        if (_bufferCleared)
+        lock (_bufferLock)
         {
-            _bufferCleared = false;
-        }
-        else
-        {
-            foreach (var line in _buffer)
-                txtLog.AppendText(line + "\n");
-            if (_buffer.Count > 0)
-                txtLog.ScrollToEnd();
+            if (!_bufferCleared)
+            {
+                foreach (var line in _buffer)
+                    txtLog.AppendText(line + "\n");
+                if (_buffer.Count > 0)
+                    txtLog.ScrollToEnd();
+            }
         }
     }
 
     public void AppendLog(string line)
     {
-        if (txtLog != null)
-        {
-            txtLog.AppendText(line + "\n");
-            txtLog.ScrollToEnd();
-        }
-        // Always buffer too, so messages survive page recreation
-        _buffer.Add(line);
+        txtLog.AppendText(line + "\n");
+        txtLog.ScrollToEnd();
     }
 
     /// <summary>
@@ -47,19 +42,17 @@ public partial class LogPage : Page
     /// </summary>
     public static void AppendBuffered(string line)
     {
-        _buffer.Add(line);
-    }
-
-    public static void ClearBuffer()
-    {
-        _buffer.Clear();
-        _bufferCleared = true;
+        lock (_bufferLock) { _buffer.Add(line); }
     }
 
     public void Clear()
     {
         txtLog.Text = "";
-        _buffer.Clear();
-        _bufferCleared = true;
+        lock (_bufferLock) { _buffer.Clear(); _bufferCleared = true; }
+    }
+
+    public static void ClearBuffer()
+    {
+        lock (_bufferLock) { _buffer.Clear(); _bufferCleared = true; }
     }
 }

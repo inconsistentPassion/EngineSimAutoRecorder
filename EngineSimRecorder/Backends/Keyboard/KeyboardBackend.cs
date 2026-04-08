@@ -94,7 +94,11 @@ namespace EngineSimRecorder.Backends.Keyboard
             string? dllPath = FindDll("es_hook.dll");
             if (dllPath == null)
             {
-                log("ERROR: es_hook.dll not found. Build EngineSimHook first.");
+                log("ERROR: es_hook.dll not found.");
+                log("  Searched:");
+                foreach (var c in GetDllSearchPaths("es_hook.dll"))
+                    log($"    {c}");
+                log("  Build the C++ hook first: cmake + build EngineSimHook project.");
                 return false;
             }
             log($"Injecting {dllPath}...");
@@ -308,18 +312,22 @@ namespace EngineSimRecorder.Backends.Keyboard
 
         private static string? FindDll(string name)
         {
-            string[] candidates =
-            {
-                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, name),
-                Path.Combine(Environment.CurrentDirectory, name),
-                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "EngineSimHook", "build", "Release", name),
-                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "EngineSimHook", "build", "Debug", name),
-            };
-            foreach (var p in candidates)
+            foreach (var p in GetDllSearchPaths(name))
             {
                 if (File.Exists(p)) return p;
             }
             return null;
+        }
+
+        private static string[] GetDllSearchPaths(string name)
+        {
+            return new[]
+            {
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, name),
+                Path.Combine(Environment.CurrentDirectory, name),
+                Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "EngineSimHook", "build", "Release", name)),
+                Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "EngineSimHook", "build", "Debug", name)),
+            };
         }
 
         private bool InjectDll(int pid, string dllPath)
