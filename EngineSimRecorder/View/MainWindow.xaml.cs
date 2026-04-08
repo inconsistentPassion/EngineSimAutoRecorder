@@ -1,6 +1,9 @@
 using System;
 using System.Windows;
+using System.Windows.Media;
+using System.Windows.Threading;
 using EngineSimRecorder.ViewModel;
+using EngineSimRecorder.View.Pages;
 using Wpf.Ui;
 using Wpf.Ui.Abstractions;
 using Wpf.Ui.Appearance;
@@ -11,6 +14,11 @@ namespace EngineSimRecorder.View;
 public partial class MainWindow : FluentWindow, INavigationWindow
 {
     public MainWindowViewModel ViewModel { get; }
+
+    // Focus monitor
+    internal static IntPtr EngineSimHwnd { get; set; } = IntPtr.Zero;
+    private static DispatcherTimer? _focusMonitor;
+    private static bool _focusWarned = false;
 
     public MainWindow(MainWindowViewModel viewModel, INavigationService navigationService, ISnackbarService snackbarService)
     {
@@ -23,14 +31,14 @@ public partial class MainWindow : FluentWindow, INavigationWindow
 
         Application.Current.MainWindow = this;
         Loaded += (s, e) => Activate();
+        Closing += OnClosing;
 
-        // Theme toggle
         UpdateThemeButton();
         btnTheme.Click += BtnTheme_Click;
     }
 
-    private int _themeIndex = 0; // 0=Dark, 1=Light, 2=System
-
+    // ── Theme ──
+    private int _themeIndex = 0;
     private void BtnTheme_Click(object sender, RoutedEventArgs e)
     {
         _themeIndex = (_themeIndex + 1) % 3;
@@ -42,15 +50,50 @@ public partial class MainWindow : FluentWindow, INavigationWindow
         }
         UpdateThemeButton();
     }
-
     private void UpdateThemeButton()
     {
-        btnTheme.Content = _themeIndex switch
+        btnTheme.Content = _themeIndex switch { 0 => "Dark", 1 => "Light", _ => "System" };
+    }
+
+    // ── Focus Monitor ──
+    internal static void StartFocusMonitor(RecorderPage page)
+    {
+        _focusWarned = false;
+        _focusMonitor?.Stop();
+        _focusMonitor = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        _focusMonitor.Tick += FocusMonitor_Tick;
+        _focusMonitor.Start();
+    }
+
+    internal static void StopFocusMonitor()
+    {
+        _focusMonitor?.Stop();
+        _focusMonitor = null;
+    }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
+
+    private static void FocusMonitor_Tick(object? sender, EventArgs e)
+    {
+        if (EngineSimHwnd == IntPtr.Zero || RecorderPage.Instance == null) return;
+        IntPtr focused = GetForegroundWindow();
+        bool recorderFocused = (focused == new WindowInteropHelper(Application.Current.MainWindow!).Handle);
+        bool simFocused = (focused == EngineSimHwnd);
+        var page = RecorderPage.Instance;
+        if (!recorderFocused && !simFocused)
         {
-            0 => "Dark",
-            1 => "Light",
-            _ => "System"
-        };
+            if (!_focusWarned) { _focusWarned = true; page.lblStatus.Foreground = new SolidColorBrush(Colors.OrangeRed); }
+        }
+        else if (_focusWarned) { _focusWarned = false; page.lblStatus.Foreground = Brushes.Gray; }
+    }
+
+    // ── Closing ──
+    private void OnClosing(object sender, System.ComponentModel.CancelEventArgs e)
+    {
+        RecorderPage.Instance?.Cts?.Cancel();
+        RecorderPage.Instance?.Backend?.Dispose();
+        OptionsPage.Instance?.SaveSettings();
     }
 
     public INavigationView GetNavigation() => RootNavigation;

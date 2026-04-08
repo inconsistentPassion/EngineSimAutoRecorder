@@ -4,7 +4,13 @@ namespace EngineSimRecorder.View.Pages;
 
 public partial class LogPage : Page
 {
-    public LogPage() => InitializeComponent();
+    public static LogPage? Instance { get; private set; }
+
+    public LogPage()
+    {
+        InitializeComponent();
+        Instance = this;
+    }
 
     public void AppendLog(string line)
     {
