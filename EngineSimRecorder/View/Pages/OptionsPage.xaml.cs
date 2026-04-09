@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using EngineSimRecorder.Core;
@@ -30,8 +31,8 @@ public partial class OptionsPage : Page
         rbInterior.Checked += rbMode_Checked;
         cmbCarType.SelectionChanged += cmbCarType_SelectionChanged;
 
-        foreach (var sl in new[] { slCutoff, slRumbleHz, slRumbleDb, slRes1Hz, slRes1Db, slRes2Hz, slRes2Db, slWidth, slReverbMix, slReverbMs, slCompRatio, slCompThresh })
-            sl.ValueChanged += slCustom_ValueChanged;
+        var sliders = new[] { slCutoff, slRumbleHz, slRumbleDb, slRes1Hz, slRes1Db, slRes2Hz, slRes2Db, slWidth, slReverbMix, slReverbMs, slCompRatio, slCompThresh };
+        foreach (var sl in sliders) sl.ValueChanged += slCustom_ValueChanged;
 
         // Load saved settings
         var settings = AppSettings.Load();
@@ -42,9 +43,8 @@ public partial class OptionsPage : Page
         pnlCutoff.Visibility = settings.InteriorMode ? Visibility.Visible : Visibility.Collapsed;
         chkRecordLimiter.IsChecked = settings.RecordLimiter;
         chkGeneratePowerLut.IsChecked = settings.GeneratePowerLut;
-        for (int i = 0; i < cmbCarType.Items.Count; i++)
-            if ((cmbCarType.Items[i] as ComboBoxItem)?.Content?.ToString() == settings.CarType)
-            { cmbCarType.SelectedIndex = i; break; }
+        
+        cmbCarType.SelectedItem = cmbCarType.Items.OfType<ComboBoxItem>().FirstOrDefault(i => i.Content?.ToString() == settings.CarType);
 
         // Theme
         cmbTheme.SelectedIndex = settings.Theme switch { "Light" => 1, "System" => 2, _ => 0 };
@@ -54,10 +54,9 @@ public partial class OptionsPage : Page
         btnDeleteProfile.Click += btnDeleteProfile_Click;
         btnSaveProfile.Click += btnSaveProfile_Click;
         RefreshProfiles();
+        
         if (!string.IsNullOrEmpty(settings.LastProfile))
-            for (int i = 0; i < cmbProfiles.Items.Count; i++)
-                if (cmbProfiles.Items[i]?.ToString() == settings.LastProfile)
-                { cmbProfiles.SelectedIndex = i; break; }
+            cmbProfiles.SelectedItem = cmbProfiles.Items.OfType<string>().FirstOrDefault(i => i == settings.LastProfile);
     }
 
     private void cmbTheme_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -114,20 +113,16 @@ public partial class OptionsPage : Page
         string name = txtProfileName.Text.Trim();
         if (string.IsNullOrEmpty(name)) { lblProfileStatus.Text = "Enter a profile name."; return; }
         if (rec == null) return;
-        var targets = new System.Collections.Generic.List<int>();
-        foreach (var item in rec.lstRpm.Items) targets.Add(Convert.ToInt32(item));
-        var profile = new RpmProfile
-        {
-            Name = name, CarName = rec.txtCarName.Text.Trim(), Prefix = rec.txtPrefix.Text.Trim(),
-            OutputDir = rec.txtOutputDir.Text.Trim(), TargetRpms = targets,
-            SampleRate = cmbSampleRate.SelectedIndex == 1 ? 48000 : 44100,
-            Channels = cmbChannels.SelectedIndex == 1 ? 1 : 2,
-        };
+        
+        var profile = rec.ExportProfileState();
+        profile.Name = name;
+        profile.SampleRate = cmbSampleRate.SelectedIndex == 1 ? 48000 : 44100;
+        profile.Channels = cmbChannels.SelectedIndex == 1 ? 1 : 2;
+        
         profile.Save();
         RefreshProfiles();
-        for (int i = 0; i < cmbProfiles.Items.Count; i++)
-            if (cmbProfiles.Items[i]?.ToString() == name) { cmbProfiles.SelectedIndex = i; break; }
-        lblProfileStatus.Text = $"Saved '{name}' ({targets.Count} RPM targets)";
+        cmbProfiles.SelectedItem = name;
+        lblProfileStatus.Text = $"Saved '{name}' ({profile.TargetRpms.Count} RPM targets)";
     }
 
     private void btnLoadProfile_Click(object sender, RoutedEventArgs e)
@@ -136,14 +131,12 @@ public partial class OptionsPage : Page
         if (cmbProfiles.SelectedItem is not string name) { lblProfileStatus.Text = "Select a profile."; return; }
         var profile = RpmProfile.Load(name);
         if (profile == null) { lblProfileStatus.Text = $"Failed to load '{name}'."; RefreshProfiles(); return; }
+        
         if (rec != null)
         {
-            rec.txtCarName.Text = profile.CarName;
-            rec.txtPrefix.Text = profile.Prefix;
-            rec.txtOutputDir.Text = profile.OutputDir ?? "recordings";
-            rec.lstRpm.Items.Clear();
-            foreach (int rpm in profile.TargetRpms) rec.lstRpm.Items.Add(rpm);
+            rec.ImportProfileState(profile);
         }
+        
         cmbSampleRate.SelectedIndex = profile.SampleRate == 48000 ? 1 : 0;
         cmbChannels.SelectedIndex = profile.Channels == 1 ? 1 : 0;
         lblProfileStatus.Text = $"Loaded '{name}' ({profile.TargetRpms.Count} RPM targets)";

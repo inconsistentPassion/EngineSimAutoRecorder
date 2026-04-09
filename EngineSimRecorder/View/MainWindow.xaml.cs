@@ -1,6 +1,5 @@
 using System;
 using System.Windows;
-using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -57,15 +56,23 @@ public partial class MainWindow : FluentWindow, INavigationWindow
     private static void FocusMonitor_Tick(object? sender, EventArgs e)
     {
         if (EngineSimHwnd == IntPtr.Zero || RecorderPage.Instance == null) return;
+        
         IntPtr focused = GetForegroundWindow();
-        bool recorderFocused = (focused == new WindowInteropHelper(Application.Current.MainWindow!).Handle);
-        bool simFocused = (focused == EngineSimHwnd);
+        IntPtr mainWindowHandle = new WindowInteropHelper(Application.Current.MainWindow!).Handle;
+        
+        bool isFocused = (focused == mainWindowHandle) || (focused == EngineSimHwnd);
         var page = RecorderPage.Instance;
-        if (!recorderFocused && !simFocused)
+
+        if (!isFocused && !_focusWarned)
         {
-            if (!_focusWarned) { _focusWarned = true; page.lblStatus.Foreground = new SolidColorBrush(Colors.OrangeRed); }
+            _focusWarned = true;
+            page.lblStatus.Foreground = new SolidColorBrush(Colors.OrangeRed);
         }
-        else if (_focusWarned) { _focusWarned = false; page.lblStatus.Foreground = Brushes.Gray; }
+        else if (isFocused && _focusWarned)
+        {
+            _focusWarned = false;
+            page.lblStatus.Foreground = Brushes.Gray;
+        }
     }
 
     // ── Closing ──

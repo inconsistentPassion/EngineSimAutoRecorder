@@ -81,83 +81,58 @@ namespace EngineSimRecorder.Backends.Keyboard
         {
             _log = log;
 
-            log("═══════════════════════════════════════");
-            log("Starting connection to Engine Simulator...");
-            log("═══════════════════════════════════════");
-
             // 1. Find the Engine Sim window
-            log($"Step 1/6: Finding Engine Simulator window (PID: {cfg.ProcessId})...");
+            log($"Finding Engine Simulator window (PID: {cfg.ProcessId})...");
             Hwnd = KeyboardSim.FindMainWindow(cfg.ProcessId);
             if (Hwnd == IntPtr.Zero)
             {
-                log("✗ ERROR: Could not find Engine Simulator window.");
-                log("  → Is Engine Simulator running?");
-                log("  → Make sure you selected the correct process");
+                log("ERROR: Could not find Engine Simulator window.");
                 return false;
             }
-            log($"✓ Found Engine Simulator window handle: 0x{Hwnd:X}");
+            log($"Found window handle: 0x{Hwnd:X}");
 
             // 2. Inject hook DLL for RPM reading
-            log("\nStep 2/6: Preparing DLL injection...");
             string? dllPath = FindDll("es_hook.dll");
             if (dllPath == null)
             {
-                log("✗ ERROR: es_hook.dll not found!");
-                log("  Searched locations:");
-                foreach (var c in GetDllSearchPaths("es_hook.dll"))
-                    log($"    • {c}");
-                log("\n  → Build the C++ hook project first:");
-                log("    cmake --build EngineSimHook/build --config Debug");
+                log("ERROR: es_hook.dll not found! Build the C++ hook project first.");
                 return false;
             }
-            log($"✓ Found DLL: {dllPath}");
-            
-            log($"\nStep 3/6: Injecting DLL into process {cfg.ProcessId}...");
+            log($"Found DLL: {dllPath}");
+
             if (!InjectDll(cfg.ProcessId, dllPath))
             {
-                log("✗ ERROR: DLL injection failed!");
-                log("  → Try running as Administrator");
-                log("  → Make sure Engine Simulator is not running as admin while recorder is not");
+                log("ERROR: DLL injection failed. Try running as Administrator.");
                 return false;
             }
-            log("✓ DLL injected successfully");
+            log("DLL injected successfully");
 
             // 3. Connect pipe with retry
-            log($"\nStep 4/6: Connecting to hook pipe...");
-            if (!ConnectPipeWithRetry(ct, maxAttempts: 10, delayMs: 500))
+            if (!ConnectPipeWithRetry(ct))
             {
-                log("✗ ERROR: Pipe connection failed!");
-                log("  → The DLL may not have initialized properly");
-                log("  → Check if Engine Simulator version is compatible");
+                log("ERROR: Pipe connection failed.");
                 return false;
             }
 
-            // 4. Start background RPM reader
-            log("\nStep 5/6: Starting background services...");
+            // 4. Start background threads
             _rpmReaderRunning = true;
             _rpmReaderThread = new Thread(RpmReaderLoop) { IsBackground = true, Name = "RPM-Reader" };
             _rpmReaderThread.Start();
-            log("  ✓ RPM reader thread started");
 
-            // 5. Start throttle hold thread
             _throttleRunning = true;
             _throttleKeyHeld = false;
             _throttleThread = new Thread(ThrottleHoldLoop) { IsBackground = true, Name = "Throttle-Hold" };
             _throttleThread.Start();
-            log("  ✓ Throttle control thread started");
 
-            // 6. Wait for first RPM readings
-            log("\nStep 6/6: Waiting for initial RPM data...");
+            // 5. Wait for first RPM reading
             ct.WaitHandle.WaitOne(1000);
             double? testRpm = ReadRpm();
             if (testRpm.HasValue)
-                log($"✓ Initial RPM received: {testRpm.Value:F0}");
+                log($"Initial RPM: {testRpm.Value:F0}");
             else
-                log("⚠ No RPM data yet - waiting for engine to start");
-            
-            log("\n═══════════════════════════════════════");
-            log("✓ Backend ready - keyboard control + pipe RPM");
-            log("═══════════════════════════════════════");
+                log("No RPM data yet — waiting for engine start");
+
+            log("Backend ready");
             return true;
         }
 
@@ -189,11 +164,6 @@ namespace EngineSimRecorder.Backends.Keyboard
             }
         }
 
-        public void StartEngine(Action<string> log, CancellationToken ct)
-        {
-            // Not used — MainWindow drives the startup sequence directly via keyboard commands.
-        }
-
         public void StopEngine()
         {
             SetThrottle(0);
@@ -205,31 +175,16 @@ namespace EngineSimRecorder.Backends.Keyboard
 
         public void Dispose()
         {
-            _log?.Invoke("\n── Disposing backend...");
-            
             _throttleRunning = false;
-            _log?.Invoke("  → Stopping throttle thread...");
             _throttleThread?.Join(2000);
             KeyboardSim.KeyUp(Hwnd, KeyboardSim.VK_R);
 
             _rpmReaderRunning = false;
-            _log?.Invoke("  → Stopping RPM reader thread...");
             _rpmReaderThread?.Join(2000);
-            
-            _log?.Invoke("  → Closing pipe connection...");
-            try 
-            { 
-                if (_pipe != null && _pipe.IsConnected)
-                    _log?.Invoke("  → Pipe was connected, now closing...");
-                _pipe?.Dispose(); 
-            } 
-            catch (Exception ex) 
-            { 
-                _log?.Invoke($"  → Error closing pipe: {ex.Message}");
-            }
+
+            try { _pipe?.Dispose(); }
+            catch { }
             _pipe = null;
-            
-            _log?.Invoke("✓ Backend disposed successfully");
         }
 
         // ── Throttle hold thread ──────────────────────────────────────
@@ -275,16 +230,10 @@ namespace EngineSimRecorder.Backends.Keyboard
         private void RpmReaderLoop()
         {
             byte[] buf = new byte[64];
-            int consecutiveErrors = 0;
             while (_rpmReaderRunning)
             {
                 if (_pipe == null || !_pipe.IsConnected)
                 {
-                    if (_pipe != null && !consecutiveErrors.Equals(0))
-                    {
-                        _log?.Invoke("Pipe reconnected.");
-                        consecutiveErrors = 0;
-                    }
                     Thread.Sleep(100);
                     continue;
                 }
@@ -296,12 +245,11 @@ namespace EngineSimRecorder.Backends.Keyboard
                         if (_pipe == null || !_pipe.IsConnected) continue;
                         n = _pipe.Read(buf, 0, buf.Length);
                     }
-                    
+
                     if (n >= 9 && buf[0] == MSG_RPM_UPDATE)
                     {
                         double rpm = BitConverter.ToDouble(buf, 1);
                         lock (_rpmLock) { _latestRpm = rpm; }
-                        consecutiveErrors = 0; // Reset on successful read
                     }
                     else if (n >= 9 && buf[0] == MSG_MAX_RPM)
                     {
@@ -316,24 +264,16 @@ namespace EngineSimRecorder.Backends.Keyboard
                     }
                     else if (n == 0)
                     {
-                        _log?.Invoke("RPM pipe disconnected (EOF).");
                         Thread.Sleep(100);
                     }
                 }
-                catch (IOException ex)
+                catch (IOException)
                 {
-                    consecutiveErrors++;
-                    if (consecutiveErrors <= 3 || consecutiveErrors % 10 == 0)
-                    {
-                        _log?.Invoke($"RPM reader IO error #{consecutiveErrors}: {ex.GetType().Name} - {ex.Message}");
-                    }
                     Thread.Sleep(100);
                 }
                 catch (Exception ex)
                 {
-                    consecutiveErrors++;
-                    _log?.Invoke($"RPM reader error #{consecutiveErrors}: {ex.GetType().Name} - {ex.Message}");
-                    _log?.Invoke($"Stack: {ex.StackTrace}");
+                    _log?.Invoke($"RPM reader error: {ex.Message}");
                     Thread.Sleep(100);
                 }
             }
@@ -358,37 +298,30 @@ namespace EngineSimRecorder.Backends.Keyboard
         {
             try
             {
-                _log?.Invoke($"Connecting to pipe '{PIPE_NAME}' (timeout: {timeoutMs}ms)...");
                 _pipe?.Dispose();
                 _pipe = new NamedPipeClientStream(".", PIPE_NAME, PipeDirection.InOut, PipeOptions.None);
                 _pipe.Connect(timeoutMs);
                 _pipe.ReadMode = PipeTransmissionMode.Message;
-                _log?.Invoke("✓ Connected to hook pipe successfully");
-                _log?.Invoke($"  - Pipe mode: Message");
-                _log?.Invoke($"  - Direction: In/Out");
-                _log?.Invoke($"  - IsConnected: {_pipe.IsConnected}");
+                _log?.Invoke("Connected to hook pipe");
                 return true;
             }
             catch (TimeoutException)
             {
-                _log?.Invoke($"✗ Pipe connection timed out after {timeoutMs}ms");
-                _log?.Invoke("  → Make sure Engine Simulator is running and the DLL was injected");
                 return false;
             }
             catch (IOException ex)
             {
-                _log?.Invoke($"✗ Pipe IO error: {ex.Message}");
-                _log?.Invoke($"  → The pipe server may have closed or crashed");
+                _log?.Invoke($"Pipe IO error: {ex.Message}");
                 return false;
             }
             catch (UnauthorizedAccessException)
             {
-                _log?.Invoke("✗ Pipe access denied - try running as Administrator");
+                _log?.Invoke("Pipe access denied — run as Administrator");
                 return false;
             }
             catch (Exception ex)
             {
-                _log?.Invoke($"✗ Pipe connection failed: {ex.GetType().Name} - {ex.Message}");
+                _log?.Invoke($"Pipe error: {ex.Message}");
                 return false;
             }
         }

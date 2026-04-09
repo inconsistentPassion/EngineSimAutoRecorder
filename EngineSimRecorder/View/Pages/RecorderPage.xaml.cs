@@ -11,11 +11,7 @@ using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using EngineSimRecorder.Backends.Keyboard;
 using EngineSimRecorder.Core;
-using EngineSimRecorder.View.Pages;
 using NAudio.Wave;
-using MessageBox = System.Windows.MessageBox;
-using MessageBoxButton = System.Windows.MessageBoxButton;
-using MessageBoxImage = System.Windows.MessageBoxImage;
 
 namespace EngineSimRecorder.View.Pages;
 
@@ -85,16 +81,6 @@ public partial class RecorderPage : Page
             if (child is T t) yield return t;
             foreach (var c in FindVisualChildren<T>(child)) yield return c;
         }
-    }
-
-    // ── Log helper ──
-    private LogPage? GetLogPage()
-    {
-        var win = Application.Current.MainWindow;
-        if (win is not MainWindow mw) return null;
-        var nav = mw.GetNavigation();
-        // Find LogPage from visual tree or cache
-        return LogPage.Instance;
     }
 
     private void Log(string msg)
@@ -247,6 +233,29 @@ public partial class RecorderPage : Page
         }
     }
 
+    // ── Profile State Management ──
+    internal RpmProfile ExportProfileState()
+    {
+        var targets = new List<int>();
+        foreach (var item in lstRpm.Items) targets.Add(Convert.ToInt32(item));
+        return new RpmProfile
+        {
+            CarName = txtCarName.Text.Trim(),
+            Prefix = txtPrefix.Text.Trim(),
+            OutputDir = txtOutputDir.Text.Trim(),
+            TargetRpms = targets
+        };
+    }
+
+    internal void ImportProfileState(RpmProfile profile)
+    {
+        txtCarName.Text = profile.CarName;
+        txtPrefix.Text = profile.Prefix;
+        txtOutputDir.Text = profile.OutputDir ?? "recordings";
+        lstRpm.Items.Clear();
+        foreach (int rpm in profile.TargetRpms) lstRpm.Items.Add(rpm);
+    }
+
     // ── Output ──
     private void btnBrowse_Click(object sender, RoutedEventArgs e)
     {
@@ -323,32 +332,7 @@ public partial class RecorderPage : Page
         foreach (var item in lstRpm.Items) targets.Add(Convert.ToInt32(item));
         targets.Sort();
 
-        var cfg = new RecorderConfig
-        {
-            OutputDir = outputDir, ProcessId = 0, TargetRpms = targets,
-            CustomName = txtCarName.Text.Trim(), CustomPrefix = GetPrefix(),
-            SampleRate = opt?.cmbSampleRate?.SelectedIndex == 1 ? 48000 : 44100,
-            Channels = opt?.cmbChannels?.SelectedIndex == 1 ? 1 : 2,
-            InteriorMode = opt?.rbInterior?.IsChecked == true,
-            CarType = GetCarType(),
-            RecordLimiter = opt?.chkRecordLimiter?.IsChecked == true,
-            GeneratePowerLut = opt?.chkGeneratePowerLut?.IsChecked == true,
-            Interior = new InteriorSettings
-            {
-                CutoffHz = (float)(opt?.slCutoff?.Value ?? 2000),
-                RumbleHz = (float)(opt?.slRumbleHz?.Value ?? 80),
-                RumbleDb = (float)(opt?.slRumbleDb?.Value ?? 6),
-                Res1Hz = (float)(opt?.slRes1Hz?.Value ?? 180),
-                Res1Db = (float)(opt?.slRes1Db?.Value ?? 5),
-                Res2Hz = (float)(opt?.slRes2Hz?.Value ?? 350),
-                Res2Db = (float)(opt?.slRes2Db?.Value ?? 4),
-                StereoWidth = (float)((opt?.slWidth?.Value ?? 30) / 100.0),
-                ReverbMix = (float)((opt?.slReverbMix?.Value ?? 7) / 100.0),
-                ReverbMs = (float)(opt?.slReverbMs?.Value ?? 30),
-                CompRatio = (float)(opt?.slCompRatio?.Value ?? 3),
-                CompThreshDb = (float)(opt?.slCompThresh?.Value ?? -12),
-            },
-        };
+        var cfg = BuildRecorderConfig(targets);
 
         btnStart.IsEnabled = false; btnStop.IsEnabled = true;
         pbar.BeginAnimation(ProgressBar.ValueProperty, null); pbar.Value = 0;
@@ -411,6 +395,40 @@ public partial class RecorderPage : Page
     // ══════════════════════════════════════════════════════════
     //  WORKFLOW — full port from old MainWindow
     // ══════════════════════════════════════════════════════════
+
+    private RecorderConfig BuildRecorderConfig(List<int> targets)
+    {
+        var opt = OptionsPage.Instance;
+        return new RecorderConfig
+        {
+            OutputDir = txtOutputDir.Text.Trim(),
+            ProcessId = 0, // Injected via Backend if needed
+            TargetRpms = targets,
+            CustomName = txtCarName.Text.Trim(),
+            CustomPrefix = GetPrefix(),
+            SampleRate = opt?.cmbSampleRate?.SelectedIndex == 1 ? 48000 : 44100,
+            Channels = opt?.cmbChannels?.SelectedIndex == 1 ? 1 : 2,
+            InteriorMode = opt?.rbInterior?.IsChecked == true,
+            CarType = GetCarType(),
+            RecordLimiter = opt?.chkRecordLimiter?.IsChecked == true,
+            GeneratePowerLut = opt?.chkGeneratePowerLut?.IsChecked == true,
+            Interior = new InteriorSettings
+            {
+                CutoffHz = (float)(opt?.slCutoff?.Value ?? 2000),
+                RumbleHz = (float)(opt?.slRumbleHz?.Value ?? 80),
+                RumbleDb = (float)(opt?.slRumbleDb?.Value ?? 6),
+                Res1Hz = (float)(opt?.slRes1Hz?.Value ?? 180),
+                Res1Db = (float)(opt?.slRes1Db?.Value ?? 5),
+                Res2Hz = (float)(opt?.slRes2Hz?.Value ?? 350),
+                Res2Db = (float)(opt?.slRes2Db?.Value ?? 4),
+                StereoWidth = (float)((opt?.slWidth?.Value ?? 30) / 100.0),
+                ReverbMix = (float)((opt?.slReverbMix?.Value ?? 7) / 100.0),
+                ReverbMs = (float)(opt?.slReverbMs?.Value ?? 30),
+                CompRatio = (float)(opt?.slCompRatio?.Value ?? 3),
+                CompThreshDb = (float)(opt?.slCompThresh?.Value ?? -12),
+            }
+        };
+    }
 
     private void RunAsync(RecorderConfig cfg, CancellationToken ct)
     {
