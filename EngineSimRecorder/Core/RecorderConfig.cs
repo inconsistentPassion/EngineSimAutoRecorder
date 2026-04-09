@@ -6,6 +6,7 @@ namespace EngineSimRecorder.Core
     {
         public string OutputDir { get; set; } = "recordings";
         public int ProcessId { get; set; }
+        public string ProcessName { get; set; } = "";
         public string CustomName { get; set; } = "";
         public string CustomPrefix { get; set; } = "";
         public List<int> TargetRpms { get; set; } = new();

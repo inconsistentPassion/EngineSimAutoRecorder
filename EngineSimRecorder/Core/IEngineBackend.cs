@@ -5,6 +5,8 @@ namespace EngineSimRecorder.Core
 {
     /// <summary>
     /// Abstraction for reading RPM and controlling the engine.
+    ///
+    /// InjectionBackend: DLL hook → memory read RPM, memory write throttle.
     /// </summary>
     public interface IEngineBackend : IDisposable
     {
@@ -14,6 +16,7 @@ namespace EngineSimRecorder.Core
         double? ReadMaxRpm();
         double? ReadTorque();
         void SetThrottle(double throttle);
+        void StartEngine(Action<string> log, CancellationToken ct);
         void StopEngine();
     }
 }

@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<OutputType>WinExe</OutputType>
 		<TargetFramework>net8.0-windows</TargetFramework>
@@ -23,17 +23,8 @@
 	</PropertyGroup>
 
 	<Target Name="BuildHookDll" BeforeTargets="BeforeBuild"
-			Inputs="..\EngineSimHook\CMakeLists.txt;..\EngineSimHook\src\dllmain.cpp;..\EngineSimHook\src\hooks.cpp;..\EngineSimHook\src\memory.cpp;..\EngineSimHook\src\pipe.cpp"
-			Outputs="$(HookDllPath)">
-		<Message Importance="high" Text="=== Building es_hook.dll via CMake ===" />
-		<Message Importance="high" Text="Using CMake: $(_CMakePath)" />
-		<Exec Command="&quot;$(_CMakePath)&quot; -S &quot;$(HookSourceDir)&quot; -B &quot;$(HookBuildDir)&quot; -G &quot;Visual Studio 17 2022&quot; -A x64"
-			  Condition="!Exists('$(HookBuildDir)\CMakeCache.txt')"
-			  ConsoleToMSBuild="true" />
-		<Exec Command="&quot;$(_CMakePath)&quot; --build &quot;$(HookBuildDir)&quot; --config $(Configuration)"
-			  ConsoleToMSBuild="true" />
-		<Copy SourceFiles="$(HookDllPath)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" />
-		<Message Importance="high" Text="=== es_hook.dll built and copied ===" />
+			Condition="Exists('$(HookDllPath)')">
+		<Message Importance="high" Text="=== es_hook.dll already exists, skipping build ===" />
 	</Target>
 
 	<ItemGroup>
@@ -47,5 +38,11 @@
 
 	<ItemGroup>
 		<Resource Include="icon.ico" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<EmbeddedResource Include="..\assets\fmod_import_recordings.js">
+			<LogicalName>EngineSimRecorder.Scripts.fmod_import_recordings.js</LogicalName>
+		</EmbeddedResource>
 	</ItemGroup>
 </Project>

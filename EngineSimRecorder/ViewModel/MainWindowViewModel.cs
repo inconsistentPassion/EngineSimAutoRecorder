@@ -15,6 +15,8 @@ public partial class MainWindowViewModel : ObservableObject
     {
         new NavigationViewItem("Recorder", SymbolRegular.Record24, typeof(RecorderPage)),
         new NavigationViewItem("Log", SymbolRegular.ClipboardCode24, typeof(LogPage)),
+        new NavigationViewItem("Scripts", SymbolRegular.CodeBlock24, typeof(ScriptsPage)),
+        new NavigationViewItem("FMOD Import", SymbolRegular.Diversity24, typeof(FmodImportPage)),
     };
 
     [ObservableProperty]

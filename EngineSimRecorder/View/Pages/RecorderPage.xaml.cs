@@ -11,7 +11,11 @@ using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using EngineSimRecorder.Backends.Keyboard;
 using EngineSimRecorder.Core;
+using EngineSimRecorder.View.Pages;
 using NAudio.Wave;
+using MessageBox = System.Windows.MessageBox;
+using MessageBoxButton = System.Windows.MessageBoxButton;
+using MessageBoxImage = System.Windows.MessageBoxImage;
 
 namespace EngineSimRecorder.View.Pages;
 
@@ -134,7 +138,7 @@ public partial class RecorderPage : Page
                 _ = Task.Run(async () =>
                 {
                     await Task.Delay(800);
-                    Dispatcher.BeginInvoke(() => Disconnect());
+                    await Dispatcher.InvokeAsync(() => Disconnect());
                 });
                 return;
             }

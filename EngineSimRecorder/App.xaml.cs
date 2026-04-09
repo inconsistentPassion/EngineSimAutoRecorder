@@ -32,8 +32,12 @@ public partial class App : Application
             services.AddSingleton<RecorderPageViewModel>();
             services.AddSingleton<LogPage>();
             services.AddSingleton<LogPageViewModel>();
+            services.AddSingleton<ScriptsPage>();
+            services.AddSingleton<ScriptsPageViewModel>();
             services.AddSingleton<OptionsPage>();
             services.AddSingleton<OptionsPageViewModel>();
+            services.AddSingleton<FmodImportPage>();
+            services.AddSingleton<FmodImportPageViewModel>();
         })
         .Build();
 
