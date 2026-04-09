@@ -74,6 +74,152 @@
                         <RadioButton x:Name="rbExterior" Content=" Exterior" IsChecked="True" GroupName="RecMode" FontSize="12" Margin="0,0,20,0" Opacity="0.6" />
                         <RadioButton x:Name="rbInterior" Content=" Interior" GroupName="RecMode" FontSize="12" Opacity="0.6" />
                     </StackPanel>
+
+                    <!-- Exterior DSP Preset (shown when Exterior is selected) -->
+                    <StackPanel x:Name="pnlExhaustPreset" Margin="0,10,0,0" Visibility="Visible">
+                        <Grid VerticalAlignment="Center">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="100" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Exhaust DSP:" Grid.Column="0" VerticalAlignment="Center" FontSize="12" Opacity="0.6" />
+                            <ComboBox x:Name="cmbExhaustPreset" Grid.Column="1" FontSize="12" SelectedIndex="0">
+                                <ComboBoxItem Content="Raw (no processing)" IsSelected="True" />
+                                <ComboBoxItem Content="Sport" />
+                                <ComboBoxItem Content="Race" />
+                                <ComboBoxItem Content="Supercar" />
+                                <ComboBoxItem Content="Muffled / OEM" />
+                                <ComboBoxItem Content="Custom" />
+                            </ComboBox>
+                        </Grid>
+                        <TextBlock FontSize="11" Opacity="0.4" Margin="0,4,0,0" TextWrapping="Wrap"
+                                   Text="Race/Sport/Supercar/Muffler apply EQ, saturation, reverb and compression. Raw outputs unmodified audio. Custom lets you tune every parameter." />
+
+                        <!-- Custom exterior parameters (shown only when Custom is selected) -->
+                        <Border x:Name="pnlCustomExterior" Visibility="Collapsed"
+                                Background="{DynamicResource ControlFillColorDefaultBrush}" CornerRadius="6" Padding="12,10" Margin="0,10,0,0"
+                                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="1">
+                            <StackPanel>
+                                <TextBlock Text="EQ" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="100" />
+                                        <ColumnDefinition Width="140" />
+                                        <ColumnDefinition Width="60" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="LP cutoff" Grid.Column="0" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
+                                    <Slider x:Name="slExtLpHz" Grid.Column="1" Minimum="2000" Maximum="16000" Value="8000" TickFrequency="500" IsSnapToTickEnabled="True" SmallChange="500" LargeChange="2000" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="lblExtLpHz" Grid.Column="2" Text="8000 Hz" FontSize="11" VerticalAlignment="Center" Opacity="0.5" />
+                                </Grid>
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="100" />
+                                        <ColumnDefinition Width="140" />
+                                        <ColumnDefinition Width="60" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="LP Q" Grid.Column="0" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
+                                    <Slider x:Name="slExtLpQ" Grid.Column="1" Minimum="0.3" Maximum="2.0" Value="0.7" TickFrequency="0.1" IsSnapToTickEnabled="True" SmallChange="0.1" LargeChange="0.5" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="lblExtLpQ" Grid.Column="2" Text="0.7" FontSize="11" VerticalAlignment="Center" Opacity="0.5" />
+                                </Grid>
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="100" />
+                                        <ColumnDefinition Width="140" />
+                                        <ColumnDefinition Width="60" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Hi-shelf Hz" Grid.Column="0" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
+                                    <Slider x:Name="slExtHsHz" Grid.Column="1" Minimum="2000" Maximum="12000" Value="5000" TickFrequency="500" IsSnapToTickEnabled="True" SmallChange="500" LargeChange="2000" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="lblExtHsHz" Grid.Column="2" Text="5000 Hz" FontSize="11" VerticalAlignment="Center" Opacity="0.5" />
+                                </Grid>
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="100" />
+                                        <ColumnDefinition Width="140" />
+                                        <ColumnDefinition Width="60" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Hi-shelf dB" Grid.Column="0" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
+                                    <Slider x:Name="slExtHsGainDb" Grid.Column="1" Minimum="-12" Maximum="6" Value="-3" TickFrequency="1" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="3" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="lblExtHsGainDb" Grid.Column="2" Text="-3 dB" FontSize="11" VerticalAlignment="Center" Opacity="0.5" />
+                                </Grid>
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="100" />
+                                        <ColumnDefinition Width="140" />
+                                        <ColumnDefinition Width="60" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Low-mid Hz" Grid.Column="0" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
+                                    <Slider x:Name="slExtMidHz" Grid.Column="1" Minimum="60" Maximum="400" Value="150" TickFrequency="10" IsSnapToTickEnabled="True" SmallChange="10" LargeChange="50" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="lblExtMidHz" Grid.Column="2" Text="150 Hz" FontSize="11" VerticalAlignment="Center" Opacity="0.5" />
+                                </Grid>
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="100" />
+                                        <ColumnDefinition Width="140" />
+                                        <ColumnDefinition Width="60" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Low-mid dB" Grid.Column="0" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
+                                    <Slider x:Name="slExtMidGainDb" Grid.Column="1" Minimum="-6" Maximum="9" Value="3" TickFrequency="1" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="3" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="lblExtMidGainDb" Grid.Column="2" Text="+3 dB" FontSize="11" VerticalAlignment="Center" Opacity="0.5" />
+                                </Grid>
+                                <TextBlock Text="Saturation &amp; noise" FontSize="12" FontWeight="SemiBold" Margin="0,6,0,8" />
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="100" />
+                                        <ColumnDefinition Width="140" />
+                                        <ColumnDefinition Width="60" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Sat drive" Grid.Column="0" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
+                                    <Slider x:Name="slExtSatDrive" Grid.Column="1" Minimum="1.0" Maximum="4.0" Value="2.5" TickFrequency="0.1" IsSnapToTickEnabled="True" SmallChange="0.1" LargeChange="0.5" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="lblExtSatDrive" Grid.Column="2" Text="2.5" FontSize="11" VerticalAlignment="Center" Opacity="0.5" />
+                                </Grid>
+                                <CheckBox x:Name="chkExtNoise" Content=" Mechanical noise" FontSize="11" Opacity="0.6" IsChecked="True" Margin="0,0,0,8" />
+                                <TextBlock Text="Reverb" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="100" />
+                                        <ColumnDefinition Width="140" />
+                                        <ColumnDefinition Width="60" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Rev ms" Grid.Column="0" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
+                                    <Slider x:Name="slExtReverbMs" Grid.Column="1" Minimum="5" Maximum="80" Value="25" TickFrequency="5" IsSnapToTickEnabled="True" SmallChange="5" LargeChange="10" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="lblExtReverbMs" Grid.Column="2" Text="25 ms" FontSize="11" VerticalAlignment="Center" Opacity="0.5" />
+                                </Grid>
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="100" />
+                                        <ColumnDefinition Width="140" />
+                                        <ColumnDefinition Width="60" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Reverb %" Grid.Column="0" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
+                                    <Slider x:Name="slExtReverbMix" Grid.Column="1" Minimum="0" Maximum="30" Value="10" TickFrequency="1" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="5" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="lblExtReverbMix" Grid.Column="2" Text="10%" FontSize="11" VerticalAlignment="Center" Opacity="0.5" />
+                                </Grid>
+                                <TextBlock Text="Dynamics" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="100" />
+                                        <ColumnDefinition Width="140" />
+                                        <ColumnDefinition Width="60" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Comp ratio" Grid.Column="0" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
+                                    <Slider x:Name="slExtCompRatio" Grid.Column="1" Minimum="1" Maximum="8" Value="3" TickFrequency="1" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="2" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="lblExtCompRatio" Grid.Column="2" Text="3:1" FontSize="11" VerticalAlignment="Center" Opacity="0.5" />
+                                </Grid>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="100" />
+                                        <ColumnDefinition Width="140" />
+                                        <ColumnDefinition Width="60" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Threshold" Grid.Column="0" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
+                                    <Slider x:Name="slExtCompThresh" Grid.Column="1" Minimum="-24" Maximum="0" Value="-12" TickFrequency="2" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="6" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="lblExtCompThresh" Grid.Column="2" Text="-12 dB" FontSize="11" VerticalAlignment="Center" Opacity="0.5" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Interior DSP (shown when Interior is selected) -->
                     <StackPanel x:Name="pnlCutoff" Margin="0,10,0,0" Visibility="Collapsed">
                         <Grid VerticalAlignment="Center" Margin="0,0,0,0">
                             <Grid.ColumnDefinitions>

@@ -24,7 +24,7 @@ public class FmodScriptGenerator
     public string TemplateEventName { get; set; } = "tatuusfa1";
 
     /// <summary>
-    /// The car folder name — used both for FMOD event naming and the Assets sub-folder.
+    /// The car folder name - used both for FMOD event naming and the Assets sub-folder.
     /// e.g. "Tatuus"
     /// </summary>
     public string CarName { get; set; } = string.Empty;
@@ -44,7 +44,7 @@ public class FmodScriptGenerator
     /// </summary>
     public string VendorName { get; set; } = string.Empty;
 
-    // ── Optional user-supplied source recording dirs ─────────────────────────
+    // -- Optional user-supplied source recording dirs -------------------------
     // Leave empty to rely solely on existing SDK asset files.
 
     /// <summary>Exterior recordings to copy into Engine EXT (optional).</summary>
@@ -63,10 +63,25 @@ public class FmodScriptGenerator
         set => RecordingsDirExt = value;
     }
 
-    // ── Public entry point ────────────────────────────────────────────────────
+    // -- Public entry point ----------------------------------------------------
 
     public string GenerateScript()
     {
+        // Step 0: If in FromScratch mode, try to clone the template folder first (FMOD 1.08 fix)
+        if (Mode == FmodGenerationMode.FromScratch && !string.IsNullOrWhiteSpace(FmodProjectPath))
+        {
+            try
+            {
+                // Check if the car folder already exists in Metadata
+                if (GetCarFolderId() == null)
+                {
+                    var cloner = new FmodProjectCloner(FmodProjectPath);
+                    cloner.CloneFolder(TemplateEventName, CarName);
+                }
+            }
+            catch (Exception) { /* Fallback to JS creation if C# cloning fails */ }
+        }
+
         // Resolve the SDK asset base: Assets\{Vendor}\{CarName}
         string? sdkBase = ResolveAssetBase();
 
@@ -92,12 +107,24 @@ public class FmodScriptGenerator
             return BuildScript(extWavs, intWavs, limiterWav);
         }
 
-        // No SDK path — use the user-supplied dirs directly
+        // No SDK path - use the user-supplied dirs directly
         return BuildScript(
             GetAudioFiles(RecordingsDirExt),
             GetAudioFiles(RecordingsDirInt),
             FindLimiterFile());
     }
+
+    private string? GetCarFolderId()
+    {
+        if (string.IsNullOrWhiteSpace(FmodProjectPath)) return null;
+        string eventFolderDir = Path.Combine(FmodProjectPath, "Metadata", "EventFolder");
+        if (!Directory.Exists(eventFolderDir)) return null;
+
+        return Directory.GetFiles(eventFolderDir, "*.xml")
+            .FirstOrDefault(f => File.ReadAllText(f).Contains($"<property name=\"name\"><value>{CarName}</value></property>"));
+    }
+
+
 
     /// <summary>
     /// Copies user-supplied WAVs into the correct SDK Assets sub-folders.
@@ -109,7 +136,7 @@ public class FmodScriptGenerator
         return sdkBase != null ? CopyWavsToSdk(sdkBase) : new List<string>();
     }
 
-    // ── Internal helpers ──────────────────────────────────────────────────────
+    // -- Internal helpers ------------------------------------------------------
 
     /// <summary>
     /// Finds Assets\{Vendor}\{CarName} inside FmodProjectPath.
@@ -132,7 +159,7 @@ public class FmodScriptGenerator
         if (!string.IsNullOrWhiteSpace(VendorName))
         {
             string explicit_ = Path.Combine(assetsRoot, VendorName, CarName);
-            return explicit_; // return even if not yet created — CopyWavsToSdk will mkdir
+            return explicit_; // return even if not yet created - CopyWavsToSdk will mkdir
         }
 
         // Auto-detect: walk one level of vendor folders and look for CarName
@@ -147,7 +174,7 @@ public class FmodScriptGenerator
             }
         }
 
-        // Car folder doesn't exist yet — use first vendor dir, or "Custom"
+        // Car folder doesn't exist yet - use first vendor dir, or "Custom"
         string[] vendors = Directory.GetDirectories(assetsRoot);
         string vendor = vendors.Length > 0 ? Path.GetFileName(vendors[0]) : "Custom";
         VendorName = vendor;
@@ -228,7 +255,7 @@ public class FmodScriptGenerator
         return sb.ToString();
     }
 
-    // ── Audio file scanning ───────────────────────────────────────────────────
+    // -- Audio file scanning ---------------------------------------------------
 
     private static void EmitWavArray(StringBuilder sb, string varName, List<AudioRecord> wavs)
     {
@@ -295,12 +322,12 @@ public class FmodScriptGenerator
         return null;
     }
 
-    // ── Shared JS Helpers ─────────────────────────────────────────────────────
+    // -- Shared JS Helpers -----------------------------------------------------
 
     private void GenerateHelpers(StringBuilder sb)
     {
         sb.AppendLine(@"
-// ── Common Helpers ────────────────────────────────────────────────────────
+// -- Common Helpers --
 function getOrCreateFolder(parent, folderName) {
     if (!parent) return null;
     var items = parent.items;
@@ -341,8 +368,59 @@ function findFolderByName(name) {
     return walk(project.workspace.masterEventFolder);
 }
 
+function findBestTrack(evt, kw1, kw2, fallbackName) {
+    // FMOD 1.08: track items are directly on evt.groupTracks
+    var items = evt.groupTracks;
+    if (!items || items.length === 0) return createTrack(evt, fallbackName);
+    
+    // 1. Exact match on full track name
+    for (var i = 0; i < items.length; i++) {
+        var t = items[i];
+        if (t && t.mixerGroup && t.mixerGroup.name === fallbackName)
+            return t;
+    }
+    // 2. Fuzzy match - track name contains kw1 (""load"" / ""coast"") or kw2 (""on"" / ""off"")
+    // We prioritize tracks that ALREADY HAVE automation/modulators if possible
+    var k1 = kw1.toLowerCase();
+    var k2 = kw2.toLowerCase();
+    
+    var candidates = [];
+    for (var i = 0; i < items.length; i++) {
+        var t = items[i];
+        if (!t || !t.mixerGroup) continue;
+        var name = t.mixerGroup.name.toLowerCase();
+        if (name.indexOf(k1) !== -1 || name.indexOf(k2) !== -1) {
+            candidates.push(t);
+        }
+    }
+
+    if (candidates.length > 0) {
+        // If multiple candidates, pick the one that likely belongs to the template
+        // (usually the one created first or the one with existing volume automation)
+        return candidates[0];
+    }
+
+    // 3. Last ditch: if there's only 2 tracks and we are looking for load/coast
+    // and they are named something generic like ""Audio 1"", ""Audio 2""
+    if (items.length >= 2) {
+        if (kw1 === 'load') return items[0];
+        if (kw1 === 'coast') return items[1];
+    }
+
+    // 4. Fallback to creation
+    return createTrack(evt, fallbackName);
+}
+
+function createTrack(evt, name) {
+    var t = project.create('GroupTrack');
+    t.mixerGroup.output = evt.mixer.masterBus;
+    t.mixerGroup.name = name;
+    evt.relationships.groupTracks.add(t);
+    return t;
+}
+
 function getOrCreateGroupTrack(evt, trackName) {
-    // FMOD 1.08: groupTracks lives under relationships
+    // This is kept for backward compat if needed, but we prefer findBestTrack
     var rel = evt.relationships;
     if (rel && rel.groupTracks) {
         var items = rel.groupTracks;
@@ -351,19 +429,47 @@ function getOrCreateGroupTrack(evt, trackName) {
                 return items[i];
         }
     }
-    var t = project.create('GroupTrack');
-    t.mixerGroup.output = evt.mixer.masterBus;
-    t.mixerGroup.name = trackName;
-    evt.relationships.groupTracks.add(t);
-    return t;
+    return createTrack(evt, trackName);
 }
 
-function addSoundToTrack(track, snd) {
-    // FMOD 1.08: modules is the correct relationship for SingleSound on GroupTrack
+function bindSound(track, param, snd) {
+    // FMOD 1.08 manual binding
     if (track.relationships && track.relationships.modules) {
         track.relationships.modules.add(snd);
     } else if (track.relationships && track.relationships.sounds) {
         track.relationships.sounds.add(snd);
+    }
+    
+    // Bind to the parameter sheet (if this is on a parameter and not the main timeline)
+    if (param) {
+        if (param.relationships && param.relationships.modules) {
+            param.relationships.modules.add(snd);
+        } else if (param.relationships && param.relationships.sounds) {
+            param.relationships.sounds.add(snd);
+        }
+    }
+}
+
+function addFadeCurve(snd, isFadeIn, startRpm, endRpm) {
+    if (startRpm >= endRpm) return;
+    var fade = project.create('FadeCurve');
+    var p1 = project.create('AutomationPoint');
+    p1.position = startRpm;
+    p1.value = isFadeIn ? 0 : 1;
+    // Inverting curvature as requested
+    p1.curveShape = isFadeIn ? -0.45 : 0.45;
+
+    var p2 = project.create('AutomationPoint');
+    p2.position = endRpm;
+    p2.value = isFadeIn ? 1 : 0;
+    
+    fade.relationships.startPoint.add(p1);
+    fade.relationships.endPoint.add(p2);
+    
+    if (isFadeIn) {
+        snd.relationships.fadeInCurve.add(fade);
+    } else {
+        snd.relationships.fadeOutCurve.add(fade);
     }
 }
 
@@ -376,7 +482,7 @@ function clearTrack(track) {
         toRemove.push(mods[i]);
     }
     for (var j = 0; j < toRemove.length; j++) {
-        if (toRemove[j] && toRemove[j].isOfType('SingleSound')) {
+        if (toRemove[j] && (toRemove[j].isOfType('SingleSound') || toRemove[j].isOfType('MultiSound'))) {
             mods.remove(toRemove[j]);
         }
     }
@@ -385,14 +491,29 @@ function clearTrack(track) {
 function buildSmoothBand(evt, wavPaths) {
     if (!evt || wavPaths.length === 0) return;
 
-    // Ensure rpms parameter exists
+    // Ensure rpms parameter exists (FMOD 1.08 compatible)
     var param = null;
-    var params = evt.parameters;
-    for (var i = 0; i < params.length; i++) {
-        if (params[i].name === 'rpms') { param = params[i]; break; }
+    var params = evt.parameters.items || evt.parameters;
+    if (params && params.length > 0) {
+        for (var i = 0; i < params.length; i++) {
+            var pName = params[i].name.toLowerCase();
+            if (pName === 'rpms' || pName === 'rpm') { 
+                param = params[i]; 
+                break; 
+            }
+        }
     }
+
     if (!param) {
-        param = evt.addGameParameter({ name: 'rpms', type: 0, minimum: 0, maximum: 10000 });
+        // Manually create parameter if missing (addGameParameter is missing in some 1.08 builds)
+        param = project.create('GameParameter');
+        param.name = 'rpms';
+        param.maximum = 10000;
+        param.seekSpeed = 100000; // Adding smoothing to eliminate jerks
+        evt.relationships.parameters.add(param);
+    } else {
+        // Apply smoothing to existing template parameter
+        param.seekSpeed = 100000;
     }
 
     var onWavs = [];
@@ -401,9 +522,10 @@ function buildSmoothBand(evt, wavPaths) {
         if (wavPaths[i].isOn) onWavs.push(wavPaths[i]); else offWavs.push(wavPaths[i]);
     }
 
-    function processTrack(trackName, wavList) {
+    function processTrack(keyword1, keyword2, wavList) {
         if (wavList.length === 0) return;
-        var track = getOrCreateGroupTrack(evt, trackName);
+        var defaultName = carName + ' ' + keyword1;
+        var track = findBestTrack(evt, keyword1, keyword2, defaultName);
         clearTrack(track);  // remove old recordings before placing new ones
         wavList.sort(function(a, b) { return a.rpm - b.rpm; });
 
@@ -411,6 +533,11 @@ function buildSmoothBand(evt, wavPaths) {
             var currentRpm = wavList[i].rpm;
             var prevRpm    = (i > 0) ? wavList[i-1].rpm : 0;
             var nextRpm    = (i < wavList.length - 1) ? wavList[i+1].rpm : 10000;
+            
+            // Add a 20% buffer to broaden the overlap for smoother crossfading
+            var inBuffer   = (currentRpm - prevRpm) * 0.2;
+            var outBuffer  = (nextRpm - currentRpm) * 0.2;
+            
             var startPos   = (i === 0) ? 0 : prevRpm;
             var endPos     = (i === wavList.length - 1) ? 10000 : nextRpm;
             var len        = endPos - startPos;
@@ -423,162 +550,132 @@ function buildSmoothBand(evt, wavPaths) {
             snd.start = startPos;
             snd.length = len;
             snd.looping = true;
-            addSoundToTrack(track, snd);
+            bindSound(track, param, snd);
 
             // Autopitch modulator: FMOD 1.08 uses AutopitchModulator with root=RPM
             var ap = project.create('AutopitchModulator');
             ap.root = currentRpm;
             snd.relationships.modulators.add(ap);
 
-            // Fade in: first clip has no fade-in, others fade in from prevRpm
-            if (i > 0 && snd.relationships.fadeInCurve) {
-                snd.relationships.fadeInCurve.shape = 1;
+            // Fade in: from prevRpm to currentRpm (shifted by buffer)
+            if (i > 0) {
+                addFadeCurve(snd, true, prevRpm, currentRpm - inBuffer);
             }
-            // Fade out: last clip has no fade-out, others fade out to nextRpm
-            if (i < wavList.length - 1 && snd.relationships.fadeOutCurve) {
-                snd.relationships.fadeOutCurve.shape = 1;
+            // Fade out: from currentRpm to nextRpm (shifted by buffer)
+            if (i < wavList.length - 1) {
+                addFadeCurve(snd, false, currentRpm + outBuffer, nextRpm);
             }
         }
     }
 
-    processTrack(carName + ' load',  onWavs);
-    processTrack(carName + ' coast', offWavs);
+    processTrack('load', 'on', onWavs);
+    processTrack('coast', 'off', offWavs);
 }
+
 ");
     }
 
-    // ── FromScratch JS ────────────────────────────────────────────────────────
+    // -- FromScratch JS --------------------------------------------------------
 
     private void GenerateFromScratch(StringBuilder sb)
     {
         sb.AppendLine(@"
-// ── Folder structure ──────────────────────────────────────────────────────
+// -- Folder & Bank ---------------------------------------------------------
 var rootFolder = project.workspace.masterEventFolder;
 var carsFolder = getOrCreateFolder(rootFolder, 'cars');
-var vendorName = '" + (string.IsNullOrWhiteSpace(VendorName) ? "Custom" : VendorName) + @"';
+var targetFolder = getOrCreateFolder(carsFolder, carName);
 
-// ── Bank ──────────────────────────────────────────────────────────────────
 var bank = findByName(project.workspace.masterBankFolder, 'Bank', carName);
 if (!bank) {
     bank = project.create('Bank');
     bank.name = carName;
 }
 
-// ── Template Cloning ──────────────────────────────────────────────────────
-var targetFolder = null;
-var eventExt = null;
-var eventInt = null;
-var eventLimiter = null;
-
-var templateFolder = findByName(carsFolder, 'EventFolder', templateName);
-if (templateFolder) {
-    // Manually copy the template folder (studio.window.actions not available in 1.08 TCP)
-    targetFolder = getOrCreateFolder(carsFolder, carName);
-
-    var srcItems = templateFolder.items;
-    for (var i = 0; i < srcItems.length; i++) {
-        if (srcItems[i].isOfType('Event')) {
-            var srcEvt = srcItems[i];
-            var newEvt = project.create('Event');
-            newEvt.name = srcEvt.name;
-            newEvt.folder = targetFolder;
-            newEvt.relationships.banks.add(bank);
-
-            if (srcEvt.name === 'engine_ext') eventExt = newEvt;
-            if (srcEvt.name === 'engine_int') eventInt = newEvt;
-            if (srcEvt.name === 'limiter')    eventLimiter = newEvt;
-        }
-    }
-} else {
-    // Generic Fallback
-    var assetFolder  = getOrCreateFolder(rootFolder,   'Assets');
-    var vendorFolder = getOrCreateFolder(assetFolder,  vendorName);
-    var carAssetFolder = getOrCreateFolder(vendorFolder, carName);
-    var extAssetFolder = getOrCreateFolder(carAssetFolder, 'Engine EXT');
-    var intAssetFolder = getOrCreateFolder(carAssetFolder, 'Engine INT');
-    var accAssetFolder = getOrCreateFolder(carAssetFolder, 'Accessories');
-
-    targetFolder = getOrCreateFolder(carsFolder, carName);
-    
-    eventExt = project.create('Event');
-    eventExt.name = 'engine_ext';
-    eventExt.folder = targetFolder;
-    eventExt.relationships.banks.add(bank);
-
-    eventInt = project.create('Event');
-    eventInt.name = 'engine_int';
-    eventInt.folder = targetFolder;
-    eventInt.relationships.banks.add(bank);
+// -- Get or create engine events (idempotent) ------------------------------
+function getOrCreateEvent(folder, name, bank) {
+    var existing = findByName(folder, 'Event', name);
+    if (existing) return existing;
+    var evt = project.create('Event');
+    evt.name = name;
+    evt.folder = folder;
+    evt.relationships.banks.add(bank);
+    return evt;
 }
 
-// ── Apply recordings ──────────────────────────────────────────────────────
-if (eventExt) buildSmoothBand(eventExt, extWavPaths);
-if (eventInt) buildSmoothBand(eventInt, intWavPaths);
+var eventExt     = getOrCreateEvent(targetFolder, 'engine_ext', bank);
+var eventInt     = getOrCreateEvent(targetFolder, 'engine_int', bank);
+var eventLimiter = getOrCreateEvent(targetFolder, 'engine_limiter', bank);
+
+// -- Apply recordings ------------------------------------------------------
+buildSmoothBand(eventExt, extWavPaths);
+buildSmoothBand(eventInt, intWavPaths);
 
 if (limiterPath !== '') {
-    if (!eventLimiter) {
-        eventLimiter = project.create('Event');
-        eventLimiter.name = 'limiter';
-        eventLimiter.folder = targetFolder;
-        eventLimiter.relationships.banks.add(bank);
-    }
-    
     var limAudio = project.importAudioFile(limiterPath);
     if (limAudio) {
-        var limTrack = getOrCreateGroupTrack(eventLimiter, 'limiter');
+        var limTrack = findBestTrack(eventLimiter, 'limiter', 'limiter', 'limiter');
         var limSnd = project.create('SingleSound');
         limSnd.audioFile = limAudio;
         limSnd.start = 0;
         limSnd.length = 10000;
         limSnd.looping = false;
-        addSoundToTrack(limTrack, limSnd);
+        bindSound(limTrack, null, limSnd);
     }
 }
 ");
     }
 
-    // ── UpdateTemplate JS ─────────────────────────────────────────────────────
+    // -- UpdateTemplate JS -----------------------------------------------------
 
     private void GenerateUpdateTemplate(StringBuilder sb)
     {
         sb.AppendLine(@"
-// ── Locate events ─────────────────────────────────────────────────────────
-var masterFolder = project.workspace.masterEventFolder;
-var eventExt     = findByName(masterFolder, 'Event', 'engine_ext');
-var eventInt     = findByName(masterFolder, 'Event', 'engine_int');
-var eventLimiter = findByName(masterFolder, 'Event', 'engine_limiter');
+// -- Locate car folder -----------------------------------------------------
+var carsFolder = findFolderByName('cars');
+var carFolder = findByName(carsFolder, 'EventFolder', carName);
+
+if (!carFolder) {
+    // If not in 'cars', fallback to master search
+    carFolder = project.workspace.masterEventFolder;
+}
+
+// -- Locate events within that car's folder --------------------------------
+var eventExt     = findByName(carFolder, 'Event', 'engine_ext');
+var eventInt     = findByName(carFolder, 'Event', 'engine_int');
+var eventLimiter = findByName(carFolder, 'Event', 'engine_limiter');
+
+if (!eventExt || !eventInt) {
+    // Final fallback: try global names if they aren't in the carFolder
+    var master = project.workspace.masterEventFolder;
+    if (!eventExt) eventExt = findByName(master, 'Event', 'engine_ext');
+    if (!eventInt) eventInt = findByName(master, 'Event', 'engine_int');
+}
 
 buildSmoothBand(eventExt, extWavPaths);
 buildSmoothBand(eventInt, intWavPaths);
 
-// ── Limiter ───────────────────────────────────────────────────────────────
+// -- Limiter ---------------------------------------------------------------
 if (limiterPath !== '') {
     if (!eventLimiter) {
-        var accFolder = findFolderByName('Accessories');
-        if (accFolder) {
-            eventLimiter = project.create('Event');
-            eventLimiter.name = 'engine_limiter';
-            eventLimiter.folder = accFolder;
-            if (eventExt && eventExt.relationships.banks.length > 0) {
-                eventLimiter.relationships.banks.add(eventExt.relationships.banks[0]);
-            }
-        }
+        eventLimiter = findByName(carFolder, 'Event', 'engine_limiter');
     }
     if (eventLimiter) {
         var limAudio = project.importAudioFile(limiterPath);
         if (limAudio) {
-            var limTrack = getOrCreateGroupTrack(eventLimiter, 'limiter');
+            var limTrack = findBestTrack(eventLimiter, 'limiter', 'limiter', 'limiter');
+            clearTrack(limTrack);
             var limSnd = project.create('SingleSound');
             limSnd.audioFile = limAudio;
             limSnd.start = 0;
             limSnd.length = 10000;
             limSnd.looping = false;
-            addSoundToTrack(limTrack, limSnd);
+            bindSound(limTrack, null, limSnd);
         }
     }
 }
 ");
     }
+
 
     private class AudioRecord
     {

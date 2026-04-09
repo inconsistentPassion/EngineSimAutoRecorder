@@ -14,6 +14,8 @@ namespace EngineSimRecorder.Core
         public bool RecordLimiter { get; set; } = false;
         public bool GeneratePowerLut { get; set; } = false;
         public string Theme { get; set; } = "Dark";
+        public ExteriorPreset ExteriorPreset { get; set; } = ExteriorPreset.Raw;
+        public ExteriorSettings Exterior { get; set; } = new();
 
         private static string FilePath =>
             Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json");

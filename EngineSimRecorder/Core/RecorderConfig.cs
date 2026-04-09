@@ -22,6 +22,28 @@ namespace EngineSimRecorder.Core
 
         /// <summary>Custom interior acoustics parameters (only used when CarType == "Custom").</summary>
         public InteriorSettings Interior { get; set; } = new();
+
+        /// <summary>Exterior DSP preset. Raw = no processing (default).</summary>
+        public ExteriorPreset ExteriorPreset { get; set; } = ExteriorPreset.Raw;
+
+        /// <summary>Custom exterior DSP parameters (only used when ExteriorPreset == Custom).</summary>
+        public ExteriorSettings Exterior { get; set; } = new();
+    }
+
+    public sealed class ExteriorSettings
+    {
+        public float LpHz       { get; set; } = 8000f;
+        public float LpQ        { get; set; } = 0.7f;
+        public float HsHz       { get; set; } = 5000f;
+        public float HsGainDb   { get; set; } = -3f;
+        public float MidHz      { get; set; } = 150f;
+        public float MidGainDb  { get; set; } = 3f;
+        public float SatDrive   { get; set; } = 2.5f;
+        public bool  EnableNoise { get; set; } = true;
+        public float ReverbMs   { get; set; } = 25f;
+        public float ReverbMix  { get; set; } = 0.10f;
+        public float CompRatio  { get; set; } = 3f;
+        public float CompThreshDb { get; set; } = -12f;
     }
 
     public sealed class InteriorSettings

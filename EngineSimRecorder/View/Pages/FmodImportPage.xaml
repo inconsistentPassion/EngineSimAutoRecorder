@@ -95,7 +95,7 @@
                                 <ColumnDefinition Width="*" MinWidth="80" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="EXT Recordings:" Grid.Column="0" VerticalAlignment="Center"
+                            <TextBlock Text="Exterior" Grid.Column="0" VerticalAlignment="Center"
                                        FontSize="12" Opacity="0.6" />
                             <TextBox x:Name="txtRecordingsDir" Grid.Column="1" VerticalAlignment="Center"
                                      FontSize="12" ToolTip="Folder with exterior .wav recordings (Engine EXT)" />
@@ -106,15 +106,16 @@
                         <!-- WAV INT recordings dir -->
                         <Grid Margin="0,0,0,4">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="110" />
+                                <ColumnDefinition Width="23.667" />
+                                <ColumnDefinition Width="86.333"/>
                                 <ColumnDefinition Width="*" MinWidth="80" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="INT Recordings:" Grid.Column="0" VerticalAlignment="Center"
-                                       FontSize="12" Opacity="0.6" />
-                            <TextBox x:Name="txtRecordingsDirInt" Grid.Column="1" VerticalAlignment="Center"
-                                     FontSize="12" ToolTip="Folder with interior .wav recordings (Engine INT). Leave empty to skip." />
-                            <ui:Button x:Name="btnBrowseRecordingsInt" Grid.Column="2" Content="Browse"
+                            <TextBlock Text="Interior (WIP)" Grid.Column="0" VerticalAlignment="Center"
+                                       FontSize="12" Opacity="0.6" Grid.ColumnSpan="2" />
+                            <TextBox x:Name="txtRecordingsDirInt" Grid.Column="2" VerticalAlignment="Center"
+                                     FontSize="12" ToolTip="Folder with interior .wav recordings (Engine INT). Leave empty to skip." Grid.ColumnSpan="2" Margin="0,0,76,0" />
+                            <ui:Button x:Name="btnBrowseRecordingsInt" Grid.Column="3" Content="Browse"
                                        FontSize="12" Margin="8,0,0,0" />
                         </Grid>
 
@@ -125,7 +126,7 @@
                                 <ColumnDefinition Width="*" MinWidth="80" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="Limiter Dir:" Grid.Column="0" VerticalAlignment="Center"
+                            <TextBlock Text="Limiter (WIP)" Grid.Column="0" VerticalAlignment="Center"
                                        FontSize="12" Opacity="0.6" />
                             <TextBox x:Name="txtRecordingsDirLimiter" Grid.Column="1" VerticalAlignment="Center"
                                      FontSize="12" ToolTip="Folder with engine_limiter.wav (Accessories). Falls back to EXT dir if empty." />
@@ -165,7 +166,7 @@
                                 <ComboBoxItem Content="Custom" ToolTip="Creates events and parameter routing from using your script."/>
                             </ComboBox>
                         </Grid>
-                        
+
                         <Expander Header="Preview Generated Script" IsExpanded="False" Background="Transparent" Padding="0" Margin="0,4,0,0" BorderThickness="0">
                             <Border Background="#10101A" CornerRadius="6" Padding="12,10" Margin="0,8,0,0">
                                 <TextBox x:Name="txtJsCode"

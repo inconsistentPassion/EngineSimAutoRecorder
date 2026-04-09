@@ -38,7 +38,8 @@ studio.menu.addMenuItem({
         var allFiles = walk(recordingsDir);
         var wavFiles = [];
         for (var i = 0; i < allFiles.length; i++) {
-            if (allFiles[i].toLowerCase().endsWith(".wav")) {
+            var fileLower = allFiles[i].toLowerCase();
+            if (fileLower.substring(fileLower.length - 4) === ".wav") {
                 wavFiles.push(allFiles[i]);
             }
         }

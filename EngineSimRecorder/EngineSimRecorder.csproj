@@ -11,6 +11,9 @@
 		<ApplicationIcon>icon.ico</ApplicationIcon>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+		<RuntimeIdentifier>win-x64</RuntimeIdentifier>
+		<PublishSingleFile>true</PublishSingleFile>
+		<SelfContained>false</SelfContained>
 	</PropertyGroup>
 
 	<!-- Auto-build es_hook.dll via CMake -->
@@ -45,4 +48,6 @@
 			<LogicalName>EngineSimRecorder.Scripts.fmod_import_recordings.js</LogicalName>
 		</EmbeddedResource>
 	</ItemGroup>
+
+
 </Project>

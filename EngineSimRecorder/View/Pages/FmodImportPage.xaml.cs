@@ -7,6 +7,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using EngineSimRecorder.Services;
+using Wpf.Ui.Appearance;
 
 namespace EngineSimRecorder.View.Pages;
 
@@ -41,6 +42,7 @@ public partial class FmodImportPage : Page
         btnCopyLog.Click                  += (_, _) => { Clipboard.SetText(txtLog.Text); };
         btnRun.Click                      += BtnRun_Click;
         btnCopyArtifactsOnly.Click        += BtnCopyArtifactsOnly_Click;
+        cmbGenerationMode.SelectionChanged += (_, _) => UpdateUiState();
 
         // Pre-fill recordings dir from RecorderPage if available
         if (RecorderPage.Instance != null)
@@ -52,6 +54,26 @@ public partial class FmodImportPage : Page
             string carName = RecorderPage.Instance.txtCarName.Text.Trim();
             if (!string.IsNullOrEmpty(carName))
                 txtCarName.Text = carName;
+        }
+
+        UpdateUiState();
+    }
+
+    private void UpdateUiState()
+    {
+        bool isTemplate = cmbGenerationMode.SelectedIndex == 0;
+
+        if (isTemplate)
+        {
+            txtCarName.Text = "fa01";
+            txtCarName.IsEnabled = false;
+            chkCopyArtifacts.IsEnabled = false;
+            chkCopyArtifacts.IsChecked = false;
+        }
+        else
+        {
+            txtCarName.IsEnabled = true;
+            chkCopyArtifacts.IsEnabled = true;
         }
     }
 
@@ -214,8 +236,13 @@ public partial class FmodImportPage : Page
                 string jsCode = string.Empty;
                 if (sendJs)
                 {
-                    Dispatch(() => { SetStage("Generating JavaScript..."); SetProgress(10); });
-                    AppendLogThreadSafe("Generating JS script for Assetto Corsa FMOD setup...");
+                    Dispatch(() => { SetStage("Preparing Setup..."); SetProgress(10); });
+                    AppendLogThreadSafe($"Starting import process for car: {carName}");
+                    
+                    if (!string.IsNullOrEmpty(fmodProject))
+                        AppendLogThreadSafe($"Target FMOD Project: {Path.GetFileName(fmodProject)}");
+
+                    AppendLogThreadSafe("Scanning and copying audio recordings...");
 
                     var generator = new FmodScriptGenerator 
                     { 
@@ -226,39 +253,34 @@ public partial class FmodImportPage : Page
                         RecordingsDirLimiter = recordingsDirLimiter,
                         Mode = genModeIndex == 0 ? FmodGenerationMode.UseExistingTemplate : FmodGenerationMode.FromScratch
                     };
-                    jsCode = generator.GenerateScript();
+
+                    // Execute generation (Step 0 cloning happens inside here)
+                    jsCode = await Task.Run(() => generator.GenerateScript());
+                    
                     Dispatch(() => txtJsCode.Text = jsCode);
 
                     int jsLines = jsCode.Split('\n').Length;
-                    AppendLogThreadSafe($"Script generated: {jsLines} lines, mode={generator.Mode}.");
+                    AppendLogThreadSafe($"Generator finished. Mode: {generator.Mode}");
+                    AppendLogThreadSafe($"Script size: {jsLines} lines.");
 
-                    // Log which WAV files were found
-                    int extCount = jsCode.Split(new[]{"extWavPaths"}, StringSplitOptions.None).Length - 1;
-                    if (!string.IsNullOrEmpty(recordingsDir))
-                        AppendLogThreadSafe($"EXT dir: {recordingsDir}");
-                    if (!string.IsNullOrEmpty(recordingsDirInt))
-                        AppendLogThreadSafe($"INT dir: {recordingsDirInt}");
-                    if (!string.IsNullOrEmpty(recordingsDirLimiter))
-                        AppendLogThreadSafe($"Limiter dir: {recordingsDirLimiter}");
-                    if (!string.IsNullOrEmpty(fmodProject))
-                        AppendLogThreadSafe($"FMOD project: {fmodProject}");
+                    // Log file counts
+                    int countExt = Directory.Exists(recordingsDir) ? Directory.GetFiles(recordingsDir, "*.wav").Length : 0;
+                    int countInt = Directory.Exists(recordingsDirInt) ? Directory.GetFiles(recordingsDirInt, "*.wav").Length : 0;
+                    AppendLogThreadSafe($"Found {countExt} exterior and {countInt} interior recordings.");
 
-                    AppendLogThreadSafe("Validating generated JavaScript for ES3 compatibility...");
+                    AppendLogThreadSafe("Validating JavaScript for ES3 compatibility...");
 
                     bool valid = FmodEs3Validator.IsValid(jsCode, out string[] violations);
                     result.Violations = violations;
 
                     if (!valid)
                     {
-                        AppendLogThreadSafe($"WARNING: {violations.Length} ES6 pattern(s) detected:");
-                        foreach (string v in violations)
-                            AppendLogThreadSafe($"  - {v}");
-                        AppendLogThreadSafe("Proceeding anyway — FMOD may reject unsupported syntax.");
+                        AppendLogThreadSafe($"Warning: {violations.Length} modern JS syntax issues detected (FMOD 1.08 is strict).");
                         Dispatch(() => ShowViolations(violations));
                     }
                     else
                     {
-                        AppendLogThreadSafe("Validation passed.");
+                        AppendLogThreadSafe("JS Validation passed.");
                         Dispatch(() => ShowViolations(null));
                     }
 
@@ -269,7 +291,7 @@ public partial class FmodImportPage : Page
 
                     if (_fmod == null || !_fmod.IsConnected)
                     {
-                        AppendLogThreadSafe("Connecting to FMOD Studio...");
+                        AppendLogThreadSafe("Opening TCP connection to FMOD Studio (Port 3663)...");
                         _fmod?.Dispose();
                         _fmod = new FmodTcpService();
                         _fmod.Connect();
@@ -279,21 +301,21 @@ public partial class FmodImportPage : Page
                     ct.ThrowIfCancellationRequested();
 
                     // ── Stage 3: Send JS ──────────────────────────────────
-                    Dispatch(() => { SetStage("Sending JavaScript to FMOD..."); SetProgress(40); });
-                    AppendLogThreadSafe("Sending JS to FMOD Studio...");
+                    Dispatch(() => { SetStage("Sending Automation..."); SetProgress(40); });
+                    AppendLogThreadSafe("Executing automation script in FMOD...");
 
                     string response = await _fmod.ExecuteAsync(jsCode, ct);
                     result.FmodResponse = response;
 
-                    // Always log the full FMOD response line by line
                     AppendLogThreadSafe("── FMOD Response ──────────────────────");
                     foreach (string line in response.Split('\n'))
                     {
                         string l = line.Trim();
                         if (!string.IsNullOrEmpty(l))
-                            AppendLogThreadSafe($"  {l}");
+                            AppendLogThreadSafe($"  [FMOD] {l}");
                     }
                     AppendLogThreadSafe("───────────────────────────────────────");
+
 
                     if (_fmod.LastResponseHadError)
                     {
@@ -398,18 +420,24 @@ public partial class FmodImportPage : Page
 
     private void SetConnStatus(bool connected)
     {
+        bool isDark = ApplicationThemeManager.GetAppTheme() == ApplicationTheme.Dark;
+
         if (connected)
         {
-            borderConnStatus.Background = new SolidColorBrush(Color.FromArgb(0x40, 0x00, 0xFF, 0x00));
+            borderConnStatus.Background = new SolidColorBrush(Color.FromArgb(0x33, 0x00, 0xFF, 0x00));
+            borderConnStatus.BorderBrush = new SolidColorBrush(Color.FromArgb(0x66, 0x00, 0xFF, 0x00));
+            borderConnStatus.BorderThickness = new Thickness(1);
             lblConnStatus.Text = "Connected";
-            lblConnStatus.Foreground = new SolidColorBrush(Color.FromRgb(0x80, 0xFF, 0x80));
+            lblConnStatus.Foreground = new SolidColorBrush(isDark ? Color.FromRgb(0x57, 0xF2, 0x87) : Color.FromRgb(0x1E, 0x8E, 0x3E));
             lblConnDetail.Text = "127.0.0.1:3663";
         }
         else
         {
-            borderConnStatus.Background = new SolidColorBrush(Color.FromArgb(0x40, 0xFF, 0x40, 0x40));
+            borderConnStatus.Background = new SolidColorBrush(Color.FromArgb(0x33, 0xFF, 0x00, 0x00));
+            borderConnStatus.BorderBrush = new SolidColorBrush(Color.FromArgb(0x66, 0xFF, 0x00, 0x00));
+            borderConnStatus.BorderThickness = new Thickness(1);
             lblConnStatus.Text = "Disconnected";
-            lblConnStatus.Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0x80, 0x80));
+            lblConnStatus.Foreground = new SolidColorBrush(isDark ? Color.FromRgb(0xFF, 0x80, 0x80) : Color.FromRgb(0xD9, 0x30, 0x25));
             lblConnDetail.Text = string.Empty;
         }
     }

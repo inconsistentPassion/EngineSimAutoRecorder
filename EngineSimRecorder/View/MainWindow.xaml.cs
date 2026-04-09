@@ -77,7 +77,7 @@ public partial class MainWindow : FluentWindow, INavigationWindow
     }
 
     // ── Closing ──
-    private void OnClosing(object sender, System.ComponentModel.CancelEventArgs e)
+    private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
         RecorderPage.Instance?._cts?.Cancel();
         RecorderPage.Instance?.Backend?.Dispose();

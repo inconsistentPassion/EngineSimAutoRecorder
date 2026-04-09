@@ -13,6 +13,7 @@ using EngineSimRecorder.Backends.Keyboard;
 using EngineSimRecorder.Core;
 using EngineSimRecorder.View.Pages;
 using NAudio.Wave;
+using Wpf.Ui.Appearance;
 using MessageBox = System.Windows.MessageBox;
 using MessageBoxButton = System.Windows.MessageBoxButton;
 using MessageBoxImage = System.Windows.MessageBoxImage;
@@ -102,13 +103,14 @@ public partial class RecorderPage : Page
     }
 
     // ── Process ──
-    private void RefreshProcessList()
+    private Process? FindEngineProcess()
     {
-        cmbProcess.Items.Clear();
         foreach (var name in new[] { "engine-sim-app", "engine-sim", "engine_sim", "EngineSimulator" })
-            foreach (var proc in Process.GetProcessesByName(name))
-                cmbProcess.Items.Add(new ProcessItem(proc));
-        if (cmbProcess.Items.Count > 0) cmbProcess.SelectedIndex = 0;
+        {
+            var procs = Process.GetProcessesByName(name);
+            if (procs.Length > 0) return procs[0];
+        }
+        return null;
     }
 
     private void btnConnect_Click(object sender, RoutedEventArgs e)
@@ -143,20 +145,24 @@ public partial class RecorderPage : Page
                 return;
             }
             
-            // Normal disconnect (no active recording)
             Disconnect();
             return;
         }
-        RefreshProcessList();
-        if (cmbProcess.Items.Count == 0) { MessageBox.Show("No Engine Simulator process found.", "Not Found", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
-        if (cmbProcess.SelectedItem is not ProcessItem sel) { MessageBox.Show("Select a process.", "No Selection", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
+
+        var proc = FindEngineProcess();
+        if (proc == null) 
+        { 
+            MessageBox.Show("No Engine Simulator process found.\nMake sure the simulator is running before connecting.", "Not Found", MessageBoxButton.OK, MessageBoxImage.Warning); 
+            return; 
+        }
 
         btnConnect.IsEnabled = false;
         btnConnect.Content = "Connecting...";
         LogPage.Instance?.Clear();
         LogPage.ClearBuffer();
 
-        var cfg = new RecorderConfig { ProcessId = sel.ProcessId };
+        var cfg = new RecorderConfig { ProcessId = proc.Id };
+        var displayName = $"{proc.ProcessName} (PID {proc.Id})";
         Task.Run(() =>
         {
             try
@@ -168,10 +174,10 @@ public partial class RecorderPage : Page
                     if (ok)
                     {
                         _backend = backend;
-                        btnConnect.Content = "Disconnect";
-                        btnConnect.IsEnabled = true;
+                        SetConnStatus(true);
                         btnStart.IsEnabled = true;
                         double? maxRpm = backend.ReadMaxRpm();
+                        lblConnDetail.Text = displayName;
                         if (maxRpm.HasValue) { Log($"Connected. Engine redline: {maxRpm.Value:F0} RPM"); lblRedline.Text = $"(redline: {maxRpm.Value:F0})"; }
                         else Log("Connected. Waiting for redline data...");
                     }
@@ -183,8 +189,7 @@ public partial class RecorderPage : Page
                 Log($"Connection error: {ex.Message}");
                 Dispatcher.BeginInvoke(() =>
                 {
-                    btnConnect.Content = "Connect";
-                    btnConnect.IsEnabled = true;
+                    SetConnStatus(false);
                     MessageBox.Show($"Connection error:\n{ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 });
             }
@@ -214,13 +219,13 @@ public partial class RecorderPage : Page
             _backend = null;
 
             // Reset UI state
-            btnConnect.Content = "Connect";
-            btnConnect.IsEnabled = true;
+            SetConnStatus(false);
             btnStart.IsEnabled = false;
             btnStop.IsEnabled = false;
             lblRpm.Text = "RPM: ---";
             lblRedline.Text = "";
             lblStatus.Text = "Disconnected.";
+            lblConnDetail.Text = "";
             pbar.Value = 0;
 
             Log("Disconnected from Engine Simulator.");
@@ -300,9 +305,16 @@ public partial class RecorderPage : Page
     {
         double? maxRpm = _backend?.ReadMaxRpm();
         if (!maxRpm.HasValue || maxRpm.Value <= 0) { MessageBox.Show("Redline not detected. Connect first.", "No Redline Data", MessageBoxButton.OK, MessageBoxImage.Information); return; }
-        int target = (int)maxRpm.Value - 250;
-        if (!lstRpm.Items.Contains(target)) lstRpm.Items.Add(target);
-        Log($"Auto RPM: redline={maxRpm.Value:F0}, added {target}");
+        
+        lstRpm.Items.Clear();
+        int limit = (int)maxRpm.Value - 200;
+        for (int r = 1000; r <= limit; r += 500)
+        {
+            if (!lstRpm.Items.Contains(r)) lstRpm.Items.Add(r);
+        }
+        if (!lstRpm.Items.Contains(limit)) lstRpm.Items.Add(limit);
+        
+        Log($"Auto-generated RPM targets: 1000 to {limit} (500 step)");
     }
     private void btnEdit_Click(object sender, RoutedEventArgs e)
     {
@@ -351,6 +363,31 @@ public partial class RecorderPage : Page
     }
 
     // ── UI Helpers ──
+    private void SetConnStatus(bool connected)
+    {
+        bool isDark = ApplicationThemeManager.GetAppTheme() == ApplicationTheme.Dark;
+        
+        if (connected)
+        {
+            borderConnStatus.Background = new SolidColorBrush(Color.FromArgb(0x33, 0x00, 0xFF, 0x00));
+            borderConnStatus.BorderBrush = new SolidColorBrush(Color.FromArgb(0x66, 0x00, 0xFF, 0x00));
+            borderConnStatus.BorderThickness = new Thickness(1);
+            lblConnStatus.Text = "Connected";
+            lblConnStatus.Foreground = new SolidColorBrush(isDark ? Color.FromRgb(0x57, 0xF2, 0x87) : Color.FromRgb(0x1E, 0x8E, 0x3E));
+            btnConnect.Content = "Disconnect";
+        }
+        else
+        {
+            borderConnStatus.Background = new SolidColorBrush(Color.FromArgb(0x33, 0xFF, 0x00, 0x00));
+            borderConnStatus.BorderBrush = new SolidColorBrush(Color.FromArgb(0x66, 0xFF, 0x00, 0x00));
+            borderConnStatus.BorderThickness = new Thickness(1);
+            lblConnStatus.Text = "Disconnected";
+            lblConnStatus.Foreground = new SolidColorBrush(isDark ? Color.FromRgb(0xFF, 0x80, 0x80) : Color.FromRgb(0xD9, 0x30, 0x25));
+            btnConnect.Content = "Connect";
+        }
+        btnConnect.IsEnabled = true;
+    }
+
     private void SetStatus(string t) => Dispatcher.BeginInvoke(() => lblStatus.Text = t);
     private void SetRpm(string t) => Dispatcher.BeginInvoke(() => lblRpm.Text = t);
     private void SetEta(string t) => Dispatcher.BeginInvoke(() => lblEta.Text = t);
@@ -430,7 +467,23 @@ public partial class RecorderPage : Page
                 ReverbMs = (float)(opt?.slReverbMs?.Value ?? 30),
                 CompRatio = (float)(opt?.slCompRatio?.Value ?? 3),
                 CompThreshDb = (float)(opt?.slCompThresh?.Value ?? -12),
-            }
+            },
+            ExteriorPreset = opt?.GetExteriorPreset() ?? ExteriorPreset.Raw,
+            Exterior = new ExteriorSettings
+            {
+                LpHz        = (float)(opt?.slExtLpHz?.Value        ?? 8000),
+                LpQ         = (float)(opt?.slExtLpQ?.Value         ?? 0.7),
+                HsHz        = (float)(opt?.slExtHsHz?.Value        ?? 5000),
+                HsGainDb    = (float)(opt?.slExtHsGainDb?.Value    ?? -3),
+                MidHz       = (float)(opt?.slExtMidHz?.Value       ?? 150),
+                MidGainDb   = (float)(opt?.slExtMidGainDb?.Value   ?? 3),
+                SatDrive    = (float)(opt?.slExtSatDrive?.Value    ?? 2.5),
+                EnableNoise = opt?.chkExtNoise?.IsChecked           ?? true,
+                ReverbMs    = (float)(opt?.slExtReverbMs?.Value    ?? 25),
+                ReverbMix   = (float)((opt?.slExtReverbMix?.Value  ?? 10) / 100.0),
+                CompRatio   = (float)(opt?.slExtCompRatio?.Value   ?? 3),
+                CompThreshDb= (float)(opt?.slExtCompThresh?.Value  ?? -12),
+            },
         };
     }
 
@@ -664,6 +717,8 @@ public partial class RecorderPage : Page
         var done = new ManualResetEventSlim(false);
 
         InteriorProcessor? interior = null;
+        ExteriorProcessor? exterior = null;
+
         if (cfg.InteriorMode)
         {
             if (cfg.CarType == "Custom")
@@ -677,17 +732,24 @@ public partial class RecorderPage : Page
                 interior = new InteriorProcessor(cfg.SampleRate, cfg.Channels, cutoff, width);
             }
         }
+        else if (cfg.ExteriorPreset != ExteriorPreset.Raw)
+        {
+            exterior = cfg.ExteriorPreset == ExteriorPreset.Custom
+                ? new ExteriorProcessor(cfg.SampleRate, cfg.Channels, cfg.Exterior)
+                : new ExteriorProcessor(cfg.SampleRate, cfg.Channels, cfg.ExteriorPreset);
+        }
 
         StartRecProgress(cfg.RecordSeconds);
         capture.DataAvailable += (s, e) =>
         {
             if (e.BytesRecorded == 0) return;
-            if (interior != null)
+            if (interior != null || exterior != null)
             {
                 int samples = e.BytesRecorded / 4;
                 var floats = new float[samples];
                 Buffer.BlockCopy(e.Buffer, 0, floats, 0, e.BytesRecorded);
-                interior.Process(floats, samples);
+                interior?.Process(floats, samples);
+                exterior?.Process(floats, samples);
                 Buffer.BlockCopy(floats, 0, e.Buffer, 0, e.BytesRecorded);
             }
             writer.Write(e.Buffer, 0, e.BytesRecorded);
@@ -708,11 +770,4 @@ public partial class RecorderPage : Page
         done.Wait(TimeSpan.FromSeconds(5));
     }
 
-    private sealed class ProcessItem
-    {
-        public int ProcessId { get; }
-        public string DisplayName { get; }
-        public ProcessItem(Process p) { ProcessId = p.Id; DisplayName = $"{p.ProcessName} (PID {p.Id})"; }
-        public override string ToString() => DisplayName;
-    }
 }
