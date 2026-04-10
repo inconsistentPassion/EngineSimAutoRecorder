@@ -27,7 +27,6 @@
                         <ComboBox x:Name="cmbTheme" Grid.Column="1" FontSize="12">
                             <ComboBoxItem Content="Dark" IsSelected="True" />
                             <ComboBoxItem Content="Light" />
-                            <ComboBoxItem Content="System" />
                         </ComboBox>
                     </Grid>
                 </StackPanel>
@@ -65,10 +64,16 @@
                 </StackPanel>
             </ui:Card>
 
-            <!-- Recording Mode -->
-            <ui:Card Margin="0,0,0,8">
+            <!-- Audio Processing -->
+            <Expander x:Name="expSound" Margin="0,0,0,8">
+                <Expander.Header>
+                    <StackPanel>
+                        <TextBlock Text="Audio Processing" FontSize="14" FontWeight="SemiBold" />
+                        <TextBlock Text="Interior/Exterior DSP and recording mode" FontSize="11" Opacity="0.5" />
+                    </StackPanel>
+                </Expander.Header>
                 <StackPanel>
-                    <TextBlock Text="Recording Mode" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8" />
+                    <TextBlock Text="Recording Mode" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8" />
                     <TextBlock Text="Interior mode applies a filter to simulate cabin sound." FontSize="11" Opacity="0.5" Margin="0,0,0,8" />
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <RadioButton x:Name="rbExterior" Content=" Exterior" IsChecked="True" GroupName="RecMode" FontSize="12" Margin="0,0,20,0" Opacity="0.6" />
@@ -108,7 +113,8 @@
                                         <ColumnDefinition Width="60" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="LP cutoff" Grid.Column="0" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
-                                    <Slider x:Name="slExtLpHz" Grid.Column="1" Minimum="2000" Maximum="16000" Value="8000" TickFrequency="500" IsSnapToTickEnabled="True" SmallChange="500" LargeChange="2000" VerticalAlignment="Center" />
+                                    <Slider x:Name="slExtLpHz" Grid.Column="1" Minimum="2000" Maximum="16000" Value="8000" TickFrequency="500" IsSnapToTickEnabled="True" SmallChange="500" LargeChange="2000" VerticalAlignment="Center"
+                                            ToolTip="Air absorption simulation. Lowers the frequency where sound starts to fade out with distance." />
                                     <TextBlock x:Name="lblExtLpHz" Grid.Column="2" Text="8000 Hz" FontSize="11" VerticalAlignment="Center" Opacity="0.5" />
                                 </Grid>
                                 <Grid Margin="0,0,0,8">
@@ -118,7 +124,8 @@
                                         <ColumnDefinition Width="60" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="LP Q" Grid.Column="0" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
-                                    <Slider x:Name="slExtLpQ" Grid.Column="1" Minimum="0.3" Maximum="2.0" Value="0.7" TickFrequency="0.1" IsSnapToTickEnabled="True" SmallChange="0.1" LargeChange="0.5" VerticalAlignment="Center" />
+                                    <Slider x:Name="slExtLpQ" Grid.Column="1" Minimum="0.3" Maximum="2.0" Value="0.7" TickFrequency="0.1" IsSnapToTickEnabled="True" SmallChange="0.1" LargeChange="0.5" VerticalAlignment="Center"
+                                            ToolTip="Sharpness of the low-pass filter cutoff. Higher values add a slight resonance." />
                                     <TextBlock x:Name="lblExtLpQ" Grid.Column="2" Text="0.7" FontSize="11" VerticalAlignment="Center" Opacity="0.5" />
                                 </Grid>
                                 <Grid Margin="0,0,0,8">
@@ -128,7 +135,8 @@
                                         <ColumnDefinition Width="60" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="Hi-shelf Hz" Grid.Column="0" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
-                                    <Slider x:Name="slExtHsHz" Grid.Column="1" Minimum="2000" Maximum="12000" Value="5000" TickFrequency="500" IsSnapToTickEnabled="True" SmallChange="500" LargeChange="2000" VerticalAlignment="Center" />
+                                    <Slider x:Name="slExtHsHz" Grid.Column="1" Minimum="2000" Maximum="12000" Value="5000" TickFrequency="500" IsSnapToTickEnabled="True" SmallChange="500" LargeChange="2000" VerticalAlignment="Center"
+                                            ToolTip="Natural high-frequency decay. Frequencies above this point are gradually reduced." />
                                     <TextBlock x:Name="lblExtHsHz" Grid.Column="2" Text="5000 Hz" FontSize="11" VerticalAlignment="Center" Opacity="0.5" />
                                 </Grid>
                                 <Grid Margin="0,0,0,8">
@@ -138,7 +146,8 @@
                                         <ColumnDefinition Width="60" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="Hi-shelf dB" Grid.Column="0" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
-                                    <Slider x:Name="slExtHsGainDb" Grid.Column="1" Minimum="-12" Maximum="6" Value="-3" TickFrequency="1" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="3" VerticalAlignment="Center" />
+                                    <Slider x:Name="slExtHsGainDb" Grid.Column="1" Minimum="-12" Maximum="6" Value="-3" TickFrequency="1" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="3" VerticalAlignment="Center"
+                                            ToolTip="Intensity of high-frequency roll-off. Lower values sound darker and more distance-muted." />
                                     <TextBlock x:Name="lblExtHsGainDb" Grid.Column="2" Text="-3 dB" FontSize="11" VerticalAlignment="Center" Opacity="0.5" />
                                 </Grid>
                                 <Grid Margin="0,0,0,8">
@@ -148,7 +157,8 @@
                                         <ColumnDefinition Width="60" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="Low-mid Hz" Grid.Column="0" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
-                                    <Slider x:Name="slExtMidHz" Grid.Column="1" Minimum="60" Maximum="400" Value="150" TickFrequency="10" IsSnapToTickEnabled="True" SmallChange="10" LargeChange="50" VerticalAlignment="Center" />
+                                    <Slider x:Name="slExtMidHz" Grid.Column="1" Minimum="60" Maximum="400" Value="150" TickFrequency="10" IsSnapToTickEnabled="True" SmallChange="10" LargeChange="50" VerticalAlignment="Center"
+                                            ToolTip="Warmth EQ center frequency. Adjusts the 'body' and fullness of the exhaust note." />
                                     <TextBlock x:Name="lblExtMidHz" Grid.Column="2" Text="150 Hz" FontSize="11" VerticalAlignment="Center" Opacity="0.5" />
                                 </Grid>
                                 <Grid Margin="0,0,0,8">
@@ -158,7 +168,8 @@
                                         <ColumnDefinition Width="60" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="Low-mid dB" Grid.Column="0" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
-                                    <Slider x:Name="slExtMidGainDb" Grid.Column="1" Minimum="-6" Maximum="9" Value="3" TickFrequency="1" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="3" VerticalAlignment="Center" />
+                                    <Slider x:Name="slExtMidGainDb" Grid.Column="1" Minimum="-6" Maximum="9" Value="3" TickFrequency="1" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="3" VerticalAlignment="Center"
+                                            ToolTip="Boost or cut for the low-mid warmth. Adds punch and richness." />
                                     <TextBlock x:Name="lblExtMidGainDb" Grid.Column="2" Text="+3 dB" FontSize="11" VerticalAlignment="Center" Opacity="0.5" />
                                 </Grid>
                                 <TextBlock Text="Saturation &amp; noise" FontSize="12" FontWeight="SemiBold" Margin="0,6,0,8" />
@@ -169,10 +180,11 @@
                                         <ColumnDefinition Width="60" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="Sat drive" Grid.Column="0" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
-                                    <Slider x:Name="slExtSatDrive" Grid.Column="1" Minimum="1.0" Maximum="4.0" Value="2.5" TickFrequency="0.1" IsSnapToTickEnabled="True" SmallChange="0.1" LargeChange="0.5" VerticalAlignment="Center" />
-                                    <TextBlock x:Name="lblExtSatDrive" Grid.Column="2" Text="2.5" FontSize="11" VerticalAlignment="Center" Opacity="0.5" />
+                                    <Slider x:Name="slExtSatDrive" Grid.Column="1" Minimum="1.0" Maximum="3.0" Value="1.4" TickFrequency="0.1" IsSnapToTickEnabled="True" SmallChange="0.1" LargeChange="0.5" VerticalAlignment="Center"
+                                            ToolTip="Tape-style saturation intensity. Adds harmonic enrichment and warm distortion." />
+                                    <TextBlock x:Name="lblExtSatDrive" Grid.Column="2" Text="1.4" FontSize="11" VerticalAlignment="Center" Opacity="0.5" />
                                 </Grid>
-                                <CheckBox x:Name="chkExtNoise" Content=" Mechanical noise" FontSize="11" Opacity="0.6" IsChecked="True" Margin="0,0,0,8" />
+                                <CheckBox x:Name="chkExtNoise" Content=" Mechanical noise (not recommended - adds static)" FontSize="11" Opacity="0.4" IsChecked="False" Margin="0,0,0,8" />
                                 <TextBlock Text="Reverb" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8" />
                                 <Grid Margin="0,0,0,8">
                                     <Grid.ColumnDefinitions>
@@ -181,7 +193,8 @@
                                         <ColumnDefinition Width="60" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="Rev ms" Grid.Column="0" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
-                                    <Slider x:Name="slExtReverbMs" Grid.Column="1" Minimum="5" Maximum="80" Value="25" TickFrequency="5" IsSnapToTickEnabled="True" SmallChange="5" LargeChange="10" VerticalAlignment="Center" />
+                                    <Slider x:Name="slExtReverbMs" Grid.Column="1" Minimum="5" Maximum="80" Value="25" TickFrequency="5" IsSnapToTickEnabled="True" SmallChange="5" LargeChange="10" VerticalAlignment="Center"
+                                            ToolTip="Multi-tap delay spacing. Simulates natural environment reflection timing." />
                                     <TextBlock x:Name="lblExtReverbMs" Grid.Column="2" Text="25 ms" FontSize="11" VerticalAlignment="Center" Opacity="0.5" />
                                 </Grid>
                                 <Grid Margin="0,0,0,8">
@@ -191,7 +204,8 @@
                                         <ColumnDefinition Width="60" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="Reverb %" Grid.Column="0" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
-                                    <Slider x:Name="slExtReverbMix" Grid.Column="1" Minimum="0" Maximum="30" Value="10" TickFrequency="1" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="5" VerticalAlignment="Center" />
+                                    <Slider x:Name="slExtReverbMix" Grid.Column="1" Minimum="0" Maximum="30" Value="10" TickFrequency="1" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="5" VerticalAlignment="Center"
+                                            ToolTip="Dry/Wet mix for the exterior space simulation." />
                                     <TextBlock x:Name="lblExtReverbMix" Grid.Column="2" Text="10%" FontSize="11" VerticalAlignment="Center" Opacity="0.5" />
                                 </Grid>
                                 <TextBlock Text="Dynamics" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8" />
@@ -202,7 +216,8 @@
                                         <ColumnDefinition Width="60" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="Comp ratio" Grid.Column="0" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
-                                    <Slider x:Name="slExtCompRatio" Grid.Column="1" Minimum="1" Maximum="8" Value="3" TickFrequency="1" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="2" VerticalAlignment="Center" />
+                                    <Slider x:Name="slExtCompRatio" Grid.Column="1" Minimum="1" Maximum="8" Value="3" TickFrequency="1" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="2" VerticalAlignment="Center"
+                                            ToolTip="Dynamics compression ratio. Higher values even out volume peaks for consistency." />
                                     <TextBlock x:Name="lblExtCompRatio" Grid.Column="2" Text="3:1" FontSize="11" VerticalAlignment="Center" Opacity="0.5" />
                                 </Grid>
                                 <Grid>
@@ -212,7 +227,8 @@
                                         <ColumnDefinition Width="60" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="Threshold" Grid.Column="0" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
-                                    <Slider x:Name="slExtCompThresh" Grid.Column="1" Minimum="-24" Maximum="0" Value="-12" TickFrequency="2" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="6" VerticalAlignment="Center" />
+                                    <Slider x:Name="slExtCompThresh" Grid.Column="1" Minimum="-24" Maximum="0" Value="-12" TickFrequency="2" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="6" VerticalAlignment="Center"
+                                            ToolTip="Compression threshold. Audio above this level (in dB) will be compressed." />
                                     <TextBlock x:Name="lblExtCompThresh" Grid.Column="2" Text="-12 dB" FontSize="11" VerticalAlignment="Center" Opacity="0.5" />
                                 </Grid>
                             </StackPanel>
@@ -249,7 +265,8 @@
                                         <ColumnDefinition Width="60" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="LP cutoff" Grid.Column="0" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
-                                    <Slider x:Name="slCutoff" Grid.Column="1" Minimum="1000" Maximum="4000" Value="2000" TickFrequency="100" IsSnapToTickEnabled="True" SmallChange="100" LargeChange="500" VerticalAlignment="Center" />
+                                    <Slider x:Name="slCutoff" Grid.Column="1" Minimum="1000" Maximum="4000" Value="2000" TickFrequency="100" IsSnapToTickEnabled="True" SmallChange="100" LargeChange="500" VerticalAlignment="Center"
+                                            ToolTip="Car cabin insulation simulation. Higher values allow more engine detail; lower values sound more muffled." />
                                     <TextBlock x:Name="lblCutoff" Grid.Column="2" Text="2000 Hz" FontSize="11" VerticalAlignment="Center" Opacity="0.5" />
                                 </Grid>
                                 <Grid Margin="0,0,0,8">
@@ -259,7 +276,8 @@
                                         <ColumnDefinition Width="60" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="Rumble Hz" Grid.Column="0" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
-                                    <Slider x:Name="slRumbleHz" Grid.Column="1" Minimum="40" Maximum="120" Value="80" TickFrequency="5" IsSnapToTickEnabled="True" SmallChange="5" LargeChange="20" VerticalAlignment="Center" />
+                                    <Slider x:Name="slRumbleHz" Grid.Column="1" Minimum="40" Maximum="120" Value="80" TickFrequency="5" IsSnapToTickEnabled="True" SmallChange="5" LargeChange="20" VerticalAlignment="Center"
+                                            ToolTip="Structure-borne rumble frequency. Simulates vibrations transmitted through the chassis." />
                                     <TextBlock x:Name="lblRumbleHz" Grid.Column="2" Text="80 Hz" FontSize="11" VerticalAlignment="Center" Opacity="0.5" />
                                 </Grid>
                                 <Grid Margin="0,0,0,8">
@@ -269,7 +287,8 @@
                                         <ColumnDefinition Width="60" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="Rumble dB" Grid.Column="0" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
-                                    <Slider x:Name="slRumbleDb" Grid.Column="1" Minimum="0" Maximum="12" Value="6" TickFrequency="1" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="3" VerticalAlignment="Center" />
+                                    <Slider x:Name="slRumbleDb" Grid.Column="1" Minimum="0" Maximum="12" Value="6" TickFrequency="1" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="3" VerticalAlignment="Center"
+                                            ToolTip="Intensity of the low-frequency rumble boost." />
                                     <TextBlock x:Name="lblRumbleDb" Grid.Column="2" Text="+6 dB" FontSize="11" VerticalAlignment="Center" Opacity="0.5" />
                                 </Grid>
                                 <Grid Margin="0,0,0,8">
@@ -279,7 +298,8 @@
                                         <ColumnDefinition Width="60" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="Res 1 Hz" Grid.Column="0" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
-                                    <Slider x:Name="slRes1Hz" Grid.Column="1" Minimum="100" Maximum="300" Value="180" TickFrequency="10" IsSnapToTickEnabled="True" SmallChange="10" LargeChange="50" VerticalAlignment="Center" />
+                                    <Slider x:Name="slRes1Hz" Grid.Column="1" Minimum="100" Maximum="300" Value="180" TickFrequency="10" IsSnapToTickEnabled="True" SmallChange="10" LargeChange="50" VerticalAlignment="Center"
+                                            ToolTip="Primary cabin resonance frequency. Simulates the natural frequency of the enclosed space." />
                                     <TextBlock x:Name="lblRes1Hz" Grid.Column="2" Text="180 Hz" FontSize="11" VerticalAlignment="Center" Opacity="0.5" />
                                 </Grid>
                                 <Grid Margin="0,0,0,8">
@@ -289,7 +309,8 @@
                                         <ColumnDefinition Width="60" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="Res 1 dB" Grid.Column="0" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
-                                    <Slider x:Name="slRes1Db" Grid.Column="1" Minimum="0" Maximum="10" Value="5" TickFrequency="1" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="2" VerticalAlignment="Center" />
+                                    <Slider x:Name="slRes1Db" Grid.Column="1" Minimum="0" Maximum="10" Value="5" TickFrequency="1" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="2" VerticalAlignment="Center"
+                                            ToolTip="Intensity of the primary (lower) cabin resonance boost." />
                                     <TextBlock x:Name="lblRes1Db" Grid.Column="2" Text="+5 dB" FontSize="11" VerticalAlignment="Center" Opacity="0.5" />
                                 </Grid>
                                 <Grid Margin="0,0,0,8">
@@ -299,7 +320,8 @@
                                         <ColumnDefinition Width="60" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="Res 2 Hz" Grid.Column="0" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
-                                    <Slider x:Name="slRes2Hz" Grid.Column="1" Minimum="200" Maximum="500" Value="350" TickFrequency="10" IsSnapToTickEnabled="True" SmallChange="10" LargeChange="50" VerticalAlignment="Center" />
+                                    <Slider x:Name="slRes2Hz" Grid.Column="1" Minimum="200" Maximum="500" Value="350" TickFrequency="10" IsSnapToTickEnabled="True" SmallChange="10" LargeChange="50" VerticalAlignment="Center"
+                                            ToolTip="Secondary cabin resonance frequency. Simulates higher-order reflections in the car interior." />
                                     <TextBlock x:Name="lblRes2Hz" Grid.Column="2" Text="350 Hz" FontSize="11" VerticalAlignment="Center" Opacity="0.5" />
                                 </Grid>
                                 <Grid Margin="0,0,0,8">
@@ -309,7 +331,8 @@
                                         <ColumnDefinition Width="60" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="Res 2 dB" Grid.Column="0" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
-                                    <Slider x:Name="slRes2Db" Grid.Column="1" Minimum="0" Maximum="8" Value="4" TickFrequency="1" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="2" VerticalAlignment="Center" />
+                                    <Slider x:Name="slRes2Db" Grid.Column="1" Minimum="0" Maximum="8" Value="4" TickFrequency="1" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="2" VerticalAlignment="Center"
+                                            ToolTip="Intensity of the secondary (higher) cabin resonance boost." />
                                     <TextBlock x:Name="lblRes2Db" Grid.Column="2" Text="+4 dB" FontSize="11" VerticalAlignment="Center" Opacity="0.5" />
                                 </Grid>
                                 <TextBlock Text="Stereo &amp; reverb" FontSize="12" FontWeight="SemiBold" Margin="0,6,0,8" />
@@ -320,7 +343,8 @@
                                         <ColumnDefinition Width="60" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="Width %" Grid.Column="0" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
-                                    <Slider x:Name="slWidth" Grid.Column="1" Minimum="10" Maximum="100" Value="30" TickFrequency="5" IsSnapToTickEnabled="True" SmallChange="5" LargeChange="20" VerticalAlignment="Center" />
+                                    <Slider x:Name="slWidth" Grid.Column="1" Minimum="10" Maximum="100" Value="30" TickFrequency="5" IsSnapToTickEnabled="True" SmallChange="5" LargeChange="20" VerticalAlignment="Center"
+                                            ToolTip="Stereo width narrowing. Lower percentages simulate sound coming from specific locations (e.g. firewall)." />
                                     <TextBlock x:Name="lblWidth" Grid.Column="2" Text="30%" FontSize="11" VerticalAlignment="Center" Opacity="0.5" />
                                 </Grid>
                                 <Grid Margin="0,0,0,8">
@@ -330,7 +354,8 @@
                                         <ColumnDefinition Width="60" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="Reverb %" Grid.Column="0" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
-                                    <Slider x:Name="slReverbMix" Grid.Column="1" Minimum="0" Maximum="20" Value="7" TickFrequency="1" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="5" VerticalAlignment="Center" />
+                                    <Slider x:Name="slReverbMix" Grid.Column="1" Minimum="0" Maximum="20" Value="7" TickFrequency="1" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="5" VerticalAlignment="Center"
+                                            ToolTip="Dry/Wet mix for the short cabin reverb simulation." />
                                     <TextBlock x:Name="lblReverbMix" Grid.Column="2" Text="7%" FontSize="11" VerticalAlignment="Center" Opacity="0.5" />
                                 </Grid>
                                 <Grid Margin="0,0,0,8">
@@ -340,7 +365,8 @@
                                         <ColumnDefinition Width="60" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="Rev ms" Grid.Column="0" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
-                                    <Slider x:Name="slReverbMs" Grid.Column="1" Minimum="10" Maximum="80" Value="30" TickFrequency="5" IsSnapToTickEnabled="True" SmallChange="5" LargeChange="10" VerticalAlignment="Center" />
+                                    <Slider x:Name="slReverbMs" Grid.Column="1" Minimum="10" Maximum="80" Value="30" TickFrequency="5" IsSnapToTickEnabled="True" SmallChange="5" LargeChange="10" VerticalAlignment="Center"
+                                            ToolTip="Cabin reverb delay. Simulates the small physical space of the interior." />
                                     <TextBlock x:Name="lblReverbMs" Grid.Column="2" Text="30 ms" FontSize="11" VerticalAlignment="Center" Opacity="0.5" />
                                 </Grid>
                                 <TextBlock Text="Dynamics" FontSize="12" FontWeight="SemiBold" Margin="0,6,0,8" />
@@ -351,7 +377,8 @@
                                         <ColumnDefinition Width="60" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="Comp ratio" Grid.Column="0" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
-                                    <Slider x:Name="slCompRatio" Grid.Column="1" Minimum="1" Maximum="8" Value="3" TickFrequency="1" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="2" VerticalAlignment="Center" />
+                                    <Slider x:Name="slCompRatio" Grid.Column="1" Minimum="1" Maximum="8" Value="3" TickFrequency="1" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="2" VerticalAlignment="Center"
+                                            ToolTip="Dynamics compression ratio. Higher values result in more aggressive volume limiting." />
                                     <TextBlock x:Name="lblCompRatio" Grid.Column="2" Text="3:1" FontSize="11" VerticalAlignment="Center" Opacity="0.5" />
                                 </Grid>
                                 <Grid>
@@ -361,14 +388,18 @@
                                         <ColumnDefinition Width="60" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="Threshold" Grid.Column="0" FontSize="11" VerticalAlignment="Center" Opacity="0.6" />
-                                    <Slider x:Name="slCompThresh" Grid.Column="1" Minimum="-24" Maximum="0" Value="-12" TickFrequency="2" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="6" VerticalAlignment="Center" />
+                                    <Slider x:Name="slCompThresh" Grid.Column="1" Minimum="-24" Maximum="0" Value="-12" TickFrequency="2" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="6" VerticalAlignment="Center"
+                                            ToolTip="Compression threshold. Sets the level (in dB) above which the compressor activates." />
                                     <TextBlock x:Name="lblCompThresh" Grid.Column="2" Text="-12 dB" FontSize="11" VerticalAlignment="Center" Opacity="0.5" />
                                 </Grid>
                             </StackPanel>
                         </Border>
                     </StackPanel>
+                    
+                    <TextBlock x:Name="lblAdvancedEmpty" Text="No processing applied in Raw mode." 
+                               FontSize="11" Opacity="0.4" HorizontalAlignment="Center" Margin="0,20" Visibility="Collapsed" />
                 </StackPanel>
-            </ui:Card>
+            </Expander>
 
             <!-- Audio Quality -->
             <ui:Card Margin="0,0,0,8">

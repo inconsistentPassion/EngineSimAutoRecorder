@@ -1,6 +1,8 @@
 using System.IO;
+using System.Runtime.Versioning;
 using System.Windows;
 using EngineSimRecorder.Core;
+using EngineSimRecorder.Services;
 using EngineSimRecorder.View;
 using EngineSimRecorder.View.Pages;
 using EngineSimRecorder.ViewModel;
@@ -13,7 +15,8 @@ using Wpf.Ui.DependencyInjection;
 
 namespace EngineSimRecorder;
 
-public partial class App : Application
+[SupportedOSPlatform("windows7.0")]
+public partial class App : System.Windows.Application
 {
     private static readonly IHost _host = Host.CreateDefaultBuilder()
         .ConfigureServices((context, services) =>
@@ -22,6 +25,7 @@ public partial class App : Application
             services.AddNavigationViewPageProvider();
             services.AddSingleton<INavigationService, NavigationService>();
             services.AddSingleton<ISnackbarService, SnackbarService>();
+            services.AddSingleton<IContentDialogService, ContentDialogService>();
 
             // Main window
             services.AddSingleton<MainWindow>();
@@ -32,12 +36,12 @@ public partial class App : Application
             services.AddSingleton<RecorderPageViewModel>();
             services.AddSingleton<LogPage>();
             services.AddSingleton<LogPageViewModel>();
-            services.AddSingleton<ScriptsPage>();
-            services.AddSingleton<ScriptsPageViewModel>();
             services.AddSingleton<OptionsPage>();
             services.AddSingleton<OptionsPageViewModel>();
-            services.AddSingleton<FmodImportPage>();
-            services.AddSingleton<FmodImportPageViewModel>();
+            services.AddSingleton<AutomationService>();
+            services.AddSingleton<AutomationConfigPage>();
+            services.AddSingleton<AutomationScriptPage>();
+            services.AddSingleton<AutomationPackagePage>();
         })
         .Build();
 
@@ -45,6 +49,7 @@ public partial class App : Application
 
     public static T GetService<T>() where T : class => _host.Services.GetRequiredService<T>();
 
+    [SupportedOSPlatform("windows7.0")]
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);

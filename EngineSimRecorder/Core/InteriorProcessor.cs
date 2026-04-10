@@ -172,6 +172,26 @@ namespace EngineSimRecorder.Core
 
         private static float DbToLinear(float db) => (float)Math.Pow(10.0, db / 20.0);
 
+        public sealed record PresetParams(
+            float CutoffHz, float Width,
+            float RumbleHz, float RumbleDb,
+            float Res1Hz,   float Res1Db,
+            float Res2Hz,   float Res2Db,
+            float ReverbMs, float ReverbMix,
+            float CompRatio, float CompThreshDb);
+
+        public static PresetParams GetPresetParams(string carType)
+        {
+            var (cutoff, width) = GetPreset(carType);
+            return new PresetParams(
+                CutoffHz: cutoff, Width: width,
+                RumbleHz: 80f,    RumbleDb: 6f,
+                Res1Hz: 180f,     Res1Db: 5f,
+                Res2Hz: 350f,     Res2Db: 4f,
+                ReverbMs: 30f,    ReverbMix: 0.07f,
+                CompRatio: 3f,    CompThreshDb: -12f);
+        }
+
         /// <summary>
         /// Presets for common car types.
         /// Returns (cutoffHz, stereoWidth).

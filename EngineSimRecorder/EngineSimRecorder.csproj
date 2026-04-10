@@ -43,11 +43,7 @@
 		<Resource Include="icon.ico" />
 	</ItemGroup>
 
-	<ItemGroup>
-		<EmbeddedResource Include="..\assets\fmod_import_recordings.js">
-			<LogicalName>EngineSimRecorder.Scripts.fmod_import_recordings.js</LogicalName>
-		</EmbeddedResource>
-	</ItemGroup>
+
 
 
 </Project>

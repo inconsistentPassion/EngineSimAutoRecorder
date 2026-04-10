@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using EngineSimRecorder.Services;
 
 namespace EngineSimRecorder.Core
 {
@@ -6,9 +7,8 @@ namespace EngineSimRecorder.Core
     {
         public string OutputDir { get; set; } = "recordings";
         public int ProcessId { get; set; }
-        public string ProcessName { get; set; } = "";
-        public string CustomName { get; set; } = "";
-        public string CustomPrefix { get; set; } = "";
+        public string CarName { get; set; } = "";
+        public string Prefix { get; set; } = "";
         public List<int> TargetRpms { get; set; } = new();
         public int RpmTolerance { get; set; } = 5;
         public int HoldSeconds { get; set; } = 5;
@@ -28,22 +28,32 @@ namespace EngineSimRecorder.Core
 
         /// <summary>Custom exterior DSP parameters (only used when ExteriorPreset == Custom).</summary>
         public ExteriorSettings Exterior { get; set; } = new();
+
+        // ── FMOD / AC automation (persisted via AppSettings.Automation) ─────────
+
+        public string FmodProjectPath { get; set; } = "";
+        public string AcContentPath { get; set; } = "";
+        public string RecordingsDirExt { get; set; } = "";
+        public string RecordingsDirInt { get; set; } = "";
+        public string RecordingsDirLimiter { get; set; } = "";
+        public FmodGenerationMode FmodGenerationMode { get; set; } = FmodGenerationMode.UseExistingTemplate;
     }
 
     public sealed class ExteriorSettings
     {
-        public float LpHz       { get; set; } = 8000f;
-        public float LpQ        { get; set; } = 0.7f;
-        public float HsHz       { get; set; } = 5000f;
-        public float HsGainDb   { get; set; } = -3f;
-        public float MidHz      { get; set; } = 150f;
-        public float MidGainDb  { get; set; } = 3f;
-        public float SatDrive   { get; set; } = 2.5f;
-        public bool  EnableNoise { get; set; } = true;
-        public float ReverbMs   { get; set; } = 25f;
-        public float ReverbMix  { get; set; } = 0.10f;
-        public float CompRatio  { get; set; } = 3f;
-        public float CompThreshDb { get; set; } = -12f;
+        // Optimized for realistic, natural-sounding exterior recordings
+        public float LpHz       { get; set; } = 14000f;  // Gentle air absorption
+        public float LpQ        { get; set; } = 0.65f;
+        public float HsHz       { get; set; } = 8000f;   // Natural HF roll-off
+        public float HsGainDb   { get; set; } = -2f;
+        public float MidHz      { get; set; } = 180f;    // Warmth/body frequency
+        public float MidGainDb  { get; set; } = 2.5f;
+        public float SatDrive   { get; set; } = 1.4f;    // Gentle tape saturation
+        public bool  EnableNoise { get; set; } = false;  // Disabled - adds unwanted static
+        public float ReverbMs   { get; set; } = 25f;     // Natural space simulation
+        public float ReverbMix  { get; set; } = 0.06f;   // Subtle reverb
+        public float CompRatio  { get; set; } = 1.8f;    // Transparent compression
+        public float CompThreshDb { get; set; } = -16f;
     }
 
     public sealed class InteriorSettings

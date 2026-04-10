@@ -1,20 +1,29 @@
 using System;
 using System.Linq;
+using System.Runtime.Versioning;
+using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using EngineSimRecorder.Core;
+using EngineSimRecorder.ViewModel.Pages;
 using Wpf.Ui.Appearance;
+using Wpf.Ui.Controls;
+using Wpf.Ui;
 
 namespace EngineSimRecorder.View.Pages;
 
+[SupportedOSPlatform("windows7.0")]
 public partial class OptionsPage : Page
 {
     public static OptionsPage? Instance { get; private set; }
+    private readonly IContentDialogService _dialogService;
+    private bool _isUpdatingSliders = false;
 
     public OptionsPage()
     {
-        InitializeComponent();
         Instance = this;
+        InitializeComponent();
+        _dialogService = App.GetService<IContentDialogService>();
         Loaded += OnLoaded;
     }
 
@@ -32,6 +41,15 @@ public partial class OptionsPage : Page
         cmbCarType.SelectionChanged += cmbCarType_SelectionChanged;
         cmbExhaustPreset.SelectionChanged += cmbExhaustPreset_SelectionChanged;
 
+        expSound.Expanded += (s, e) => SaveSettings();
+        expSound.Collapsed += (s, e) => SaveSettings();
+
+        chkExtNoise.Click += (s, e) => {
+            if (!_isUpdatingSliders && GetExteriorPreset() != ExteriorPreset.Custom && GetExteriorPreset() != ExteriorPreset.Raw)
+                cmbExhaustPreset.SelectedIndex = (int)ExteriorPreset.Custom;
+            SaveSettings();
+        };
+
         var sliders = new[] { slCutoff, slRumbleHz, slRumbleDb, slRes1Hz, slRes1Db, slRes2Hz, slRes2Db, slWidth, slReverbMix, slReverbMs, slCompRatio, slCompThresh };
         foreach (var sl in sliders) sl.ValueChanged += slCustom_ValueChanged;
 
@@ -44,8 +62,7 @@ public partial class OptionsPage : Page
         cmbChannels.SelectedIndex = settings.Channels == 1 ? 1 : 0;
         rbInterior.IsChecked = settings.InteriorMode;
         rbExterior.IsChecked = !settings.InteriorMode;
-        pnlCutoff.Visibility = settings.InteriorMode ? Visibility.Visible : Visibility.Collapsed;
-        pnlExhaustPreset.Visibility = settings.InteriorMode ? Visibility.Collapsed : Visibility.Visible;
+        expSound.IsExpanded = settings.SoundExpanderExpanded;
         chkRecordLimiter.IsChecked = settings.RecordLimiter;
         chkGeneratePowerLut.IsChecked = settings.GeneratePowerLut;
         
@@ -84,8 +101,34 @@ public partial class OptionsPage : Page
         
         if (!string.IsNullOrEmpty(settings.LastProfile))
             cmbProfiles.SelectedItem = cmbProfiles.Items.OfType<string>().FirstOrDefault(i => i == settings.LastProfile);
+
+        UpdateCustomPanelsVisibility();
     }
 
+    private void UpdateCustomPanelsVisibility()
+    {
+        if (!IsLoaded || pnlCustomExterior == null || pnlCustom == null || lblAdvancedEmpty == null) return;
+
+        bool isExterior = rbExterior.IsChecked == true;
+        bool isInterior = rbInterior.IsChecked == true;
+
+        // Exterior
+        pnlExhaustPreset.Visibility = isExterior ? Visibility.Visible : Visibility.Collapsed;
+        bool isExtCustom = isExterior && GetExteriorPreset() == ExteriorPreset.Custom;
+        pnlCustomExterior.Visibility = isExtCustom ? Visibility.Visible : Visibility.Collapsed;
+
+        // Interior
+        pnlCutoff.Visibility = isInterior ? Visibility.Visible : Visibility.Collapsed;
+        string? carType = (cmbCarType.SelectedItem as ComboBoxItem)?.Content?.ToString();
+        bool isIntCustom = isInterior && carType == "Custom";
+        pnlCustom.Visibility = isIntCustom ? Visibility.Visible : Visibility.Collapsed;
+
+        // Advanced Placeholders/Empty State
+        bool isRaw = isExterior && GetExteriorPreset() == ExteriorPreset.Raw;
+        lblAdvancedEmpty.Visibility = isRaw ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    [SupportedOSPlatform("windows7.0")]
     private void cmbTheme_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (!IsLoaded) return;
@@ -101,29 +144,86 @@ public partial class OptionsPage : Page
 
     private void rbMode_Checked(object sender, RoutedEventArgs e)
     {
-        if (pnlCutoff == null || pnlExhaustPreset == null) return;
-        bool isInterior = rbInterior.IsChecked == true;
-        pnlCutoff.Visibility = isInterior ? Visibility.Visible : Visibility.Collapsed;
-        pnlExhaustPreset.Visibility = isInterior ? Visibility.Collapsed : Visibility.Visible;
+        if (!IsLoaded) return;
+        UpdateCustomPanelsVisibility();
+        SaveSettings();
     }
 
     private void cmbCarType_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (pnlCustom == null) return;
+        if (!IsLoaded || pnlCustom == null) return;
+        
         string? type = (cmbCarType.SelectedItem as ComboBoxItem)?.Content?.ToString();
-        pnlCustom.Visibility = type == "Custom" ? Visibility.Visible : Visibility.Collapsed;
+        if (type != "Custom" && !_isUpdatingSliders)
+        {
+            SyncInteriorSlidersToPreset(type ?? "Sedan");
+        }
+
+        UpdateCustomPanelsVisibility();
+        SaveSettings();
+    }
+
+    private void SyncInteriorSlidersToPreset(string carType)
+    {
+        _isUpdatingSliders = true;
+        var p = InteriorProcessor.GetPresetParams(carType);
+        slCutoff.Value = p.CutoffHz;
+        slWidth.Value = p.Width * 100.0;
+        slRumbleHz.Value = p.RumbleHz;
+        slRumbleDb.Value = p.RumbleDb;
+        slRes1Hz.Value = p.Res1Hz;
+        slRes1Db.Value = p.Res1Db;
+        slRes2Hz.Value = p.Res2Hz;
+        slRes2Db.Value = p.Res2Db;
+        slReverbMs.Value = p.ReverbMs;
+        slReverbMix.Value = p.ReverbMix * 100.0;
+        slCompRatio.Value = p.CompRatio;
+        slCompThresh.Value = p.CompThreshDb;
+        _isUpdatingSliders = false;
     }
 
     private void cmbExhaustPreset_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (pnlCustomExterior == null) return;
-        pnlCustomExterior.Visibility = GetExteriorPreset() == ExteriorPreset.Custom
-            ? Visibility.Visible : Visibility.Collapsed;
+        if (!IsLoaded || pnlCustomExterior == null) return;
+
+        var preset = GetExteriorPreset();
+        if (preset != ExteriorPreset.Custom && preset != ExteriorPreset.Raw && !_isUpdatingSliders)
+        {
+            SyncExteriorSlidersToPreset(preset);
+        }
+
+        UpdateCustomPanelsVisibility();
+        SaveSettings();
+    }
+
+    private void SyncExteriorSlidersToPreset(ExteriorPreset preset)
+    {
+        _isUpdatingSliders = true;
+        var p = ExteriorProcessor.GetPresetParams(preset);
+        slExtLpHz.Value = p.LpHz;
+        slExtLpQ.Value = p.LpQ;
+        slExtHsHz.Value = p.HsHz;
+        slExtHsGainDb.Value = p.HsGainDb;
+        slExtMidHz.Value = p.MidHz;
+        slExtMidGainDb.Value = p.MidGainDb;
+        slExtSatDrive.Value = p.SatDrive;
+        chkExtNoise.IsChecked = p.EnableNoise;
+        slExtReverbMs.Value = p.ReverbMs;
+        slExtReverbMix.Value = p.ReverbMix * 100.0;
+        slExtCompRatio.Value = p.CompRatio;
+        slExtCompThresh.Value = p.CompThreshDb;
+        _isUpdatingSliders = false;
     }
 
     private void slCustomExt_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         if (!IsLoaded || lblExtLpHz == null) return;
+
+        if (!_isUpdatingSliders && GetExteriorPreset() != ExteriorPreset.Custom && GetExteriorPreset() != ExteriorPreset.Raw)
+        {
+            cmbExhaustPreset.SelectedIndex = (int)ExteriorPreset.Custom;
+        }
+
         lblExtLpHz.Text      = $"{(int)slExtLpHz.Value} Hz";
         lblExtLpQ.Text       = $"{slExtLpQ.Value:F1}";
         lblExtHsHz.Text      = $"{(int)slExtHsHz.Value} Hz";
@@ -141,6 +241,12 @@ public partial class OptionsPage : Page
     private void slCustom_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         if (!IsLoaded || lblCutoff == null) return;
+
+        if (!_isUpdatingSliders && (cmbCarType.SelectedItem as ComboBoxItem)?.Content?.ToString() != "Custom")
+        {
+            cmbCarType.SelectedItem = cmbCarType.Items.OfType<ComboBoxItem>().FirstOrDefault(i => i.Content?.ToString() == "Custom");
+        }
+
         lblCutoff.Text = $"{(int)slCutoff.Value} Hz";
         lblRumbleHz.Text = $"{(int)slRumbleHz.Value} Hz";
         lblRumbleDb.Text = $"+{(int)slRumbleDb.Value} dB";
@@ -196,11 +302,26 @@ public partial class OptionsPage : Page
         lblProfileStatus.Text = $"Loaded '{name}' ({profile.TargetRpms.Count} RPM targets)";
     }
 
-    private void btnDeleteProfile_Click(object sender, RoutedEventArgs e)
+    private async void btnDeleteProfile_Click(object sender, RoutedEventArgs e)
     {
         if (cmbProfiles.SelectedItem is not string name) { lblProfileStatus.Text = "Select a profile."; return; }
-        if (System.Windows.MessageBox.Show($"Delete profile '{name}'?", "Confirm", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Question) == System.Windows.MessageBoxResult.Yes)
-        { RpmProfile.Delete(name); RefreshProfiles(); lblProfileStatus.Text = $"Deleted '{name}'."; }
+        
+        var uiMessageBox = new Wpf.Ui.Controls.MessageBox
+        {
+            Title = "Confirm Deletion",
+            Content = $"Delete profile '{name}'?",
+            PrimaryButtonText = "Delete",
+            CloseButtonText = "Cancel"
+        };
+
+        var result = await uiMessageBox.ShowDialogAsync();
+
+        if (result == Wpf.Ui.Controls.MessageBoxResult.Primary)
+        { 
+            RpmProfile.Delete(name); 
+            RefreshProfiles(); 
+            lblProfileStatus.Text = $"Deleted '{name}'."; 
+        }
     }
 
     public void SaveSettings()
@@ -209,6 +330,7 @@ public partial class OptionsPage : Page
         settings.SampleRate = cmbSampleRate.SelectedIndex == 1 ? 48000 : 44100;
         settings.Channels = cmbChannels.SelectedIndex == 1 ? 1 : 2;
         settings.InteriorMode = rbInterior.IsChecked == true;
+        settings.SoundExpanderExpanded = expSound.IsExpanded;
         settings.CarType = (cmbCarType.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Sedan";
         settings.RecordLimiter = chkRecordLimiter.IsChecked == true;
         settings.GeneratePowerLut = chkGeneratePowerLut.IsChecked == true;

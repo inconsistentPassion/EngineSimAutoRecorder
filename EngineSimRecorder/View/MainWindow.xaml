@@ -4,7 +4,7 @@
                  xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
                  Title="ES Recorder"
                  MinWidth="580" MinHeight="600"
-                 Width="620" Height="700"
+                 Width="700" Height="700"
                  ExtendsContentIntoTitleBar="True"
                  WindowStartupLocation="CenterScreen"
                  WindowBackdropType="Mica">
@@ -37,5 +37,13 @@
                            IsFooterSeparatorVisible="False"
                            OpenPaneLength="180"
                            CompactPaneLength="48" />
+
+        <ui:SnackbarPresenter x:Name="AppSnackbar"
+                              Grid.Row="1"
+                              HorizontalAlignment="Center"
+                              VerticalAlignment="Bottom"
+                              Margin="0,0,0,20" />
+
+        <ContentPresenter x:Name="RootDialog" Grid.Row="1" />
     </Grid>
 </ui:FluentWindow>

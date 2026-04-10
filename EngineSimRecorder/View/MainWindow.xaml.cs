@@ -4,6 +4,8 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
+using EngineSimRecorder;
+using EngineSimRecorder.Services;
 using EngineSimRecorder.ViewModel;
 using EngineSimRecorder.View.Pages;
 using Wpf.Ui;
@@ -21,7 +23,7 @@ public partial class MainWindow : FluentWindow, INavigationWindow
     private static DispatcherTimer? _focusMonitor;
     private static bool _focusWarned = false;
 
-    public MainWindow(MainWindowViewModel viewModel, INavigationService navigationService, ISnackbarService snackbarService)
+    public MainWindow(MainWindowViewModel viewModel, INavigationService navigationService, ISnackbarService snackbarService, IContentDialogService dialogService)
     {
         ViewModel = viewModel;
         DataContext = ViewModel;
@@ -29,10 +31,38 @@ public partial class MainWindow : FluentWindow, INavigationWindow
         InitializeComponent();
 
         navigationService.SetNavigationControl(RootNavigation);
+        snackbarService.SetSnackbarPresenter(AppSnackbar);
+        dialogService.SetContentPresenter(RootDialog);
 
         Application.Current.MainWindow = this;
-        Loaded += (s, e) => Activate();
+        Loaded += (s, e) =>
+        {
+            Activate();
+            WireAutomationNavOpenPaneOnClick();
+        };
         Closing += OnClosing;
+    }
+
+    /// <summary>
+    /// WPF-UI only toggles submenu expansion when the pane is open; if the nav is collapsed, open it and expand Automation.
+    /// </summary>
+    private void WireAutomationNavOpenPaneOnClick()
+    {
+        foreach (object item in ViewModel.MenuItems)
+        {
+            if (item is not NavigationViewItem nvi) continue;
+            if (!MainWindowViewModel.AutomationNavigationRootTag.Equals(nvi.Tag as string)) continue;
+
+            nvi.Click += (_, _) =>
+            {
+                if (!RootNavigation.IsPaneOpen)
+                {
+                    RootNavigation.IsPaneOpen = true;
+                    nvi.IsExpanded = true;
+                }
+            };
+            return;
+        }
     }
 
     // ── Focus Monitor ──
@@ -79,9 +109,14 @@ public partial class MainWindow : FluentWindow, INavigationWindow
     // ── Closing ──
     private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
-        RecorderPage.Instance?._cts?.Cancel();
+        RecorderPage.Instance?.Cts?.Cancel();
         RecorderPage.Instance?.Backend?.Dispose();
         OptionsPage.Instance?.SaveSettings();
+        if (App.Services.GetService(typeof(AutomationService)) is AutomationService automation)
+        {
+            automation.SaveToSettings();
+            automation.Disconnect();
+        }
     }
 
     public INavigationView GetNavigation() => RootNavigation;

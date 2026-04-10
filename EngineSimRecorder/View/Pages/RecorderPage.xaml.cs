@@ -14,16 +14,17 @@ using EngineSimRecorder.Core;
 using EngineSimRecorder.View.Pages;
 using NAudio.Wave;
 using Wpf.Ui.Appearance;
-using MessageBox = System.Windows.MessageBox;
-using MessageBoxButton = System.Windows.MessageBoxButton;
-using MessageBoxImage = System.Windows.MessageBoxImage;
+using Wpf.Ui.Controls;
+using Wpf.Ui;
 
 namespace EngineSimRecorder.View.Pages;
 
 public partial class RecorderPage : Page
 {
     public static RecorderPage? Instance { get; private set; }
-    internal CancellationTokenSource? _cts;
+    private readonly ISnackbarService _snackbarService;
+    private readonly IContentDialogService _dialogService;
+    private CancellationTokenSource? _cts;
     private Task? _workerTask;
     private DispatcherTimer? _progressTimer;
     private Stopwatch? _progressSw;
@@ -36,6 +37,8 @@ public partial class RecorderPage : Page
     {
         Instance = this;
         InitializeComponent();
+        _snackbarService = App.GetService<ISnackbarService>();
+        _dialogService = App.GetService<IContentDialogService>();
         Loaded += OnLoaded;
     }
 
@@ -72,7 +75,7 @@ public partial class RecorderPage : Page
         lstRpm.SelectionChanged += lstRpm_SelectionChanged;
         lstRpm.MouseDoubleClick += btnEdit_Click;
         // Preset buttons
-        foreach (var child in FindVisualChildren<Button>(this))
+        foreach (var child in FindVisualChildren<System.Windows.Controls.Button>(this))
             if (child.Tag is string tag && int.TryParse(tag, out _))
                 child.Click += btnPreset_Click;
     }
@@ -113,20 +116,24 @@ public partial class RecorderPage : Page
         return null;
     }
 
-    private void btnConnect_Click(object sender, RoutedEventArgs e)
+    private async void btnConnect_Click(object sender, RoutedEventArgs e)
     {
         if (_backend != null)
         {
             // Show confirmation if recording is in progress
             if (_cts != null && !_cts.IsCancellationRequested)
             {
-                var result = MessageBox.Show(
-                    "A recording is currently in progress. Do you want to stop it and disconnect?",
-                    "Stop Recording & Disconnect",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
+                var uiMessageBox = new Wpf.Ui.Controls.MessageBox
+                {
+                    Title = "Stop Recording & Disconnect",
+                    Content = "A recording is currently in progress. Do you want to stop it and disconnect?",
+                    PrimaryButtonText = "Yes",
+                    CloseButtonText = "No"
+                };
                 
-                if (result != MessageBoxResult.Yes)
+                var result = await uiMessageBox.ShowDialogAsync();
+                
+                if (result != Wpf.Ui.Controls.MessageBoxResult.Primary)
                     return;
                     
                 // Stop recording first before disconnecting
@@ -137,11 +144,8 @@ public partial class RecorderPage : Page
                 btnConnect.Content = "Disconnecting...";
                 
                 // Wait a moment for the recording to stop gracefully
-                _ = Task.Run(async () =>
-                {
-                    await Task.Delay(800);
-                    await Dispatcher.InvokeAsync(() => Disconnect());
-                });
+                await Task.Delay(800);
+                await Dispatcher.InvokeAsync(() => Disconnect());
                 return;
             }
             
@@ -152,7 +156,7 @@ public partial class RecorderPage : Page
         var proc = FindEngineProcess();
         if (proc == null) 
         { 
-            MessageBox.Show("No Engine Simulator process found.\nMake sure the simulator is running before connecting.", "Not Found", MessageBoxButton.OK, MessageBoxImage.Warning); 
+            _snackbarService.Show("Not Found", "No Engine Simulator process found.\nMake sure the simulator is running before connecting.", ControlAppearance.Info, new SymbolIcon(SymbolRegular.Search24), TimeSpan.FromSeconds(5));
             return; 
         }
 
@@ -163,7 +167,7 @@ public partial class RecorderPage : Page
 
         var cfg = new RecorderConfig { ProcessId = proc.Id };
         var displayName = $"{proc.ProcessName} (PID {proc.Id})";
-        Task.Run(() =>
+        _ = Task.Run(() =>
         {
             try
             {
@@ -181,7 +185,14 @@ public partial class RecorderPage : Page
                         if (maxRpm.HasValue) { Log($"Connected. Engine redline: {maxRpm.Value:F0} RPM"); lblRedline.Text = $"(redline: {maxRpm.Value:F0})"; }
                         else Log("Connected. Waiting for redline data...");
                     }
-                    else { backend.Dispose(); btnConnect.Content = "Connect"; btnConnect.IsEnabled = true; Log("Connection failed."); MessageBox.Show("Connection to Engine Simulator failed.\nSee the status label above or the Log tab for details.", "Connection Failed", MessageBoxButton.OK, MessageBoxImage.Error); }
+                    else 
+                    { 
+                        backend.Dispose(); 
+                        btnConnect.Content = "Connect"; 
+                        btnConnect.IsEnabled = true; 
+                        Log("Connection failed."); 
+                        _snackbarService.Show("Connection Failed", "Connection to Engine Simulator failed.\nSee the status label above or the Log tab for details.", ControlAppearance.Danger, new SymbolIcon(SymbolRegular.ErrorCircle24), TimeSpan.FromSeconds(5));
+                    }
                 });
             }
             catch (Exception ex)
@@ -190,7 +201,7 @@ public partial class RecorderPage : Page
                 Dispatcher.BeginInvoke(() =>
                 {
                     SetConnStatus(false);
-                    MessageBox.Show($"Connection error:\n{ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    _snackbarService.Show("Error", $"Connection error:\n{ex.Message}", ControlAppearance.Danger, new SymbolIcon(SymbolRegular.ErrorCircle24), TimeSpan.FromSeconds(5));
                 });
             }
         });
@@ -304,7 +315,11 @@ public partial class RecorderPage : Page
     private void btnAuto_Click(object sender, RoutedEventArgs e)
     {
         double? maxRpm = _backend?.ReadMaxRpm();
-        if (!maxRpm.HasValue || maxRpm.Value <= 0) { MessageBox.Show("Redline not detected. Connect first.", "No Redline Data", MessageBoxButton.OK, MessageBoxImage.Information); return; }
+        if (!maxRpm.HasValue || maxRpm.Value <= 0) 
+        { 
+            _snackbarService.Show("No Redline Data", "Redline not detected. Connect first.", ControlAppearance.Info, new SymbolIcon(SymbolRegular.Info24), TimeSpan.FromSeconds(5));
+            return; 
+        }
         
         lstRpm.Items.Clear();
         int limit = (int)maxRpm.Value - 200;
@@ -337,8 +352,16 @@ public partial class RecorderPage : Page
     // ── Start / Stop ──
     private void btnStart_Click(object sender, RoutedEventArgs e)
     {
-        if (lstRpm.Items.Count == 0) { MessageBox.Show("Add at least one target RPM.", "No targets", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
-        if (_backend == null) { MessageBox.Show("Connect to Engine Simulator first.", "Not connected", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
+        if (lstRpm.Items.Count == 0) 
+        { 
+            _snackbarService.Show("No targets", "Add at least one target RPM.", ControlAppearance.Caution, new SymbolIcon(SymbolRegular.Warning24), TimeSpan.FromSeconds(5));
+            return; 
+        }
+        if (_backend == null) 
+        { 
+            _snackbarService.Show("Not connected", "Connect to Engine Simulator first.", ControlAppearance.Caution, new SymbolIcon(SymbolRegular.Warning24), TimeSpan.FromSeconds(5));
+            return; 
+        }
 
         var opt = OptionsPage.Instance;
         string outputDir = txtOutputDir.Text.Trim();
@@ -445,8 +468,8 @@ public partial class RecorderPage : Page
             OutputDir = txtOutputDir.Text.Trim(),
             ProcessId = 0, // Injected via Backend if needed
             TargetRpms = targets,
-            CustomName = txtCarName.Text.Trim(),
-            CustomPrefix = GetPrefix(),
+            CarName = txtCarName.Text.Trim(),
+            Prefix = GetPrefix(),
             SampleRate = opt?.cmbSampleRate?.SelectedIndex == 1 ? 48000 : 44100,
             Channels = opt?.cmbChannels?.SelectedIndex == 1 ? 1 : 2,
             InteriorMode = opt?.rbInterior?.IsChecked == true,
@@ -555,8 +578,8 @@ public partial class RecorderPage : Page
             var overallSw = Stopwatch.StartNew();
             var torqueData = new List<(int rpm, double torqueNm)>();
 
-            string prefix = cfg.CustomPrefix ?? "";
-            string carName = cfg.CustomName ?? "";
+            string prefix = cfg.Prefix ?? "";
+            string carName = cfg.CarName ?? "";
             for (int i = 0; i < cfg.TargetRpms.Count; i++)
             {
                 if (ct.IsCancellationRequested) break;
@@ -588,8 +611,11 @@ public partial class RecorderPage : Page
                     else Log($"Warning: no torque reading at {target} RPM");
                 }
 
-                string baseName = string.IsNullOrEmpty(carName) ? "" : $"{prefix}{carName}_";
-                string modePrefix = cfg.InteriorMode ? "int_" : "";
+                // Interior naming must always be int_<car>_* (do not carry exterior prefix).
+                string baseName = string.IsNullOrEmpty(carName)
+                    ? ""
+                    : (cfg.InteriorMode ? $"int_{carName}_" : $"{prefix}{carName}_");
+                string modePrefix = "";
 
                 string loadFile = $"{baseName}{modePrefix}on_{target}.wav";
                 string loadPath = Path.Combine(cfg.OutputDir, loadFile);
@@ -642,7 +668,10 @@ public partial class RecorderPage : Page
                 ct.WaitHandle.WaitOne(200);
                 if (!ct.IsCancellationRequested)
                 {
-                    string f = $"{(string.IsNullOrEmpty(carName) ? "" : $"{prefix}{carName}_")}{(cfg.InteriorMode ? "int_" : "")}engine_limiter.wav";
+                    string limiterBase = string.IsNullOrEmpty(carName)
+                        ? ""
+                        : (cfg.InteriorMode ? $"int_{carName}_" : $"{prefix}{carName}_");
+                    string f = $"{limiterBase}engine_limiter.wav";
                     string p = Path.Combine(cfg.OutputDir, f);
                     Log($"Recording LIMITER for {cfg.RecordSeconds}s -> {p}");
                     RecordAudio(backend, p, cfg, ct);
@@ -680,7 +709,7 @@ public partial class RecorderPage : Page
         catch (Exception ex)
         {
             Log($"ERROR: {ex.Message}");
-            Dispatcher.BeginInvoke(() => MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error));
+            Dispatcher.BeginInvoke(() => _snackbarService.Show("Error", ex.Message, ControlAppearance.Danger, new SymbolIcon(SymbolRegular.ErrorCircle24), TimeSpan.FromSeconds(10)));
         }
         finally
         {
@@ -713,11 +742,11 @@ public partial class RecorderPage : Page
     {
         using var capture = new WasapiLoopbackCapture();
         capture.WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(cfg.SampleRate, cfg.Channels);
-        using var writer = new WaveFileWriter(outputPath, capture.WaveFormat);
         var done = new ManualResetEventSlim(false);
 
         InteriorProcessor? interior = null;
         ExteriorProcessor? exterior = null;
+        var recorded = new List<float>(cfg.SampleRate * cfg.Channels * Math.Max(1, cfg.RecordSeconds));
 
         if (cfg.InteriorMode)
         {
@@ -743,16 +772,16 @@ public partial class RecorderPage : Page
         capture.DataAvailable += (s, e) =>
         {
             if (e.BytesRecorded == 0) return;
-            if (interior != null || exterior != null)
-            {
-                int samples = e.BytesRecorded / 4;
-                var floats = new float[samples];
-                Buffer.BlockCopy(e.Buffer, 0, floats, 0, e.BytesRecorded);
-                interior?.Process(floats, samples);
-                exterior?.Process(floats, samples);
-                Buffer.BlockCopy(floats, 0, e.Buffer, 0, e.BytesRecorded);
-            }
-            writer.Write(e.Buffer, 0, e.BytesRecorded);
+
+            int samples = e.BytesRecorded / 4;
+            var floats = new float[samples];
+            Buffer.BlockCopy(e.Buffer, 0, floats, 0, e.BytesRecorded);
+
+            interior?.Process(floats, samples);
+            exterior?.Process(floats, samples);
+
+            // Buffer entire recording so we can post-process loop points.
+            for (int i = 0; i < samples; i++) recorded.Add(floats[i]);
         };
         capture.RecordingStopped += (s, e) => done.Set();
         capture.StartRecording();
@@ -768,6 +797,131 @@ public partial class RecorderPage : Page
         }
         capture.StopRecording();
         done.Wait(TimeSpan.FromSeconds(5));
+
+        // Post-process to prevent loop clicks (DC offset removal -> zero-cross trim -> 10ms crossfade)
+        if (recorded.Count > 0 && cfg.Channels > 0 && cfg.SampleRate > 0)
+        {
+            float[] samples = FixLoopClick(recorded.ToArray(), cfg.SampleRate, cfg.Channels);
+            using var writer = new WaveFileWriter(outputPath, capture.WaveFormat);
+            writer.WriteSamples(samples, 0, samples.Length);
+        }
+    }
+
+    private static float[] FixLoopClick(float[] samples, int sampleRate, int channels)
+    {
+        if (channels <= 0) return samples;
+        int frames = samples.Length / channels;
+        if (frames <= 4) return samples;
+
+        RemoveDcOffset(samples, channels);
+
+        // Snap to nearest zero-crossing at start and end (use channel 0 as reference)
+        int searchFrames = Math.Max(8, (int)(sampleRate * 0.02)); // 20ms window
+        int startFrame = FindNearestZeroCrossingFrame(samples, channels, 0, searchFrames);
+        int endFrame = FindNearestZeroCrossingFrame(samples, channels, frames - 1, searchFrames);
+        if (endFrame <= startFrame + 4) { startFrame = 0; endFrame = frames - 1; }
+
+        if (startFrame != 0 || endFrame != frames - 1)
+        {
+            int newFrames = endFrame - startFrame + 1;
+            var trimmed = new float[newFrames * channels];
+            Buffer.BlockCopy(samples, startFrame * channels * sizeof(float), trimmed, 0, trimmed.Length * sizeof(float));
+            samples = trimmed;
+        }
+
+        ApplyLoopCrossfadeInPlace(samples, sampleRate, channels, 0.010);
+        NormalizeIfNeededInPlace(samples);
+        return samples;
+    }
+
+    private static void RemoveDcOffset(float[] samples, int channels)
+    {
+        double[] sum = new double[channels];
+        int frames = samples.Length / channels;
+        for (int f = 0; f < frames; f++)
+        {
+            int idx = f * channels;
+            for (int c = 0; c < channels; c++) sum[c] += samples[idx + c];
+        }
+
+        for (int c = 0; c < channels; c++)
+        {
+            float mean = (float)(sum[c] / Math.Max(1, frames));
+            for (int f = 0; f < frames; f++)
+                samples[f * channels + c] -= mean;
+        }
+    }
+
+    private static int FindNearestZeroCrossingFrame(float[] samples, int channels, int frameIndex, int searchRadiusFrames)
+    {
+        int frames = samples.Length / channels;
+        frameIndex = Math.Clamp(frameIndex, 0, frames - 1);
+        int start = Math.Max(1, frameIndex - searchRadiusFrames);
+        int end = Math.Min(frames - 2, frameIndex + searchRadiusFrames);
+
+        int best = frameIndex;
+        int bestDist = int.MaxValue;
+
+        for (int f = start; f <= end; f++)
+        {
+            float a = samples[(f - 1) * channels];
+            float b = samples[f * channels];
+
+            // sign change or exact zero indicates a crossing
+            if ((a <= 0f && b >= 0f) || (a >= 0f && b <= 0f))
+            {
+                int dist = Math.Abs(f - frameIndex);
+                if (dist < bestDist)
+                {
+                    bestDist = dist;
+                    best = f;
+                    if (bestDist == 0) break;
+                }
+            }
+        }
+
+        return best;
+    }
+
+    private static void ApplyLoopCrossfadeInPlace(float[] samples, int sampleRate, int channels, double seconds)
+    {
+        int frames = samples.Length / channels;
+        int fadeFrames = (int)Math.Round(sampleRate * seconds);
+        fadeFrames = Math.Clamp(fadeFrames, 1, frames / 2);
+
+        int tailStart = frames - fadeFrames;
+        if (tailStart <= 0) return;
+
+        for (int i = 0; i < fadeFrames; i++)
+        {
+            float t = fadeFrames == 1 ? 1f : (float)i / (fadeFrames - 1);
+            int headFrame = i;
+            int tailFrame = tailStart + i;
+            int headIdx = headFrame * channels;
+            int tailIdx = tailFrame * channels;
+
+            for (int c = 0; c < channels; c++)
+            {
+                float head = samples[headIdx + c];
+                float tail = samples[tailIdx + c];
+                samples[headIdx + c] = head * t + tail * (1f - t);
+                samples[tailIdx + c] = tail * t + head * (1f - t);
+            }
+        }
+    }
+
+    private static void NormalizeIfNeededInPlace(float[] samples)
+    {
+        float maxAbs = 0f;
+        for (int i = 0; i < samples.Length; i++)
+        {
+            float a = Math.Abs(samples[i]);
+            if (a > maxAbs) maxAbs = a;
+        }
+
+        if (maxAbs <= 1.0f || maxAbs <= 0f) return;
+        float scale = 1.0f / maxAbs;
+        for (int i = 0; i < samples.Length; i++) samples[i] *= scale;
     }
 
 }

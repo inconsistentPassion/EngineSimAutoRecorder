@@ -142,6 +142,11 @@ public sealed class FmodTcpService : IDisposable
                                result.Contains("ReferenceError:", StringComparison.OrdinalIgnoreCase) ||
                                result.Contains("Exception:", StringComparison.OrdinalIgnoreCase);
 
+        if (LastResponseHadError)
+        {
+            throw new FmodResponseException($"FMOD automation failed: {result}");
+        }
+
         return result;
     }
 

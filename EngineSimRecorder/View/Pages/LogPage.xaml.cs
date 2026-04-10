@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
+using Wpf.Ui;
+using Wpf.Ui.Controls;
 
 namespace EngineSimRecorder.View.Pages;
 
@@ -14,10 +16,13 @@ public partial class LogPage : Page
     private static readonly object _bufferLock = new();
     private static bool _bufferCleared;
 
+    private readonly ISnackbarService _snackbarService;
+
     public LogPage()
     {
         InitializeComponent();
         Instance = this;
+        _snackbarService = App.GetService<ISnackbarService>();
 
         // Wire up buttons
         btnCopyLog.Click += BtnCopyLog_Click;
@@ -40,18 +45,18 @@ public partial class LogPage : Page
     {
         if (string.IsNullOrEmpty(txtLog.Text))
         {
-            MessageBox.Show("Log is empty.", "Nothing to Copy", MessageBoxButton.OK, MessageBoxImage.Information);
+            _snackbarService.Show("Nothing to Copy", "Log is empty.", ControlAppearance.Info, new SymbolIcon(SymbolRegular.Info24), TimeSpan.FromSeconds(3));
             return;
         }
 
         try
         {
             Clipboard.SetText(txtLog.Text);
-            MessageBox.Show("Log copied to clipboard!", "Copied", MessageBoxButton.OK, MessageBoxImage.Information);
+            _snackbarService.Show("Copied", "Log copied to clipboard!", ControlAppearance.Success, new SymbolIcon(SymbolRegular.Checkmark24), TimeSpan.FromSeconds(3));
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Failed to copy: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            _snackbarService.Show("Error", $"Failed to copy: {ex.Message}", ControlAppearance.Danger, new SymbolIcon(SymbolRegular.ErrorCircle24), TimeSpan.FromSeconds(5));
         }
     }
 

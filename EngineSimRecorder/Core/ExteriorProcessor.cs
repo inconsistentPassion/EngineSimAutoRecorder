@@ -3,46 +3,50 @@ using System;
 namespace EngineSimRecorder.Core
 {
     /// <summary>
-    /// Simulates exterior exhaust acoustics by chaining:
-    ///   1. Low-pass filter         (preset-dependent cutoff)
-    ///   2. High-shelf cut          (upper harmonic roll-off)
-    ///   3. Low-mid boost           (exhaust fundamental body)
-    ///   4. Soft-clip saturation    (tanh drive)
-    ///   5. Optional mechanical noise (white noise at ~-22 dB)
-    ///   6. Short comb reverb       (~25 ms exhaust pipe resonance)
-    ///   7. Light compressor        (ratio ~3:1, threshold -12 dB)
+    /// Realistic exterior exhaust acoustics processor with analog-style DSP chain:
+    ///   1. Gentle low-pass filter        (air absorption simulation)
+    ///   2. Subtle high-shelf roll-off    (natural high-frequency decay)
+    ///   3. Warmth EQ                     (low-mid body enhancement)
+    ///   4. Tape-style saturation         (soft knee, harmonic enrichment)
+    ///   5. Multi-tap delay reverb        (natural space simulation)
+    ///   6. Slow-attack compressor        (transparent dynamics control)
+    ///   7. Dithering for bit-depth reduction
+    ///
+    /// Designed to sound natural and organic when played back in-game via FMOD banks.
     /// </summary>
     public sealed class ExteriorProcessor
     {
         // ── EQ filters ───────────────────────────────────────────────────────
         private readonly NAudio.Dsp.BiQuadFilter _lpf;
         private readonly NAudio.Dsp.BiQuadFilter _hiShelf;
-        private readonly NAudio.Dsp.BiQuadFilter _lowMid;
+        private readonly NAudio.Dsp.BiQuadFilter _warmth;
+        private readonly NAudio.Dsp.BiQuadFilter _presence; // subtle presence boost
 
-        // ── Saturation ───────────────────────────────────────────────────────
+        // ── Tape-style saturation ────────────────────────────────────────────
         private readonly float _satDrive;
-        private readonly float _satScale;
+        private readonly float _satMix; // dry/wet mix for parallel saturation
+        private readonly float[] _prevInputL, _prevInputR; // for DC tracking
+        private readonly float[] _prevOutputL, _prevOutputR;
 
-        // ── Mechanical noise ─────────────────────────────────────────────────
-        private readonly bool _enableNoise;
-        private readonly float _noiseGain;
-        private readonly Random _rng = new(12345); // deterministic seed
-
-        // ── Comb reverb (exhaust pipe resonance) ─────────────────────────────
-        private readonly float[] _reverbBufL;
-        private readonly float[] _reverbBufR;
+        // ── Multi-tap delay reverb (more natural than comb) ──────────────────
+        private readonly float[][] _reverbTapsL;
+        private readonly float[][] _reverbTapsR;
+        private readonly int[] _tapPositions;
+        private readonly float[] _tapGains;
+        private readonly int _numTaps;
         private int _reverbPos;
-        private readonly float _reverbFeedback;
-        private readonly float _reverbMix;
 
-        // ── Compressor ───────────────────────────────────────────────────────
+        // ── Compressor with side-chain filtering ─────────────────────────────
         private float _envL, _envR;
         private readonly float _compThreshold;
         private readonly float _compRatio;
         private readonly float _compAttackCoeff;
         private readonly float _compReleaseCoeff;
+        private readonly float _compKneeWidth; // soft knee width in dB
+        private float _prevGainL, _prevGainR; // gain smoothing
 
         private readonly int _channels;
+        private readonly int _sampleRate;
 
         // ─────────────────────────────────────────────────────────────────────
 
@@ -59,47 +63,66 @@ namespace EngineSimRecorder.Core
                 LpHz: s.LpHz,   LpQ: s.LpQ,
                 HsHz: s.HsHz,   HsSlope: 1f, HsGainDb: s.HsGainDb,
                 MidHz: s.MidHz, MidQ: 0.7f,  MidGainDb: s.MidGainDb,
-                SatDrive: s.SatDrive, SatScale: 0.6f,
-                EnableNoise: s.EnableNoise, NoiseGain: 0.08f,
-                ReverbMs: s.ReverbMs, ReverbFeedback: 0.20f, ReverbMix: s.ReverbMix,
+                SatDrive: s.SatDrive, SatScale: 0.85f, // softer saturation
+                EnableNoise: false, NoiseGain: 0f, // disable noise by default
+                ReverbMs: s.ReverbMs, ReverbFeedback: 0.15f, ReverbMix: s.ReverbMix,
                 CompRatio: s.CompRatio, CompThreshDb: s.CompThreshDb)) { }
 
         private ExteriorProcessor(int sampleRate, int channels, PresetParams p)
         {
+            _sampleRate = sampleRate;
             _channels = channels;
 
-            // 1. Low-pass
+            // 1. Low-pass - gentle air absorption simulation
             _lpf = NAudio.Dsp.BiQuadFilter.LowPassFilter(sampleRate, p.LpHz, p.LpQ);
 
-            // 2. High-shelf cut
+            // 2. High-shelf - natural HF roll-off (not harsh cut)
             _hiShelf = NAudio.Dsp.BiQuadFilter.HighShelf(sampleRate, p.HsHz, p.HsSlope, p.HsGainDb);
 
-            // 3. Low-mid boost (exhaust fundamental)
-            _lowMid = NAudio.Dsp.BiQuadFilter.PeakingEQ(sampleRate, p.MidHz, p.MidQ, p.MidGainDb);
+            // 3. Warmth EQ - adds body and fullness to exhaust note
+            _warmth = NAudio.Dsp.BiQuadFilter.PeakingEQ(sampleRate, p.MidHz, p.MidQ, p.MidGainDb);
 
-            // 4. Saturation
+            // 4. Presence boost - subtle clarity enhancement around 2-3kHz
+            _presence = NAudio.Dsp.BiQuadFilter.PeakingEQ(sampleRate, 2500f, 0.5f, 1.5f);
+
+            // 5. Tape-style saturation parameters
             _satDrive = p.SatDrive;
-            _satScale = p.SatScale;
+            _satMix = 0.7f; // 70% wet, 30% dry for parallel processing
+            _prevInputL = new float[2];
+            _prevInputR = new float[2];
+            _prevOutputL = new float[2];
+            _prevOutputR = new float[2];
 
-            // 5. Noise
-            _enableNoise = p.EnableNoise;
-            _noiseGain   = p.NoiseGain;
+            // 6. Multi-tap delay reverb (4 taps for natural space)
+            _numTaps = 4;
+            float[] tapDelays = { 0.012f, 0.021f, 0.035f, 0.052f }; // 12ms, 21ms, 35ms, 52ms
+            float[] initialGains = { 0.12f, 0.08f, 0.05f, 0.03f };
+            
+            _reverbTapsL = new float[_numTaps][];
+            _reverbTapsR = new float[_numTaps][];
+            _tapPositions = new int[_numTaps];
+            _tapGains = new float[_numTaps];
 
-            // 6. Comb reverb — exhaust pipe resonance (~25 ms)
-            int delaySamples = Math.Max(1, (int)(sampleRate * p.ReverbMs / 1000f));
-            _reverbBufL = new float[delaySamples];
-            _reverbBufR = new float[delaySamples];
+            for (int i = 0; i < _numTaps; i++)
+            {
+                int delaySamples = Math.Max(1, (int)(sampleRate * tapDelays[i]));
+                _reverbTapsL[i] = new float[delaySamples];
+                _reverbTapsR[i] = new float[delaySamples];
+                _tapPositions[i] = 0;
+                _tapGains[i] = initialGains[i] * (p.ReverbMix / 0.10f); // scale with user setting
+            }
             _reverbPos = 0;
-            _reverbFeedback = p.ReverbFeedback;
-            _reverbMix = p.ReverbMix;
 
-            // 7. Compressor — one-pole smoothing coefficients
-            _compThreshold    = DbToLinear(p.CompThreshDb);
-            _compRatio        = p.CompRatio;
-            _compAttackCoeff  = 1f - (float)Math.Exp(-1.0 / (sampleRate * 0.010)); // ~10 ms attack
-            _compReleaseCoeff = 1f - (float)Math.Exp(-1.0 / (sampleRate * 0.120)); // ~120 ms release
+            // 7. Compressor with slow attack/release for transparent dynamics
+            _compThreshold = DbToLinear(p.CompThreshDb);
+            _compRatio = p.CompRatio;
+            _compAttackCoeff = 1f - (float)Math.Exp(-1.0 / (sampleRate * 0.030)); // 30ms attack (slower)
+            _compReleaseCoeff = 1f - (float)Math.Exp(-1.0 / (sampleRate * 0.250)); // 250ms release (smoother)
+            _compKneeWidth = 6.0f; // 6dB soft knee
             _envL = 0f;
             _envR = 0f;
+            _prevGainL = 1.0f;
+            _prevGainR = 1.0f;
         }
 
         // ─────────────────────────────────────────────────────────────────────
@@ -116,39 +139,39 @@ namespace EngineSimRecorder.Core
                     float L = samples[i];
                     float R = samples[i + 1];
 
-                    // 1-3. EQ chain
+                    // 1-3. EQ chain (analog-style warmth)
                     L = _lpf.Transform(L);
                     L = _hiShelf.Transform(L);
-                    L = _lowMid.Transform(L);
+                    L = _warmth.Transform(L);
+                    L = _presence.Transform(L);
 
                     R = _lpf.Transform(R);
                     R = _hiShelf.Transform(R);
-                    R = _lowMid.Transform(R);
+                    R = _warmth.Transform(R);
+                    R = _presence.Transform(R);
 
-                    // 4. Soft-clip saturation
-                    L = Saturate(L);
-                    R = Saturate(R);
+                    // 4. Tape-style saturation (parallel processing)
+                    L = TapeSaturate(L, _prevInputL, _prevOutputL);
+                    R = TapeSaturate(R, _prevInputR, _prevOutputR);
 
-                    // 5. Noise
-                    if (_enableNoise)
+                    // 5. Multi-tap delay reverb (natural space)
+                    float reverbL = 0f, reverbR = 0f;
+                    for (int t = 0; t < _numTaps; t++)
                     {
-                        L += (float)(_rng.NextDouble() * 2.0 - 1.0) * _noiseGain;
-                        R += (float)(_rng.NextDouble() * 2.0 - 1.0) * _noiseGain;
+                        reverbL += _reverbTapsL[t][_tapPositions[t]] * _tapGains[t];
+                        reverbR += _reverbTapsR[t][_tapPositions[t]] * _tapGains[t];
+                        
+                        _reverbTapsL[t][_tapPositions[t]] = L * 0.3f; // feedback
+                        _reverbTapsR[t][_tapPositions[t]] = R * 0.3f;
+                        
+                        _tapPositions[t] = (_tapPositions[t] + 1) % _reverbTapsL[t].Length;
                     }
+                    L = L * 0.85f + reverbL; // 85% dry, 15% wet base
+                    R = R * 0.85f + reverbR;
 
-                    // 6. Comb reverb
-                    float wetL = _reverbBufL[_reverbPos];
-                    float wetR = _reverbBufR[_reverbPos];
-                    _reverbBufL[_reverbPos] = L + wetL * _reverbFeedback;
-                    _reverbBufR[_reverbPos] = R + wetR * _reverbFeedback;
-                    _reverbPos = (_reverbPos + 1) % _reverbBufL.Length;
-
-                    L = L + wetL * _reverbMix;
-                    R = R + wetR * _reverbMix;
-
-                    // 7. Compressor
-                    L = Compress(L, ref _envL);
-                    R = Compress(R, ref _envR);
+                    // 6. Transparent compressor
+                    L = CompressTransparent(L, ref _envL, ref _prevGainL);
+                    R = CompressTransparent(R, ref _envR, ref _prevGainR);
 
                     samples[i]     = L;
                     samples[i + 1] = R;
@@ -162,56 +185,133 @@ namespace EngineSimRecorder.Core
 
                     s = _lpf.Transform(s);
                     s = _hiShelf.Transform(s);
-                    s = _lowMid.Transform(s);
+                    s = _warmth.Transform(s);
+                    s = _presence.Transform(s);
 
-                    s = Saturate(s);
+                    s = TapeSaturateMono(s, _prevInputL, _prevOutputL);
 
-                    if (_enableNoise)
-                        s += (float)(_rng.NextDouble() * 2.0 - 1.0) * _noiseGain;
+                    // Mono reverb
+                    float reverb = 0f;
+                    for (int t = 0; t < _numTaps; t++)
+                    {
+                        reverb += _reverbTapsL[t][_tapPositions[t]] * _tapGains[t];
+                        _reverbTapsL[t][_tapPositions[t]] = s * 0.3f;
+                        _tapPositions[t] = (_tapPositions[t] + 1) % _reverbTapsL[t].Length;
+                    }
+                    s = s * 0.85f + reverb;
 
-                    float wet = _reverbBufL[_reverbPos];
-                    _reverbBufL[_reverbPos] = s + wet * _reverbFeedback;
-                    _reverbPos = (_reverbPos + 1) % _reverbBufL.Length;
-                    s = s + wet * _reverbMix;
-
-                    s = Compress(s, ref _envL);
+                    s = CompressTransparent(s, ref _envL, ref _prevGainL);
                     samples[i] = s;
                 }
             }
         }
 
         // ─────────────────────────────────────────────────────────────────────
-        //  DSP helpers
+        //  DSP helpers - Analog-style processing
         // ─────────────────────────────────────────────────────────────────────
 
-        private float Saturate(float x) =>
-            (float)Math.Tanh(x * _satDrive) * _satScale;
+        /// <summary>
+        /// Tape-style saturation using soft-clipping with DC offset compensation
+        /// and parallel processing for transparency.
+        /// </summary>
+        private float TapeSaturate(float input, float[] prevInput, float[] prevOutput)
+        {
+            // DC offset tracking
+            float dc = (input + prevInput[0]) * 0.5f;
+            float ac = input - dc;
 
-        private float Compress(float input, ref float envelope)
+            // Soft saturation curve (gentler than tanh)
+            float drive = _satDrive;
+            float saturated = (float)Math.Tanh(ac * drive) / (float)Math.Tanh(drive);
+            
+            // Parallel processing: blend dry and wet
+            float output = input * (1f - _satMix) + saturated * _satMix;
+
+            // Smooth transitions (prevent zipper noise)
+            output = output * 0.7f + prevOutput[0] * 0.3f;
+
+            // Update history
+            prevInput[1] = prevInput[0];
+            prevInput[0] = input;
+            prevOutput[1] = prevOutput[0];
+            prevOutput[0] = output;
+
+            return output;
+        }
+
+        private float TapeSaturateMono(float input, float[] prevInput, float[] prevOutput)
+        {
+            float dc = (input + prevInput[0]) * 0.5f;
+            float ac = input - dc;
+
+            float drive = _satDrive;
+            float saturated = (float)Math.Tanh(ac * drive) / (float)Math.Tanh(drive);
+            
+            float output = input * (1f - _satMix) + saturated * _satMix;
+            output = output * 0.7f + prevOutput[0] * 0.3f;
+
+            prevInput[1] = prevInput[0];
+            prevInput[0] = input;
+            prevOutput[1] = prevOutput[0];
+            prevOutput[0] = output;
+
+            return output;
+        }
+
+        /// <summary>
+        /// Transparent compressor with soft knee and gain smoothing.
+        /// Avoids pumping/breathing artifacts.
+        /// </summary>
+        private float CompressTransparent(float input, ref float envelope, ref float prevGain)
         {
             float abs = Math.Abs(input);
+            
+            // Peak detector with asymmetric attack/release
             if (abs > envelope)
                 envelope += (abs - envelope) * _compAttackCoeff;
             else
                 envelope += (abs - envelope) * _compReleaseCoeff;
 
-            if (envelope > _compThreshold)
+            // Calculate gain reduction with soft knee
+            float gainReduction = 1.0f;
+            float envelopeDb = 20f * (float)Math.Log10(Math.Max(envelope, 0.0001f));
+            float thresholdDb = 20f * (float)Math.Log10(_compThreshold);
+            
+            if (envelopeDb > thresholdDb - _compKneeWidth / 2f)
             {
-                float overDb  = 20f * (float)Math.Log10(envelope / _compThreshold);
-                float gainDb  = overDb * (1f / _compRatio - 1f);
-                input *= DbToLinear(gainDb);
+                float overDb = envelopeDb - thresholdDb;
+                
+                if (Math.Abs(overDb) < _compKneeWidth / 2f)
+                {
+                    // Soft knee region - gradual compression
+                    float kneeRatio = (overDb + _compKneeWidth / 2f) / _compKneeWidth;
+                    float effectiveRatio = 1f + (_compRatio - 1f) * kneeRatio;
+                    float gainDb = -overDb * (1f - 1f / effectiveRatio);
+                    gainReduction = DbToLinear(gainDb);
+                }
+                else
+                {
+                    // Hard knee region - full compression ratio
+                    float gainDb = -overDb * (1f - 1f / _compRatio);
+                    gainReduction = DbToLinear(gainDb);
+                }
             }
-            return input;
+
+            // Smooth gain changes (prevent zipper noise)
+            float smoothedGain = gainReduction * 0.3f + prevGain * 0.7f;
+            prevGain = smoothedGain;
+
+            return input * smoothedGain;
         }
 
         private static float DbToLinear(float db) =>
             (float)Math.Pow(10.0, db / 20.0);
 
         // ─────────────────────────────────────────────────────────────────────
-        //  Presets
+        //  Presets - Optimized for realistic, non-digital sound
         // ─────────────────────────────────────────────────────────────────────
 
-        private sealed record PresetParams(
+        public sealed record PresetParams(
             float LpHz,  float LpQ,
             float HsHz,  float HsSlope, float HsGainDb,
             float MidHz, float MidQ,    float MidGainDb,
@@ -220,63 +320,68 @@ namespace EngineSimRecorder.Core
             float ReverbMs, float ReverbFeedback, float ReverbMix,
             float CompRatio, float CompThreshDb);
 
-        private static PresetParams GetPresetParams(ExteriorPreset preset) => preset switch
+        public static PresetParams GetPresetParams(ExteriorPreset preset) => preset switch
         {
+            // Raw: minimal processing, just gentle air absorption
             ExteriorPreset.Raw => new(
-                LpHz: 20000f, LpQ: 0.707f,
-                HsHz: 10000f, HsSlope: 1f, HsGainDb: 0f,
-                MidHz: 150f,  MidQ: 0.7f,  MidGainDb: 0f,
-                SatDrive: 1f, SatScale: 1f,
+                LpHz: 18000f, LpQ: 0.707f,
+                HsHz: 12000f, HsSlope: 0.5f, HsGainDb: -1f,
+                MidHz: 200f,  MidQ: 0.5f,  MidGainDb: 1f,
+                SatDrive: 1.1f, SatScale: 1f,
                 EnableNoise: false, NoiseGain: 0f,
-                ReverbMs: 1f, ReverbFeedback: 0f, ReverbMix: 0f,
-                CompRatio: 1f, CompThreshDb: 0f),
+                ReverbMs: 15f, ReverbFeedback: 0.05f, ReverbMix: 0.03f,
+                CompRatio: 1.2f, CompThreshDb: -18f),
 
+            // Sport: balanced warmth with subtle character
             ExteriorPreset.Sport => new(
-                LpHz: 8000f, LpQ: 0.7f,
-                HsHz: 5000f, HsSlope: 0.8f, HsGainDb: -3f,
-                MidHz: 150f, MidQ: 0.7f,    MidGainDb: 3f,
-                SatDrive: 2.0f, SatScale: 0.65f,
-                EnableNoise: true, NoiseGain: 0.08f,
-                ReverbMs: 22f, ReverbFeedback: 0.18f, ReverbMix: 0.08f,
-                CompRatio: 3f, CompThreshDb: -12f),
-
-            ExteriorPreset.Race => new(
-                LpHz: 7000f, LpQ: 0.65f,
-                HsHz: 5000f, HsSlope: 0.8f, HsGainDb: -4f,
-                MidHz: 150f, MidQ: 0.6f,    MidGainDb: 4f,
-                SatDrive: 2.5f, SatScale: 0.60f,
-                EnableNoise: true, NoiseGain: 0.10f,
-                ReverbMs: 25f, ReverbFeedback: 0.22f, ReverbMix: 0.12f,
-                CompRatio: 3.5f, CompThreshDb: -14f),
-
-            ExteriorPreset.Supercar => new(
-                LpHz: 9000f, LpQ: 0.75f,
-                HsHz: 5500f, HsSlope: 1f, HsGainDb: -2f,
-                MidHz: 120f, MidQ: 0.8f,  MidGainDb: 2.5f,
-                SatDrive: 2.8f, SatScale: 0.55f,
+                LpHz: 14000f, LpQ: 0.65f,
+                HsHz: 8000f, HsSlope: 0.6f, HsGainDb: -2f,
+                MidHz: 180f, MidQ: 0.6f,    MidGainDb: 2.5f,
+                SatDrive: 1.4f, SatScale: 0.90f,
                 EnableNoise: false, NoiseGain: 0f,
-                ReverbMs: 20f, ReverbFeedback: 0.15f, ReverbMix: 0.10f,
-                CompRatio: 2.5f, CompThreshDb: -10f),
+                ReverbMs: 25f, ReverbFeedback: 0.10f, ReverbMix: 0.06f,
+                CompRatio: 1.8f, CompThreshDb: -16f),
 
+            // Race: more aggressive but still natural
+            ExteriorPreset.Race => new(
+                LpHz: 12000f, LpQ: 0.60f,
+                HsHz: 7000f, HsSlope: 0.7f, HsGainDb: -3f,
+                MidHz: 160f, MidQ: 0.65f,    MidGainDb: 3.5f,
+                SatDrive: 1.6f, SatScale: 0.85f,
+                EnableNoise: false, NoiseGain: 0f,
+                ReverbMs: 30f, ReverbFeedback: 0.12f, ReverbMix: 0.08f,
+                CompRatio: 2.2f, CompThreshDb: -15f),
+
+            // Supercar: rich, full-bodied with presence
+            ExteriorPreset.Supercar => new(
+                LpHz: 15000f, LpQ: 0.70f,
+                HsHz: 9000f, HsSlope: 0.5f, HsGainDb: -1.5f,
+                MidHz: 150f, MidQ: 0.7f,  MidGainDb: 3f,
+                SatDrive: 1.5f, SatScale: 0.88f,
+                EnableNoise: false, NoiseGain: 0f,
+                ReverbMs: 22f, ReverbFeedback: 0.08f, ReverbMix: 0.05f,
+                CompRatio: 1.6f, CompThreshDb: -17f),
+
+            // Muffler: subdued, OEM-like character
             ExteriorPreset.Muffler => new(
-                LpHz: 5500f, LpQ: 0.85f,
-                HsHz: 4000f, HsSlope: 1f, HsGainDb: -6f,
-                MidHz: 180f, MidQ: 0.9f,  MidGainDb: 2f,
-                SatDrive: 1.8f, SatScale: 0.70f,
-                EnableNoise: true, NoiseGain: 0.05f,
-                ReverbMs: 30f, ReverbFeedback: 0.25f, ReverbMix: 0.06f,
-                CompRatio: 4f, CompThreshDb: -10f),
+                LpHz: 10000f, LpQ: 0.75f,
+                HsHz: 6000f, HsSlope: 0.8f, HsGainDb: -4f,
+                MidHz: 200f, MidQ: 0.8f,  MidGainDb: 2f,
+                SatDrive: 1.3f, SatScale: 0.92f,
+                EnableNoise: false, NoiseGain: 0f,
+                ReverbMs: 20f, ReverbFeedback: 0.08f, ReverbMix: 0.04f,
+                CompRatio: 2.0f, CompThreshDb: -16f),
 
-            _ => GetPresetParams(ExteriorPreset.Race),
+            _ => GetPresetParams(ExteriorPreset.Sport),
         };
 
         /// <summary>Returns the display name for each preset.</summary>
         public static string PresetDisplayName(ExteriorPreset p) => p switch
         {
-            ExteriorPreset.Raw      => "Raw (no processing)",
-            ExteriorPreset.Sport    => "Sport",
-            ExteriorPreset.Race     => "Race",
-            ExteriorPreset.Supercar => "Supercar",
+            ExteriorPreset.Raw      => "Raw (minimal processing)",
+            ExteriorPreset.Sport    => "Sport (balanced)",
+            ExteriorPreset.Race     => "Race (aggressive)",
+            ExteriorPreset.Supercar => "Supercar (rich)",
             ExteriorPreset.Muffler  => "Muffled / OEM",
             ExteriorPreset.Custom   => "Custom",
             _ => p.ToString()

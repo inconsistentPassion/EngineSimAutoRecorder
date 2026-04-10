@@ -3,7 +3,7 @@
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
       xmlns:helpers="clr-namespace:EngineSimRecorder.Helpers"
-      Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ui:FluentWindow}}"
+      Foreground="{DynamicResource TextFillColorPrimaryBrush}"
       ScrollViewer.CanContentScroll="False">
 
     <Grid>
@@ -25,10 +25,8 @@
                 </Storyboard>
             </ScrollViewer.Resources>
             <StackPanel MinWidth="0">
-                <TextBlock FontSize="20" FontWeight="Bold" Margin="0,0,0,2" Text="ES Recorder"
-                           Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
-                <TextBlock FontSize="12" Opacity="0.6" Margin="0,0,0,12" Text="Smart engine audio capture for Assetto Corsa"
-                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                <TextBlock FontSize="20" FontWeight="Bold" Margin="0,0,0,2" Text="ES Recorder" />
+                <TextBlock FontSize="12" Opacity="0.6" Margin="0,0,0,12" Text="Smart engine audio capture for Assetto Corsa" />
 
                 <!-- Process / Connection -->
                 <ui:Card Margin="0,0,0,8">
