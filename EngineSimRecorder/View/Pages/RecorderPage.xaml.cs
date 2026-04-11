@@ -630,7 +630,7 @@ public partial class RecorderPage : Page
                 string loadPath = Path.Combine(cfg.OutputDir, loadFile);
                 SetStatus($"Recording {target} RPM (load)...");
                 Log($"Recording LOAD for {cfg.RecordSeconds}s -> {loadPath}");
-                RecordAudio(backend, loadPath, cfg, ct);
+                RecordAudio(backend, loadPath, cfg, ct, target);
                 if (ct.IsCancellationRequested) break;
                 Log($"Saved: {loadPath}");
 
@@ -642,7 +642,7 @@ public partial class RecorderPage : Page
                 string noloadPath = Path.Combine(cfg.OutputDir, noloadFile);
                 SetStatus($"Recording {target} RPM (no load)...");
                 Log($"Recording NO-LOAD for {cfg.RecordSeconds}s -> {noloadPath}");
-                RecordAudio(backend, noloadPath, cfg, ct);
+                RecordAudio(backend, noloadPath, cfg, ct, target);
                 if (ct.IsCancellationRequested) break;
                 Log($"Saved: {noloadPath}");
 
@@ -683,7 +683,7 @@ public partial class RecorderPage : Page
                     string f = $"{limiterBase}engine_limiter.wav";
                     string p = Path.Combine(cfg.OutputDir, f);
                     Log($"Recording LIMITER for {cfg.RecordSeconds}s -> {p}");
-                    RecordAudio(backend, p, cfg, ct);
+                    RecordAudio(backend, p, cfg, ct, 0);
                     Log($"Saved: {p}");
                 }
                 backend.SetThrottle(0);
@@ -747,7 +747,7 @@ public partial class RecorderPage : Page
         }
     }
 
-    private void RecordAudio(KeyboardBackend backend, string outputPath, RecorderConfig cfg, CancellationToken ct)
+    private void RecordAudio(KeyboardBackend backend, string outputPath, RecorderConfig cfg, CancellationToken ct, int targetRpm = 0)
     {
         using var capture = new WasapiLoopbackCapture();
         capture.WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(cfg.SampleRate, cfg.Channels);
@@ -762,19 +762,25 @@ public partial class RecorderPage : Page
             if (cfg.CarType == "Custom")
             {
                 var i = cfg.Interior;
-                interior = new InteriorProcessor(cfg.SampleRate, cfg.Channels, i.CutoffHz, i.StereoWidth, i.RumbleHz, i.RumbleDb, i.Res1Hz, i.Res1Db, i.Res2Hz, i.Res2Db, i.ReverbMs, i.ReverbMix, i.CompRatio, i.CompThreshDb);
+                interior = new InteriorProcessor(cfg.SampleRate, cfg.Channels,
+                    i.CutoffHz, i.StereoWidth, i.RumbleHz, i.RumbleDb,
+                    i.Res1Hz, i.Res1Db, i.Res2Hz, i.Res2Db,
+                    i.ReverbMs, i.ReverbMix, i.CompRatio, i.CompThreshDb,
+                    i.CharacterHz, i.CharacterDb, i.SatDrive,
+                    targetRpm, cfg.RpmProcessing);
             }
             else
             {
                 var (cutoff, width) = InteriorProcessor.GetPreset(cfg.CarType);
-                interior = new InteriorProcessor(cfg.SampleRate, cfg.Channels, cutoff, width);
+                interior = new InteriorProcessor(cfg.SampleRate, cfg.Channels, cutoff, width,
+                    targetRpm: targetRpm, rpm: cfg.RpmProcessing);
             }
         }
         else if (cfg.ExteriorPreset != ExteriorPreset.Raw)
         {
             exterior = cfg.ExteriorPreset == ExteriorPreset.Custom
-                ? new ExteriorProcessor(cfg.SampleRate, cfg.Channels, cfg.Exterior)
-                : new ExteriorProcessor(cfg.SampleRate, cfg.Channels, cfg.ExteriorPreset);
+                ? new ExteriorProcessor(cfg.SampleRate, cfg.Channels, cfg.Exterior, cfg.RpmProcessing, targetRpm)
+                : new ExteriorProcessor(cfg.SampleRate, cfg.Channels, cfg.ExteriorPreset, targetRpm);
         }
 
         StartRecProgress(cfg.RecordSeconds);
