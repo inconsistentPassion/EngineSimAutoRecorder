@@ -48,6 +48,14 @@ public partial class RecorderPage : Page
         if (_wired) return;
         _wired = true;
         WireEvents();
+
+        // Sync prefix from settings if currently empty
+        if (string.IsNullOrWhiteSpace(txtPrefix.Text))
+        {
+            var settings = AppSettings.Load();
+            txtPrefix.Text = settings.InteriorMode ? "int" : "ext";
+        }
+
         // Default RPM targets
         if (lstRpm.Items.Count == 0)
             foreach (int rpm in new[] { 1500, 2000, 3000, 4000, 5000, 6000 })
@@ -364,14 +372,16 @@ public partial class RecorderPage : Page
         }
 
         var opt = OptionsPage.Instance;
-        string outputDir = txtOutputDir.Text.Trim();
+        string baseDir = txtOutputDir.Text.Trim();
+        string subDir = opt?.rbInterior?.IsChecked == true ? "int" : "ext";
+        string outputDir = Path.Combine(baseDir, subDir);
         Directory.CreateDirectory(outputDir);
 
         var targets = new List<int>();
         foreach (var item in lstRpm.Items) targets.Add(Convert.ToInt32(item));
         targets.Sort();
 
-        var cfg = BuildRecorderConfig(targets);
+        var cfg = BuildRecorderConfig(targets, outputDir);
 
         btnStart.IsEnabled = false; btnStop.IsEnabled = true;
         pbar.BeginAnimation(ProgressBar.ValueProperty, null); pbar.Value = 0;
@@ -460,12 +470,12 @@ public partial class RecorderPage : Page
     //  WORKFLOW — full port from old MainWindow
     // ══════════════════════════════════════════════════════════
 
-    private RecorderConfig BuildRecorderConfig(List<int> targets)
+    private RecorderConfig BuildRecorderConfig(List<int> targets, string outputDir)
     {
         var opt = OptionsPage.Instance;
         return new RecorderConfig
         {
-            OutputDir = txtOutputDir.Text.Trim(),
+            OutputDir = outputDir,
             ProcessId = 0, // Injected via Backend if needed
             TargetRpms = targets,
             CarName = txtCarName.Text.Trim(),
@@ -611,10 +621,9 @@ public partial class RecorderPage : Page
                     else Log($"Warning: no torque reading at {target} RPM");
                 }
 
-                // Interior naming must always be int_<car>_* (do not carry exterior prefix).
                 string baseName = string.IsNullOrEmpty(carName)
                     ? ""
-                    : (cfg.InteriorMode ? $"int_{carName}_" : $"{prefix}{carName}_");
+                    : $"{prefix}{carName}_";
                 string modePrefix = "";
 
                 string loadFile = $"{baseName}{modePrefix}on_{target}.wav";
@@ -670,7 +679,7 @@ public partial class RecorderPage : Page
                 {
                     string limiterBase = string.IsNullOrEmpty(carName)
                         ? ""
-                        : (cfg.InteriorMode ? $"int_{carName}_" : $"{prefix}{carName}_");
+                        : $"{prefix}{carName}_";
                     string f = $"{limiterBase}engine_limiter.wav";
                     string p = Path.Combine(cfg.OutputDir, f);
                     Log($"Recording LIMITER for {cfg.RecordSeconds}s -> {p}");
@@ -771,17 +780,19 @@ public partial class RecorderPage : Page
         StartRecProgress(cfg.RecordSeconds);
         capture.DataAvailable += (s, e) =>
         {
-            if (e.BytesRecorded == 0) return;
+            int bytesPerFrame = 4 * cfg.Channels;
+            int validBytes = (e.BytesRecorded / bytesPerFrame) * bytesPerFrame;
+            if (validBytes <= 0) return;
 
-            int samples = e.BytesRecorded / 4;
-            var floats = new float[samples];
-            Buffer.BlockCopy(e.Buffer, 0, floats, 0, e.BytesRecorded);
+            int floatCount = validBytes / 4;
+            var floats = new float[floatCount];
+            Buffer.BlockCopy(e.Buffer, 0, floats, 0, validBytes);
 
-            interior?.Process(floats, samples);
-            exterior?.Process(floats, samples);
+            interior?.Process(floats, floatCount / cfg.Channels);
+            exterior?.Process(floats, floatCount / cfg.Channels);
 
             // Buffer entire recording so we can post-process loop points.
-            for (int i = 0; i < samples; i++) recorded.Add(floats[i]);
+            for (int i = 0; i < floatCount; i++) recorded.Add(floats[i]);
         };
         capture.RecordingStopped += (s, e) => done.Set();
         capture.StartRecording();
@@ -833,8 +844,8 @@ public partial class RecorderPage : Page
             samples = trimmed;
         }
 
-        // 4. Cosine crossfade — C1 continuous (no derivative discontinuity at endpoints)
-        ApplyCosineLoopCrossfadeInPlace(samples, sampleRate, channels, 0.010);
+        // 4. Dedicated Fade-In and Fade-Out (e.g. 10ms) to eliminate amplitude clicks
+        ApplyFadeInOut(samples, sampleRate, channels, 0.010);
         return samples;
     }
 
@@ -914,38 +925,29 @@ public partial class RecorderPage : Page
     }
 
     /// <summary>
-    /// Cosine (raised-cosine) crossfade at the loop boundary.
-    /// Unlike a linear fade, cosine is C1-continuous — the derivative is zero
-    /// at both endpoints, eliminating the subtle click that linear fades produce.
+    /// Applies a standard cosine fade-in and fade-out to the boundary
+    /// instead of wrapping the tail, ensuring it hits exactly 0 at edges.
     /// </summary>
-    private static void ApplyCosineLoopCrossfadeInPlace(float[] samples, int sampleRate, int channels, double seconds)
+    private static void ApplyFadeInOut(float[] samples, int sampleRate, int channels, double seconds)
     {
         int frames = samples.Length / channels;
         int fadeFrames = (int)Math.Round(sampleRate * seconds);
         fadeFrames = Math.Clamp(fadeFrames, 1, frames / 2);
 
-        int tailStart = frames - fadeFrames;
-        if (tailStart <= 0) return;
-
         for (int i = 0; i < fadeFrames; i++)
         {
             // Raised-cosine window: 0.5 * (1 - cos(π * t)), t ∈ [0, 1]
             float t = fadeFrames == 1 ? 1f : (float)i / (fadeFrames - 1);
-            float fadeIn = 0.5f * (1f - (float)Math.Cos(Math.PI * t));
-            float fadeOut = 1f - fadeIn;
+            float fadeVal = 0.5f * (1f - (float)Math.Cos(Math.PI * t));
 
             int headIdx = i * channels;
-            int tailIdx = (tailStart + i) * channels;
+            int tailIdx = (frames - 1 - i) * channels;
 
             for (int c = 0; c < channels; c++)
             {
-                float head = samples[headIdx + c];
-                float tail = samples[tailIdx + c];
-
-                // Tail region: fade out tail, fade in head
-                samples[tailIdx + c] = tail * fadeIn + head * fadeOut;
-                // Head region: fade in head, fade out tail
-                samples[headIdx + c] = head * fadeIn + tail * fadeOut;
+                // Apply fade mathematically
+                samples[headIdx + c] *= fadeVal;
+                samples[tailIdx + c] *= fadeVal;
             }
         }
     }

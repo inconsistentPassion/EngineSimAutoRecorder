@@ -4,6 +4,9 @@
       xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
       xmlns:helpers="clr-namespace:EngineSimRecorder.Helpers"
       ScrollViewer.CanContentScroll="False">
+    
+    <Page.Resources>
+    </Page.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
@@ -93,7 +96,7 @@
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0" Orientation="Horizontal">
                     <ui:Button x:Name="btnGenerate" Content="Generate Script" Appearance="Secondary" FontSize="13" Padding="16,8" Margin="0,0,8,0" />
-                    <ui:Button x:Name="btnRun" Content="Run Automation" Appearance="Primary" FontSize="13" Padding="16,8" />
+                    <ui:Button x:Name="btnRun" Content="Import" Appearance="Primary" FontSize="13" Padding="16,8" />
                 </StackPanel>
                 <TextBlock x:Name="lblStage" Grid.Column="1" VerticalAlignment="Center" FontSize="11" Opacity="0.5" Margin="12,0,0,0" TextWrapping="Wrap" />
             </Grid>

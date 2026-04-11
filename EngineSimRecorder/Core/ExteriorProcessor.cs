@@ -35,7 +35,7 @@ namespace EngineSimRecorder.Core
         private readonly int[] _tapPositions;
         private readonly float[] _tapGains;
         private readonly int _numTaps;
-        private int _reverbPos;
+
 
         // ── Compressor with side-chain filtering ─────────────────────────────
         private float _envL, _envR;
@@ -115,7 +115,7 @@ namespace EngineSimRecorder.Core
                 _tapPositions[i] = 0;
                 _tapGains[i] = initialGains[i] * (p.ReverbMix / 0.10f); // scale with user setting
             }
-            _reverbPos = 0;
+
 
             // 7. Compressor with slow attack/release for transparent dynamics
             _compThreshold = DbToLinear(p.CompThreshDb);

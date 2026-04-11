@@ -38,51 +38,63 @@ public partial class AutomationPackagePage : Page
             };
             btnOpenRecordingsExt.Click += (_, _) => TryOpenDir(_auto.RecordingsDirExt);
             btnCopyArtifactsOnly.Click += BtnCopyArtifactsOnly_Click;
+            btnBuildAndDeploy.Click += BtnBuildAndDeploy_Click;
         }
 
         _auto.LoadFromSettings();
-        RefreshFromService();
-        IsVisibleChanged += (_, _) => { if (IsVisible) RefreshFromService(); };
+        IsVisibleChanged += (_, _) => { if (IsVisible) _auto.LoadFromSettings(); };
     }
 
-    private void RefreshFromService()
+    private async void BtnBuildAndDeploy_Click(object sender, RoutedEventArgs e)
     {
-        if (_auto.LastPipelineSuccess == true)
-        {
-            borderStatus.Background = new SolidColorBrush(Color.FromArgb(0x40, 0x00, 0xFF, 0x00));
-            borderStatus.BorderBrush = new SolidColorBrush(Color.FromArgb(0x80, 0x00, 0xFF, 0x00));
-            borderStatus.BorderThickness = new Thickness(1);
-            lblStatus.Foreground = new SolidColorBrush(Color.FromRgb(0x80, 0xFF, 0x80));
-            lblStatus.Text = _auto.LastCompletionMessage ?? "Last pipeline run succeeded.";
-        }
-        else if (_auto.LastPipelineSuccess == false)
-        {
-            borderStatus.Background = new SolidColorBrush(Color.FromArgb(0x40, 0xFF, 0x40, 0x40));
-            borderStatus.BorderBrush = new SolidColorBrush(Color.FromArgb(0x80, 0xFF, 0x40, 0x40));
-            borderStatus.BorderThickness = new Thickness(1);
-            lblStatus.Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0x80, 0x80));
-            lblStatus.Text = _auto.LastCompletionMessage ?? "Last pipeline run did not complete successfully.";
-        }
-        else
-        {
-            borderStatus.Background = Brushes.Transparent;
-            borderStatus.BorderThickness = new Thickness(0);
-            lblStatus.Foreground = (Brush)(TryFindResource("TextFillColorSecondaryBrush")
-                ?? new SolidColorBrush(Color.FromRgb(0xA0, 0xA0, 0xA0)));
-            lblStatus.Text = "Run automation from Execution to see deploy results here.";
-        }
+        lblDeployStatus.Text = "";
+        btnBuildAndDeploy.IsEnabled = false;
+        pbarDeploy.Visibility = Visibility.Visible;
 
-        if (_auto.LastCopiedFiles is { Length: > 0 })
+        try
         {
-            var sb = new StringBuilder();
-            foreach (string p in _auto.LastCopiedFiles)
-                sb.AppendLine(p);
-            txtCopied.Text = sb.ToString().TrimEnd();
+            _auto.LoadFromSettings();
+            if (string.IsNullOrWhiteSpace(_auto.FmodProjectPath))
+            {
+                throw new Exception("Set FMOD project path on Workspace.");
+            }
+
+            lblDeployStatus.Text = "Sending build command to FMOD...";
+            _auto.AppendGlobalLog($"[{DateTime.Now:HH:mm:ss}] Build & Deploy: Telling FMOD to build...");
+            
+            // FMOD 1.08 Studio Scripting API build command
+            await _auto.ExecuteScriptAsync("studio.project.build();");
+            
+            if (string.IsNullOrWhiteSpace(_auto.AcContentPath))
+            {
+                lblDeployStatus.Text = "Build complete. (Deploy skipped: AC Content Path not set)";
+                _auto.AppendGlobalLog($"[{DateTime.Now:HH:mm:ss}] Build & Deploy: Build complete. Skipped copy.");
+                _snackbarService.Show("Success", "Build complete using FMOD Studio.", ControlAppearance.Success, new SymbolIcon(SymbolRegular.CheckmarkCircle24), TimeSpan.FromSeconds(5));
+            }
+            else
+            {
+                lblDeployStatus.Text = "Build complete. Deploying to AC car sfx...";
+                _auto.AppendGlobalLog($"[{DateTime.Now:HH:mm:ss}] Build & Deploy: Build complete. Copying files...");
+
+                string[] copied = _auto.DeployToAc(_auto.CarName);
+
+                lblDeployStatus.Text = $"Successfully deployed {copied.Length} file(s).";
+                _auto.AppendGlobalLog($"[{DateTime.Now:HH:mm:ss}] Build & Deploy: Success! {copied.Length} files copied.");
+
+                _snackbarService.Show("Success", $"Deployed {copied.Length} file(s) to {_auto.CarName}.", ControlAppearance.Success, new SymbolIcon(SymbolRegular.CheckmarkCircle24), TimeSpan.FromSeconds(5));
+            }
         }
-        else
-            txtCopied.Text = _auto.LastPipelineSuccess == null
-                ? ""
-                : "(No files copied — post-build copy may have been skipped.)";
+        catch (Exception ex)
+        {
+            lblDeployStatus.Text = $"Error: {ex.Message}";
+            _auto.AppendGlobalLog($"[{DateTime.Now:HH:mm:ss}] Build & Deploy Error: {ex.Message}");
+            _snackbarService.Show("Process failed", ex.Message, ControlAppearance.Danger, new SymbolIcon(SymbolRegular.ErrorCircle24), TimeSpan.FromSeconds(5));
+        }
+        finally
+        {
+            btnBuildAndDeploy.IsEnabled = true;
+            pbarDeploy.Visibility = Visibility.Collapsed;
+        }
     }
 
     private void BtnCopyArtifactsOnly_Click(object sender, RoutedEventArgs e)
@@ -110,7 +122,6 @@ public partial class AutomationPackagePage : Page
             foreach (string p in copied)
                 _auto.AppendGlobalLog($"[{DateTime.Now:HH:mm:ss}] Copied: {p}");
             lblCopyOnlyResult.Text = $"Copied {copied.Length} file(s).";
-            RefreshFromService();
             TryOpenDir(Path.Combine(_auto.AcContentPath, "cars", _auto.CarName, "sfx"));
         }
         catch (Exception ex)
@@ -119,7 +130,6 @@ public partial class AutomationPackagePage : Page
             _auto.LastCompletionMessage = ex.Message;
             lblCopyOnlyResult.Text = ex.Message;
             _snackbarService.Show("Copy failed", ex.Message, ControlAppearance.Danger, new SymbolIcon(SymbolRegular.ErrorCircle24), TimeSpan.FromSeconds(5));
-            RefreshFromService();
         }
     }
 

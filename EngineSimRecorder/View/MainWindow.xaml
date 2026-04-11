@@ -44,6 +44,6 @@
                               VerticalAlignment="Bottom"
                               Margin="0,0,0,20" />
 
-        <ContentPresenter x:Name="RootDialog" Grid.Row="1" />
+        <ui:ContentDialogHost x:Name="RootDialog" Grid.Row="1" />
     </Grid>
 </ui:FluentWindow>

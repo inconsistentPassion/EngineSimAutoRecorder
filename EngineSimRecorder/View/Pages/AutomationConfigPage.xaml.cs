@@ -70,8 +70,13 @@ public partial class AutomationConfigPage : Page
     {
         if (RecorderPage.Instance == null) return;
         string recDir = RecorderPage.Instance.txtOutputDir.Text.Trim();
-        if (!string.IsNullOrEmpty(recDir) && string.IsNullOrWhiteSpace(txtRecordingsDir.Text))
-            txtRecordingsDir.Text = recDir;
+        if (!string.IsNullOrEmpty(recDir))
+        {
+            if (string.IsNullOrWhiteSpace(txtRecordingsDir.Text))
+                txtRecordingsDir.Text = Path.Combine(recDir, "ext");
+            if (string.IsNullOrWhiteSpace(txtRecordingsDirInt.Text))
+                txtRecordingsDirInt.Text = Path.Combine(recDir, "int");
+        }
 
         string car = RecorderPage.Instance.txtCarName.Text.Trim();
         if (!string.IsNullOrEmpty(car) && _auto.GenerationMode != FmodGenerationMode.UseExistingTemplate

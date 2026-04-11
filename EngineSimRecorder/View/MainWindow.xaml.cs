@@ -32,7 +32,7 @@ public partial class MainWindow : FluentWindow, INavigationWindow
 
         navigationService.SetNavigationControl(RootNavigation);
         snackbarService.SetSnackbarPresenter(AppSnackbar);
-        dialogService.SetContentPresenter(RootDialog);
+        dialogService.SetDialogHost(RootDialog);
 
         Application.Current.MainWindow = this;
         Loaded += (s, e) =>

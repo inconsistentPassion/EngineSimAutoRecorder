@@ -146,6 +146,19 @@ public partial class OptionsPage : Page
     {
         if (!IsLoaded) return;
         UpdateCustomPanelsVisibility();
+
+        if (RecorderPage.Instance != null)
+        {
+            string current = RecorderPage.Instance.txtPrefix.Text.Trim();
+            if (string.IsNullOrEmpty(current) || current == "int" || current == "ext")
+            {
+                if (rbInterior.IsChecked == true)
+                    RecorderPage.Instance.txtPrefix.Text = "int";
+                else if (rbExterior.IsChecked == true)
+                    RecorderPage.Instance.txtPrefix.Text = "ext";
+            }
+        }
+
         SaveSettings();
     }
 

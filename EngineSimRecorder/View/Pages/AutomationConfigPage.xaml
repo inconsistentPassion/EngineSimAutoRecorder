@@ -132,7 +132,7 @@
                         <TextBlock Text="Strategy:" Grid.Column="0" VerticalAlignment="Center" FontSize="12" Opacity="0.6" />
                         <ComboBox x:Name="cmbGenerationMode" Grid.Column="1" FontSize="12">
                             <ComboBoxItem Content="Update Assetto Corsa Template (Recommended)" IsSelected="True" />
-                            <ComboBoxItem Content="Custom (from scratch)" />
+                            <ComboBoxItem Content="New Project (For Experts)" />
                         </ComboBox>
                     </Grid>
                     <CheckBox x:Name="chkCopyArtifacts" Content="Copy GUIDs.txt and .bank to AC sfx after build"

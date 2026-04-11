@@ -196,6 +196,21 @@ public class FmodScriptGenerator
                 File.Copy(f, dest, overwrite: true);
                 log.Add($"Copied {Path.GetFileName(f)} → {subFolder}/");
             }
+
+            // Sync: Delete any .wav in dest that no longer exists in src
+            foreach (string destFile in Directory.GetFiles(destDir, "*.wav"))
+            {
+                string srcFile = Path.Combine(srcDir, Path.GetFileName(destFile));
+                if (!File.Exists(srcFile))
+                {
+                    try 
+                    {
+                        File.Delete(destFile);
+                        log.Add($"Removed orphaned {Path.GetFileName(destFile)} from {subFolder}/");
+                    }
+                    catch (Exception) { /* Ignored if locked */ }
+                }
+            }
         }
 
         CopyDir(RecordingsDirExt, "Engine EXT");
@@ -217,6 +232,24 @@ public class FmodScriptGenerator
                     string dest = Path.Combine(accDir, Path.GetFileName(f));
                     File.Copy(f, dest, overwrite: true);
                     log.Add($"Copied {Path.GetFileName(f)} → Accessories/");
+                }
+            }
+            
+            // Sync limiter orphans
+            foreach (string destFile in Directory.GetFiles(accDir, "*.wav"))
+            {
+                if (Path.GetFileNameWithoutExtension(destFile).IndexOf("limiter", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    string srcFile = Path.Combine(limiterSrc, Path.GetFileName(destFile));
+                    if (!File.Exists(srcFile))
+                    {
+                        try 
+                        {
+                            File.Delete(destFile);
+                            log.Add($"Removed orphaned {Path.GetFileName(destFile)} from Accessories/");
+                        }
+                        catch (Exception) { /* Ignored if locked */ }
+                    }
                 }
             }
         }
@@ -248,8 +281,7 @@ public class FmodScriptGenerator
         else
             GenerateUpdateTemplate(sb);
 
-        sb.AppendLine("project.save();");
-        sb.AppendLine("project.build();");
+
         sb.AppendLine("\"success\";");
 
         return sb.ToString();
@@ -456,8 +488,8 @@ function addFadeCurve(snd, isFadeIn, startRpm, endRpm) {
     var p1 = project.create('AutomationPoint');
     p1.position = startRpm;
     p1.value = isFadeIn ? 0 : 1;
-    // 0.7 approximates equal-power S-curve (was 0.45)
-    p1.curveShape = isFadeIn ? -0.7 : 0.7;
+    // 0.575 approximates equal-power S-curve
+    p1.curveShape = isFadeIn ? -0.575 : 0.575;
 
     var p2 = project.create('AutomationPoint');
     p2.position = endRpm;
@@ -473,20 +505,7 @@ function addFadeCurve(snd, isFadeIn, startRpm, endRpm) {
     }
 }
 
-function clearTrack(track) {
-    // Remove all existing SingleSound modules so we can replace with new recordings
-    if (!track || !track.relationships || !track.relationships.modules) return;
-    var mods = track.relationships.modules;
-    var toRemove = [];
-    for (var i = 0; i < mods.length; i++) {
-        toRemove.push(mods[i]);
-    }
-    for (var j = 0; j < toRemove.length; j++) {
-        if (toRemove[j] && (toRemove[j].isOfType('SingleSound') || toRemove[j].isOfType('MultiSound'))) {
-            mods.remove(toRemove[j]);
-        }
-    }
-}
+
 
 function buildSmoothBand(evt, wavPaths) {
     if (!evt || wavPaths.length === 0) return;
@@ -526,21 +545,31 @@ function buildSmoothBand(evt, wavPaths) {
         if (wavList.length === 0) return;
         var defaultName = carName + ' ' + keyword1;
         var track = findBestTrack(evt, keyword1, keyword2, defaultName);
-        clearTrack(track);  // remove old recordings before placing new ones
         wavList.sort(function(a, b) { return a.rpm - b.rpm; });
 
         for (var i = 0; i < wavList.length; i++) {
             var currentRpm = wavList[i].rpm;
             var prevRpm    = (i > 0) ? wavList[i-1].rpm : 0;
             var nextRpm    = (i < wavList.length - 1) ? wavList[i+1].rpm : 10000;
-            
-            // Widen overlap by 30% so adjacent clips always have content from both sides
-            var inBuffer   = (currentRpm - prevRpm) * 0.3;
-            var outBuffer  = (nextRpm - currentRpm) * 0.3;
+            var prevMidObj = null;
+            if (i > 0) {
+                var gapPrev = currentRpm - prevRpm;
+                var midPrev = prevRpm + (gapPrev / 2);
+                var fadeWidthPrev = Math.min(gapPrev * 0.8, 800); // Give a wide, smooth 800rpm overlap
+                prevMidObj = { start: midPrev - (fadeWidthPrev / 2), end: midPrev + (fadeWidthPrev / 2) };
+            }
 
-            var startPos   = (i === 0) ? 0 : Math.max(0, prevRpm - inBuffer);
-            var endPos     = (i === wavList.length - 1) ? 10000 : Math.min(10000, nextRpm + outBuffer);
-            var len        = endPos - startPos;
+            var nextMidObj = null;
+            if (i < wavList.length - 1) {
+                var gapNext = nextRpm - currentRpm;
+                var midNext = currentRpm + (gapNext / 2);
+                var fadeWidthNext = Math.min(gapNext * 0.8, 800); // Give a wide, smooth 800rpm overlap
+                nextMidObj = { start: midNext - (fadeWidthNext / 2), end: midNext + (fadeWidthNext / 2) };
+            }
+
+            var startPos = (i === 0) ? 0 : prevMidObj.start;
+            var endPos   = (i === wavList.length - 1) ? 10000 : nextMidObj.end;
+            var len      = endPos - startPos;
 
             var audioObj = project.importAudioFile(wavList[i].path);
             if (!audioObj) continue;
@@ -557,13 +586,13 @@ function buildSmoothBand(evt, wavPaths) {
             ap.root = currentRpm;
             snd.relationships.modulators.add(ap);
 
-            // Fade in: from prevRpm to currentRpm (with overlap buffer)
+            // Crossfade with previous clip
             if (i > 0) {
-                addFadeCurve(snd, true, Math.max(0, prevRpm - inBuffer), currentRpm);
+                addFadeCurve(snd, true, prevMidObj.start, prevMidObj.end);
             }
-            // Fade out: from currentRpm to nextRpm (with overlap buffer)
+            // Crossfade with next clip
             if (i < wavList.length - 1) {
-                addFadeCurve(snd, false, currentRpm, Math.min(10000, nextRpm + outBuffer));
+                addFadeCurve(snd, false, nextMidObj.start, nextMidObj.end);
             }
         }
     }
@@ -663,7 +692,6 @@ if (limiterPath !== '') {
         var limAudio = project.importAudioFile(limiterPath);
         if (limAudio) {
             var limTrack = findBestTrack(eventLimiter, 'limiter', 'limiter', 'limiter');
-            clearTrack(limTrack);
             var limSnd = project.create('SingleSound');
             limSnd.audioFile = limAudio;
             limSnd.start = 0;

@@ -16,6 +16,7 @@ public partial class AutomationScriptPage : Page
 {
     private readonly AutomationService _auto;
     private readonly ISnackbarService _snackbarService;
+    private readonly IContentDialogService _dialogService;
     private CancellationTokenSource? _cts;
     private bool _wired;
 
@@ -23,6 +24,7 @@ public partial class AutomationScriptPage : Page
     {
         _auto = auto;
         _snackbarService = App.GetService<ISnackbarService>();
+        _dialogService = App.GetService<IContentDialogService>();
         InitializeComponent();
         Loaded += OnLoaded;
     }
@@ -76,9 +78,54 @@ public partial class AutomationScriptPage : Page
         }
     }
 
-    private void BtnRun_Click(object sender, RoutedEventArgs e)
+    private async void BtnRun_Click(object sender, RoutedEventArgs e)
     {
         if (!ValidateForRun()) return;
+
+        var cbAck = new CheckBox 
+        { 
+            Content = "I acknowledge that I have manually cleaned my FMOD tracks.",
+            Margin = new Thickness(0, 0, 0, 8) 
+        };
+        var sp = new StackPanel
+        {
+            Children =
+            {
+                new System.Windows.Controls.TextBlock 
+                { 
+                    Text = "Old sounds can NOT be removed automatically due to limits of FMOD Studio", 
+                    TextWrapping = TextWrapping.Wrap,
+                    Foreground = (Brush)FindResource("SystemFillColorCriticalBrush"),
+                    FontWeight = FontWeights.SemiBold,
+                    Margin = new Thickness(0,0,0,8)
+                },
+                new System.Windows.Controls.TextBlock 
+                { 
+                    Text = "Please manually delete old audio from each track (e.g. EXT_LOAD, EXT_COAST, INT_LOAD, INT_COAST, limiter) in FMOD Studio before building your bank.", 
+                    TextWrapping = TextWrapping.Wrap,
+                    Opacity = 0.8,
+                    Margin = new Thickness(0,0,0,16)
+                },
+                cbAck
+            }
+        };
+
+        var dialog = new Wpf.Ui.Controls.ContentDialog
+        {
+            Title = "Manual Cleanup Required",
+            Content = sp,
+            PrimaryButtonText = "Import",
+            CloseButtonText = "Cancel",
+            IsPrimaryButtonEnabled = false
+        };
+
+        cbAck.Checked += (_, _) => dialog.IsPrimaryButtonEnabled = true;
+        cbAck.Unchecked += (_, _) => dialog.IsPrimaryButtonEnabled = false;
+
+        var result = await _dialogService.ShowAsync(dialog, CancellationToken.None);
+        if (result != ContentDialogResult.Primary)
+            return;
+
         _cts?.Cancel();
         _cts = new CancellationTokenSource();
         var ct = _cts.Token;
@@ -89,7 +136,7 @@ public partial class AutomationScriptPage : Page
         btnRun.IsEnabled = false;
         btnGenerate.IsEnabled = false;
 
-        Task.Run(async () =>
+        _ = Task.Run(async () =>
         {
             try
             {
@@ -205,6 +252,23 @@ public partial class AutomationScriptPage : Page
                 _auto.LastCompletionMessage = "Cancelled.";
                 AppendLogThreadSafe("Cancelled.");
                 Dispatch(() => { SetStage(""); ShowResult(false, "Cancelled."); });
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("FMOD") || ex.Message.Contains("127.0.0.1:3663"))
+            {
+                _auto.LastPipelineSuccess = false;
+                _auto.LastCompletionMessage = ex.Message;
+                AppendLogThreadSafe($"FMOD connection error: {ex.Message}");
+                Dispatch(() =>
+                {
+                    SetStage("");
+                    HideResult();
+                    _snackbarService.Show(
+                        "FMOD not reachable",
+                        "Make sure FMOD Studio 1.08 is open before importing.",
+                        Wpf.Ui.Controls.ControlAppearance.Caution,
+                        new Wpf.Ui.Controls.SymbolIcon(Wpf.Ui.Controls.SymbolRegular.PlugDisconnected24),
+                        TimeSpan.FromSeconds(6));
+                });
             }
             catch (Exception ex)
             {

@@ -20,18 +20,20 @@
 
             <ui:Card Margin="0,0,0,8">
                 <StackPanel>
-                    <TextBlock Text="Last run" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8" />
-                    <Border x:Name="borderStatus" CornerRadius="4" Padding="10,8" Margin="0,0,0,8">
-                        <TextBlock x:Name="lblStatus" FontSize="12" TextWrapping="Wrap" />
-                    </Border>
-                    <TextBlock Text="Copied files" FontSize="12" Opacity="0.6" Margin="0,0,0,4" />
-                    <Border Background="#10101A" CornerRadius="6" Padding="10,8" MinHeight="80">
-                        <TextBox x:Name="txtCopied"
-                                 FontFamily="Consolas" FontSize="11"
-                                 Foreground="#D4D4D4" Background="Transparent"
-                                 BorderThickness="0" IsReadOnly="True"
-                                 TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" />
-                    </Border>
+                    <TextBlock Text="Automatic Deploy" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,4" />
+                    <TextBlock Text="Build all banks in FMOD Studio and copy outputs to Assetto Corsa in one click." FontSize="11" Opacity="0.55" Margin="0,0,0,12" TextWrapping="Wrap" />
+                    <ui:Button x:Name="btnBuildAndDeploy" Content="Build &amp; Deploy" Appearance="Primary" FontSize="13" Padding="20,10" HorizontalAlignment="Left" />
+                    <ProgressBar x:Name="pbarDeploy" Height="4" Margin="0,12,0,4" Visibility="Collapsed" IsIndeterminate="True" />
+                    <TextBlock x:Name="lblDeployStatus" FontSize="11" Opacity="0.7" Margin="0,4,0,0" TextWrapping="Wrap" />
+                </StackPanel>
+            </ui:Card>
+
+            <ui:Card Margin="0,0,0,8">
+                <StackPanel>
+                    <TextBlock Text="Manual deploy" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8" />
+                    <TextBlock Text="Run only the post-build copy (no FMOD script). Requires FMOD project and AC paths on Workspace, and a built .bank in Build." FontSize="11" Opacity="0.55" Margin="0,0,0,8" TextWrapping="Wrap" />
+                    <ui:Button x:Name="btnCopyArtifactsOnly" Content="Copy artifacts only" Appearance="Secondary" FontSize="12" HorizontalAlignment="Left" />
+                    <TextBlock x:Name="lblCopyOnlyResult" FontSize="11" Opacity="0.65" Margin="0,8,0,0" TextWrapping="Wrap" />
                 </StackPanel>
             </ui:Card>
 
@@ -43,15 +45,6 @@
                         <ui:Button x:Name="btnOpenAcSfx" Content="AC car sfx" FontSize="12" Margin="0,0,8,8" />
                         <ui:Button x:Name="btnOpenRecordingsExt" Content="Exterior recordings" FontSize="12" Margin="0,0,8,8" />
                     </WrapPanel>
-                </StackPanel>
-            </ui:Card>
-
-            <ui:Card Margin="0,0,0,8">
-                <StackPanel>
-                    <TextBlock Text="Manual deploy" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8" />
-                    <TextBlock Text="Run only the post-build copy (no FMOD script). Requires FMOD project and AC paths on Workspace, and a built .bank in Build." FontSize="11" Opacity="0.55" Margin="0,0,0,8" TextWrapping="Wrap" />
-                    <ui:Button x:Name="btnCopyArtifactsOnly" Content="Copy artifacts only" Appearance="Primary" FontSize="12" HorizontalAlignment="Left" />
-                    <TextBlock x:Name="lblCopyOnlyResult" FontSize="11" Opacity="0.65" Margin="0,8,0,0" TextWrapping="Wrap" />
                 </StackPanel>
             </ui:Card>
 
