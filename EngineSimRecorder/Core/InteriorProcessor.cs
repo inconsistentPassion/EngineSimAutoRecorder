@@ -11,25 +11,26 @@ namespace EngineSimRecorder.Core
     ///   5. Low-pass filter                    (1.5–3 kHz, car-dependent, RPM-aware)
     ///   6. Character band boost               (engine "voice" through cabin, 1.5-2 kHz)
     ///   7. Subtle saturation                  (warm cabin harmonics)
-    ///   8. Compressor                         (smooth dynamics)
-    ///   9. Narrow stereo                      (mid-side width 20–40%)
+    ///   8. Narrow stereo                      (mid-side width 20–40%)
+    ///   9. Compressor                         (smooth dynamics — before reverb)
     ///  10. Tiny cabin reverb                  (short comb, ~30 ms, 5–10% mix)
+    ///  11. Brick-wall limiter                 (prevents clipping)
     /// </summary>
     public sealed class InteriorProcessor
     {
-        private readonly NAudio.Dsp.BiQuadFilter _dcBlocker;
-        private readonly NAudio.Dsp.BiQuadFilter _lpf;
-        private readonly NAudio.Dsp.BiQuadFilter _res180;
-        private readonly NAudio.Dsp.BiQuadFilter _res350;
-        private readonly NAudio.Dsp.BiQuadFilter _rumble;
-        private NAudio.Dsp.BiQuadFilter _character; // nullable — disabled if Hz = 0
+        // ── Separate L/R filter instances to prevent state corruption ─────
+        private readonly NAudio.Dsp.BiQuadFilter _dcBlockerL, _dcBlockerR;
+        private readonly NAudio.Dsp.BiQuadFilter _lpfL, _lpfR;
+        private readonly NAudio.Dsp.BiQuadFilter _res180L, _res180R;
+        private readonly NAudio.Dsp.BiQuadFilter _res350L, _res350R;
+        private readonly NAudio.Dsp.BiQuadFilter _rumbleL, _rumbleR;
+        private NAudio.Dsp.BiQuadFilter? _characterL, _characterR;
         private readonly float _stereoWidth;
 
         // ── Subtle saturation ─────────────────────────────────────────────
         private readonly float _satDrive;
         private readonly float _satMix;
-        private float _satPrevInL, _satPrevOutL;
-        private float _satPrevInR, _satPrevOutR;
+        private float _satPrevOutL, _satPrevOutR;
 
         // Compressor state (per-channel)
         private float _envL, _envR;
@@ -37,6 +38,8 @@ namespace EngineSimRecorder.Core
         private readonly float _compRatio;
         private readonly float _compAttackCoeff;
         private readonly float _compReleaseCoeff;
+        private float _prevCompGainL, _prevCompGainR;
+        private readonly float _compGainSmooth; // one-pole IIR coefficient
 
         // Simple reverb (comb filter)
         private readonly float[] _reverbBufL;
@@ -44,6 +47,14 @@ namespace EngineSimRecorder.Core
         private int _reverbPos;
         private readonly float _reverbFeedback;
         private readonly float _reverbMix;
+
+        // ── Output limiter ────────────────────────────────────────────────
+        private readonly float _limiterCeiling;
+        private readonly float _limiterAttackCoeff;
+        private readonly float _limiterReleaseCoeff;
+        private float _limiterEnvL, _limiterEnvR;
+        private float _limiterGainL, _limiterGainR;
+        private readonly float _limiterGainSmooth; // one-pole IIR coefficient
 
         private readonly int _channels;
 
@@ -92,50 +103,68 @@ namespace EngineSimRecorder.Core
                 effectiveCompThreshDb = rpm.Lerp(rpm.CompThreshRange, targetRpm);
             }
 
-            // 0. DC blocker
-            _dcBlocker = NAudio.Dsp.BiQuadFilter.HighPassFilter(sampleRate, 20f, 0.707f);
+            // 0. DC blocker — separate L/R instances
+            _dcBlockerL = NAudio.Dsp.BiQuadFilter.HighPassFilter(sampleRate, 20f, 0.707f);
+            _dcBlockerR = NAudio.Dsp.BiQuadFilter.HighPassFilter(sampleRate, 20f, 0.707f);
 
             // 1. Structure-borne rumble
-            _rumble = NAudio.Dsp.BiQuadFilter.PeakingEQ(sampleRate, rumbleHz, 1.2f, effectiveRumbleDb);
+            _rumbleL = NAudio.Dsp.BiQuadFilter.PeakingEQ(sampleRate, rumbleHz, 1.2f, effectiveRumbleDb);
+            _rumbleR = NAudio.Dsp.BiQuadFilter.PeakingEQ(sampleRate, rumbleHz, 1.2f, effectiveRumbleDb);
 
             // 2. Cabin resonance — boost at res1 Hz
-            _res180 = NAudio.Dsp.BiQuadFilter.PeakingEQ(sampleRate, res1Hz, 1.5f, res1Db);
+            _res180L = NAudio.Dsp.BiQuadFilter.PeakingEQ(sampleRate, res1Hz, 1.5f, res1Db);
+            _res180R = NAudio.Dsp.BiQuadFilter.PeakingEQ(sampleRate, res1Hz, 1.5f, res1Db);
 
             // 3. Cabin resonance — boost at res2 Hz
-            _res350 = NAudio.Dsp.BiQuadFilter.PeakingEQ(sampleRate, res2Hz, 1.8f, res2Db);
+            _res350L = NAudio.Dsp.BiQuadFilter.PeakingEQ(sampleRate, res2Hz, 1.8f, res2Db);
+            _res350R = NAudio.Dsp.BiQuadFilter.PeakingEQ(sampleRate, res2Hz, 1.8f, res2Db);
 
             // 4. Low-pass
-            _lpf = NAudio.Dsp.BiQuadFilter.LowPassFilter(sampleRate, effectiveCutoffHz, 0.707f);
+            _lpfL = NAudio.Dsp.BiQuadFilter.LowPassFilter(sampleRate, effectiveCutoffHz, 0.707f);
+            _lpfR = NAudio.Dsp.BiQuadFilter.LowPassFilter(sampleRate, effectiveCutoffHz, 0.707f);
 
             // 5. Character band — engine "voice" through cabin
             if (characterHz > 0f && Math.Abs(characterDb) > 0.1f)
-                _character = NAudio.Dsp.BiQuadFilter.PeakingEQ(sampleRate, characterHz, 1.0f, characterDb);
+            {
+                _characterL = NAudio.Dsp.BiQuadFilter.PeakingEQ(sampleRate, characterHz, 1.0f, characterDb);
+                _characterR = NAudio.Dsp.BiQuadFilter.PeakingEQ(sampleRate, characterHz, 1.0f, characterDb);
+            }
 
             // 6. Subtle saturation
             _satDrive = satDrive;
-            _satMix = satDrive > 1.01f ? 0.25f : 0f; // 25% wet if enabled
-            _satPrevInL = 0f; _satPrevOutL = 0f;
-            _satPrevInR = 0f; _satPrevOutR = 0f;
+            _satMix = satDrive > 1.01f ? 0.20f : 0f;
+            _satPrevOutL = 0f; _satPrevOutR = 0f;
 
-            // 7. Compressor
+            // 7. Compressor — placed BEFORE reverb
             _compThreshold = DbToLinear(effectiveCompThreshDb);
             _compRatio = compRatio;
-            _compAttackCoeff = 1f - (float)Math.Exp(-1.0 / (sampleRate * 0.020));   // ~20 ms attack (slightly slower to preserve transients)
-            _compReleaseCoeff = 1f - (float)Math.Exp(-1.0 / (sampleRate * 0.080));  // ~80 ms release
-            _envL = 0f;
-            _envR = 0f;
+            _compAttackCoeff = 1f - (float)Math.Exp(-1.0 / (sampleRate * 0.020));
+            _compReleaseCoeff = 1f - (float)Math.Exp(-1.0 / (sampleRate * 0.080));
+            _envL = 0f; _envR = 0f;
+            _prevCompGainL = 1f; _prevCompGainR = 1f;
+            // Fix #5: proper one-pole smoothing (~2ms time constant)
+            _compGainSmooth = 1f - (float)Math.Exp(-1.0 / (sampleRate * 0.002));
 
             // 8. Reverb — comb filter
             int delaySamples = Math.Max(1, (int)(sampleRate * reverbMs / 1000f));
             _reverbBufL = new float[delaySamples];
             _reverbBufR = new float[delaySamples];
             _reverbPos = 0;
-            _reverbFeedback = 0.25f;
+            _reverbFeedback = 0.20f;
             _reverbMix = reverbMix;
+
+            // 9. Output limiter
+            _limiterCeiling = 0.98f;
+            _limiterAttackCoeff = 1f - (float)Math.Exp(-1.0 / (sampleRate * 0.0005)); // 0.5ms attack
+            _limiterReleaseCoeff = 1f - (float)Math.Exp(-1.0 / (sampleRate * 0.100));
+            _limiterEnvL = 0f; _limiterEnvR = 0f;
+            _limiterGainL = 1f; _limiterGainR = 1f;
+            // Fix #5: proper one-pole smoothing (~1ms time constant)
+            _limiterGainSmooth = 1f - (float)Math.Exp(-1.0 / (sampleRate * 0.001));
         }
 
         /// <summary>
-        /// Process interleaved float32 samples in-place.
+        /// Process interleaved float32 samples in-place. count = total float samples.
         /// </summary>
         public void Process(float[] samples, int count)
         {
@@ -146,50 +175,57 @@ namespace EngineSimRecorder.Core
                     float L = samples[i];
                     float R = samples[i + 1];
 
-                    // 0. DC blocker
-                    L = _dcBlocker.Transform(L);
-                    R = _dcBlocker.Transform(R);
+                    // 0. DC blocker (separate per channel)
+                    L = _dcBlockerL.Transform(L);
+                    R = _dcBlockerR.Transform(R);
 
-                    // 1-5. EQ chain
-                    L = _rumble.Transform(L);
-                    L = _res180.Transform(L);
-                    L = _res350.Transform(L);
-                    L = _lpf.Transform(L);
-                    if (_character != null) L = _character.Transform(L);
+                    // 1-5. EQ chain (separate L/R filter instances)
+                    L = _rumbleL.Transform(L);
+                    L = _res180L.Transform(L);
+                    L = _res350L.Transform(L);
+                    L = _lpfL.Transform(L);
+                    if (_characterL != null) L = _characterL.Transform(L);
 
-                    R = _rumble.Transform(R);
-                    R = _res180.Transform(R);
-                    R = _res350.Transform(R);
-                    R = _lpf.Transform(R);
-                    if (_character != null) R = _character.Transform(R);
+                    R = _rumbleR.Transform(R);
+                    R = _res180R.Transform(R);
+                    R = _res350R.Transform(R);
+                    R = _lpfR.Transform(R);
+                    if (_characterR != null) R = _characterR.Transform(R);
 
                     // 6. Subtle saturation
                     if (_satMix > 0f)
                     {
-                        L = SoftSaturate(L, ref _satPrevInL, ref _satPrevOutL);
-                        R = SoftSaturate(R, ref _satPrevInR, ref _satPrevOutR);
+                        L = SoftSaturate(L, ref _satPrevOutL);
+                        R = SoftSaturate(R, ref _satPrevOutR);
                     }
 
-                    // 7. Compressor
-                    L = Compress(L, ref _envL);
-                    R = Compress(R, ref _envR);
-
-                    // 8. Stereo narrowing via mid-side
+                    // 7. Stereo narrowing via mid-side
                     float mid = (L + R) * 0.5f;
                     float side = (L - R) * 0.5f;
                     side *= _stereoWidth;
                     L = mid + side;
                     R = mid - side;
 
-                    // 9. Reverb (comb)
+                    // 8. Compressor — BEFORE reverb to control transients
+                    L = Compress(L, ref _envL, ref _prevCompGainL);
+                    R = Compress(R, ref _envR, ref _prevCompGainR);
+
+                    // 9. Reverb (comb) — reduced gain to avoid clipping
                     float wetL = _reverbBufL[_reverbPos];
                     float wetR = _reverbBufR[_reverbPos];
                     _reverbBufL[_reverbPos] = L + wetL * _reverbFeedback;
                     _reverbBufR[_reverbPos] = R + wetR * _reverbFeedback;
                     _reverbPos = (_reverbPos + 1) % _reverbBufL.Length;
 
-                    samples[i] = L + wetL * _reverbMix;
-                    samples[i + 1] = R + wetR * _reverbMix;
+                    L = L * 0.80f + wetL * _reverbMix;
+                    R = R * 0.80f + wetR * _reverbMix;
+
+                    // 10. Brick-wall limiter — prevents any clipping
+                    L = LimitOutput(L, ref _limiterEnvL, ref _limiterGainL);
+                    R = LimitOutput(R, ref _limiterEnvR, ref _limiterGainR);
+
+                    samples[i] = L;
+                    samples[i + 1] = R;
                 }
             }
             else
@@ -197,17 +233,26 @@ namespace EngineSimRecorder.Core
                 for (int i = 0; i < count; i++)
                 {
                     float s = samples[i];
-                    s = _dcBlocker.Transform(s);
-                    s = _rumble.Transform(s);
-                    s = _res180.Transform(s);
-                    s = _res350.Transform(s);
-                    s = _lpf.Transform(s);
-                    if (_character != null) s = _character.Transform(s);
+                    s = _dcBlockerL.Transform(s);
+                    s = _rumbleL.Transform(s);
+                    s = _res180L.Transform(s);
+                    s = _res350L.Transform(s);
+                    s = _lpfL.Transform(s);
+                    if (_characterL != null) s = _characterL.Transform(s);
 
                     if (_satMix > 0f)
-                        s = SoftSaturate(s, ref _satPrevInL, ref _satPrevOutL);
+                        s = SoftSaturate(s, ref _satPrevOutL);
 
-                    s = Compress(s, ref _envL);
+                    s = Compress(s, ref _envL, ref _prevCompGainL);
+
+                    // Reverb for mono
+                    float wet = _reverbBufL[_reverbPos];
+                    _reverbBufL[_reverbPos] = s + wet * _reverbFeedback;
+                    _reverbPos = (_reverbPos + 1) % _reverbBufL.Length;
+                    s = s * 0.80f + wet * _reverbMix;
+
+                    s = LimitOutput(s, ref _limiterEnvL, ref _limiterGainL);
+
                     samples[i] = s;
                 }
             }
@@ -216,18 +261,17 @@ namespace EngineSimRecorder.Core
         /// <summary>
         /// Very gentle saturation for cabin warmth — tanh soft-clip with parallel mix.
         /// </summary>
-        private float SoftSaturate(float input, ref float prevIn, ref float prevOut)
+        private float SoftSaturate(float input, ref float prevOut)
         {
             float saturated = (float)Math.Tanh(input * _satDrive) / (float)Math.Tanh(_satDrive);
             float output = input * (1f - _satMix) + saturated * _satMix;
             // Smooth to prevent zipper noise
             output = output * 0.8f + prevOut * 0.2f;
-            prevIn = input;
             prevOut = output;
             return output;
         }
 
-        private float Compress(float input, ref float envelope)
+        private float Compress(float input, ref float envelope, ref float prevGain)
         {
             float abs = Math.Abs(input);
 
@@ -236,14 +280,45 @@ namespace EngineSimRecorder.Core
             else
                 envelope += (abs - envelope) * _compReleaseCoeff;
 
+            float gainReduction = 1.0f;
             if (envelope > _compThreshold)
             {
                 float overDb = 20f * (float)Math.Log10(envelope / _compThreshold);
                 float gainDb = overDb * (1f / _compRatio - 1f);
-                float gainLinear = DbToLinear(gainDb);
-                input *= gainLinear;
+                gainReduction = DbToLinear(gainDb);
             }
-            return input;
+
+            // Fix #5: proper one-pole IIR smoothing with time-constant coefficient
+            prevGain += (gainReduction - prevGain) * _compGainSmooth;
+            return input * prevGain;
+        }
+
+        /// <summary>Smooth brick-wall limiter with soft-knee tanh instead of hard clip.</summary>
+        private float LimitOutput(float input, ref float envelope, ref float prevGain)
+        {
+            float abs = Math.Abs(input);
+
+            if (abs > envelope)
+                envelope += (abs - envelope) * _limiterAttackCoeff;
+            else
+                envelope += (abs - envelope) * _limiterReleaseCoeff;
+
+            float targetGain = (envelope > _limiterCeiling)
+                ? _limiterCeiling / envelope
+                : 1.0f;
+
+            // Fix #5: proper one-pole IIR smoothing with time-constant coefficient
+            prevGain += (targetGain - prevGain) * _limiterGainSmooth;
+
+            float output = input * prevGain;
+
+            // Fix #4: soft-knee tanh saturation instead of hard clip — no discontinuities
+            if (Math.Abs(output) > _limiterCeiling * 0.95f)
+            {
+                output = _limiterCeiling * (float)Math.Tanh(output / _limiterCeiling);
+            }
+
+            return output;
         }
 
         private static float DbToLinear(float db) => (float)Math.Pow(10.0, db / 20.0);

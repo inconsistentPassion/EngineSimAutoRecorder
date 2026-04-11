@@ -749,9 +749,17 @@ public partial class RecorderPage : Page
 
     private void RecordAudio(KeyboardBackend backend, string outputPath, RecorderConfig cfg, CancellationToken ct, int targetRpm = 0)
     {
+        // Fix #2: Capture in the device's native format — WasapiLoopbackCapture
+        // ignores WaveFormat assignment. We capture natively, then resample/downmix.
         using var capture = new WasapiLoopbackCapture();
-        capture.WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(cfg.SampleRate, cfg.Channels);
+        // Do NOT set capture.WaveFormat — use device native format
+        var deviceFormat = capture.WaveFormat; // actual device format (typically 48kHz/32-bit float/stereo)
+        var targetFormat = WaveFormat.CreateIeeeFloatWaveFormat(cfg.SampleRate, cfg.Channels);
         var done = new ManualResetEventSlim(false);
+
+        // Determine if we need format conversion
+        bool needsConversion = deviceFormat.SampleRate != cfg.SampleRate ||
+                               deviceFormat.Channels != cfg.Channels;
 
         InteriorProcessor? interior = null;
         ExteriorProcessor? exterior = null;
@@ -786,16 +794,99 @@ public partial class RecorderPage : Page
         StartRecProgress(cfg.RecordSeconds);
         capture.DataAvailable += (s, e) =>
         {
-            int bytesPerFrame = 4 * cfg.Channels;
-            int validBytes = (e.BytesRecorded / bytesPerFrame) * bytesPerFrame;
-            if (validBytes <= 0) return;
+            if (e.BytesRecorded <= 0) return;
 
-            int floatCount = validBytes / 4;
-            var floats = new float[floatCount];
-            Buffer.BlockCopy(e.Buffer, 0, floats, 0, validBytes);
+            float[] floats;
+            int floatCount;
 
-            interior?.Process(floats, floatCount / cfg.Channels);
-            exterior?.Process(floats, floatCount / cfg.Channels);
+            if (needsConversion)
+            {
+                // WASAPI loopback delivers IEEE float data in the device's native format.
+                // Extract floats directly from the buffer, then downmix/resample.
+                int devChannels = deviceFormat.Channels;
+                int devBytesPerSample = deviceFormat.BitsPerSample / 8;
+                int devBytesPerFrame = devBytesPerSample * devChannels;
+                int devFrames = e.BytesRecorded / devBytesPerFrame;
+
+                // Extract device-format float samples
+                var devFloats = new float[devFrames * devChannels];
+                Buffer.BlockCopy(e.Buffer, 0, devFloats, 0, devFrames * devChannels * 4);
+
+                // Downmix channels if needed (stereo → mono: average L+R)
+                float[] channelAdjusted;
+                int adjChannels;
+                if (devChannels > cfg.Channels && cfg.Channels == 1)
+                {
+                    channelAdjusted = new float[devFrames];
+                    for (int f = 0; f < devFrames; f++)
+                    {
+                        float sum = 0f;
+                        for (int c = 0; c < devChannels; c++)
+                            sum += devFloats[f * devChannels + c];
+                        channelAdjusted[f] = sum / devChannels;
+                    }
+                    adjChannels = 1;
+                }
+                else if (devChannels != cfg.Channels)
+                {
+                    // Take first N channels
+                    channelAdjusted = new float[devFrames * cfg.Channels];
+                    for (int f = 0; f < devFrames; f++)
+                        for (int c = 0; c < cfg.Channels; c++)
+                            channelAdjusted[f * cfg.Channels + c] = c < devChannels
+                                ? devFloats[f * devChannels + c] : 0f;
+                    adjChannels = cfg.Channels;
+                }
+                else
+                {
+                    channelAdjusted = devFloats;
+                    adjChannels = devChannels;
+                }
+
+                // Resample if sample rates differ (linear interpolation)
+                if (deviceFormat.SampleRate != cfg.SampleRate)
+                {
+                    double ratio = (double)cfg.SampleRate / deviceFormat.SampleRate;
+                    int outFrames = (int)(devFrames * ratio);
+                    floats = new float[outFrames * adjChannels];
+                    for (int f = 0; f < outFrames; f++)
+                    {
+                        double srcPos = f / ratio;
+                        int srcIdx = (int)srcPos;
+                        float frac = (float)(srcPos - srcIdx);
+                        int nextIdx = Math.Min(srcIdx + 1, devFrames - 1);
+                        for (int c = 0; c < adjChannels; c++)
+                        {
+                            float s0 = channelAdjusted[srcIdx * adjChannels + c];
+                            float s1 = channelAdjusted[nextIdx * adjChannels + c];
+                            floats[f * adjChannels + c] = s0 + (s1 - s0) * frac;
+                        }
+                    }
+                    floatCount = floats.Length;
+                }
+                else
+                {
+                    floats = channelAdjusted;
+                    floatCount = floats.Length;
+                }
+
+
+            }
+            else
+            {
+                // No conversion needed — device format matches target
+                int bytesPerFrame = 4 * cfg.Channels;
+                int validBytes = (e.BytesRecorded / bytesPerFrame) * bytesPerFrame;
+                if (validBytes <= 0) return;
+
+                floatCount = validBytes / 4;
+                floats = new float[floatCount];
+                Buffer.BlockCopy(e.Buffer, 0, floats, 0, validBytes);
+            }
+
+            // Fix #3: Pass total float count (not frame count) to Process()
+            interior?.Process(floats, floatCount);
+            exterior?.Process(floats, floatCount);
 
             // Buffer entire recording so we can post-process loop points.
             for (int i = 0; i < floatCount; i++) recorded.Add(floats[i]);
@@ -819,7 +910,7 @@ public partial class RecorderPage : Page
         if (recorded.Count > 0 && cfg.Channels > 0 && cfg.SampleRate > 0)
         {
             float[] samples = FixLoopClick(recorded.ToArray(), cfg.SampleRate, cfg.Channels);
-            using var writer = new WaveFileWriter(outputPath, capture.WaveFormat);
+            using var writer = new WaveFileWriter(outputPath, targetFormat);
             writer.WriteSamples(samples, 0, samples.Length);
         }
     }
