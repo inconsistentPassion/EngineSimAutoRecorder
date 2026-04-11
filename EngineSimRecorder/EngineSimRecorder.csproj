@@ -1,50 +1,61 @@
 <Project Sdk="Microsoft.NET.Sdk">
-	<PropertyGroup>
-		<OutputType>WinExe</OutputType>
-		<TargetFramework>net8.0-windows</TargetFramework>
-		<Nullable>enable</Nullable>
-		<UseWPF>true</UseWPF>
-		<ImplicitUsings>enable</ImplicitUsings>
-		<AssemblyName>EngineSimRecorder</AssemblyName>
-		<RootNamespace>EngineSimRecorder</RootNamespace>
-		<ApplicationManifest>app.manifest</ApplicationManifest>
-		<ApplicationIcon>icon.ico</ApplicationIcon>
-		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-		<ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
-		<RuntimeIdentifier>win-x64</RuntimeIdentifier>
-		<PublishSingleFile>true</PublishSingleFile>
-		<SelfContained>false</SelfContained>
-		<IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-	</PropertyGroup>
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWPF>true</UseWPF>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>EngineSimRecorder</AssemblyName>
+    <RootNamespace>EngineSimRecorder</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>icon.ico</ApplicationIcon>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>false</SelfContained>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+  </PropertyGroup>
 
-	<!-- Auto-build es_hook.dll via CMake -->
-	<PropertyGroup>
-		<HookSourceDir>$(MSBuildProjectDirectory)\..\EngineSimHook</HookSourceDir>
-		<HookBuildDir>$(HookSourceDir)\build</HookBuildDir>
-		<HookDllPath>$(HookSourceDir)\bin\$(Configuration)\es_hook.dll</HookDllPath>
-		<_CMakePath Condition="Exists('$(VsInstallRoot)\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe')">$(VsInstallRoot)\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe</_CMakePath>
-		<_CMakePath Condition="'$(_CMakePath)'==''">cmake</_CMakePath>
-	</PropertyGroup>
+  <!-- Auto-build es_hook.dll via CMake -->
+  <PropertyGroup>
+    <HookSourceDir>$(MSBuildProjectDirectory)\..\EngineSimHook</HookSourceDir>
+    <HookBuildDir>$(HookSourceDir)\build</HookBuildDir>
+    <HookDllPath>$(HookSourceDir)\bin\$(Configuration)\es_hook.dll</HookDllPath>
+    <_CMakePath Condition="Exists('$(VsInstallRoot)\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe')">$(VsInstallRoot)\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe</_CMakePath>
+    <_CMakePath Condition="'$(_CMakePath)'==''">cmake</_CMakePath>
+  </PropertyGroup>
 
-	<Target Name="BuildHookDll" BeforeTargets="BeforeBuild"
-			Condition="Exists('$(HookDllPath)')">
-		<Message Importance="high" Text="=== es_hook.dll already exists, skipping build ===" />
-	</Target>
+  <Target Name="BuildHookDll" BeforeTargets="BeforeBuild">
+    <PropertyGroup>
+      <CMakeConfig>$(Configuration)</CMakeConfig>
+    </PropertyGroup>
+    <Message Importance="high" Text="=== Building es_hook.dll ($(CMakeConfig)) ===" />
+    <MakeDir Directories="$(HookBuildDir)" Condition="!Exists('$(HookBuildDir)')" />
+    <Exec Command="&quot;$(_CMakePath)&quot; -S &quot;$(HookSourceDir)&quot; -B &quot;$(HookBuildDir)&quot; -G &quot;Visual Studio 17 2022&quot; -A x64" 
+          Condition="!Exists('$(HookBuildDir)\CMakeCache.txt')" />
+    <Exec Command="&quot;$(_CMakePath)&quot; --build &quot;$(HookBuildDir)&quot; --config $(CMakeConfig) --target es_hook" />
+    <Error Condition="!Exists('$(HookDllPath)')" Text="Failed to build es_hook.dll at $(HookDllPath)" />
+  </Target>
 
-	<ItemGroup>
-		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
-		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.0" />
-		<PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.0" />
-		<PackageReference Include="NAudio" Version="2.2.1" />
-		<PackageReference Include="WPF-UI" Version="4.2.0" />
-		<PackageReference Include="WPF-UI.DependencyInjection" Version="4.2.0" />
-	</ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.0" />
+    <PackageReference Include="NAudio" Version="2.2.1" />
+    <PackageReference Include="WPF-UI" Version="4.2.0" />
+    <PackageReference Include="WPF-UI.DependencyInjection" Version="4.2.0" />
+  </ItemGroup>
 
-	<ItemGroup>
-		<Resource Include="icon.ico" />
-	</ItemGroup>
+  <ItemGroup>
+    <Resource Include="icon.ico" />
+  </ItemGroup>
 
-
-
-
+  <ItemGroup>
+    <Content Include="$(HookDllPath)">
+      <Link>es_hook.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
 </Project>
