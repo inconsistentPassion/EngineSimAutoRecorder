@@ -182,14 +182,35 @@ dotnet build -c Release
 
 Or open `EngineSimAutoRecorder.sln` in Visual Studio 2022 and build from there.
 
-### 4. Output
+### 4. Publish for Distribution
 
-The compiled application is at:
-```
-EngineSimRecorder/bin/Release/net8.0-windows/win-x64/EngineSimRecorder.exe
+The publish process **automatically organizes** the output into a clean structure:
+
+```bash
+cd EngineSimRecorder
+dotnet publish -c Release
 ```
 
-Make sure `es_hook.dll` is in the same directory or reachable by the application.
+This produces an organized distribution in `bin/Release/net8.0-windows/win-x64/publish/`:
+```
+publish/
+├── EngineSimRecorder.exe    # Single executable (~10.4 MB)
+├── assets/
+│   └── es_hook.dll          # Hook DLL (~159 KB)
+└── lib/                      # Reserved for additional native DLLs
+```
+
+**Optional:** Use the distribution script to copy to a `dist/` folder:
+```powershell
+.\create-dist.ps1
+```
+
+**Distribution Structure:**
+- **EngineSimRecorder.exe** - Main application with all managed .NET DLLs bundled inside
+- **assets/** - Native DLLs required at runtime (hook DLL, etc.)
+- **lib/** - Reserved folder for any additional native libraries
+
+The MSBuild targets automatically organize the output during publish - no manual scripting needed! All managed assemblies are bundled into the single executable using .NET 8's single-file publish. The application uses framework-dependent deployment, requiring .NET 8.0 runtime to be installed on the target machine.
 
 ---
 

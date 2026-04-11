@@ -408,6 +408,7 @@ namespace EngineSimRecorder.Backends.Keyboard
         {
             return new[]
             {
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "assets", name),
                 Path.Combine(AppDomain.CurrentDomain.BaseDirectory, name),
                 Path.Combine(Environment.CurrentDirectory, name),
                 Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "EngineSimHook", "bin", "Release", name)),

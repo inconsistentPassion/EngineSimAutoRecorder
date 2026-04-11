@@ -1,7 +1,7 @@
 #include "pipe.h"
 #include "common.h"
 #include <Windows.h>
-#include <iostream>
+#include "log.h"
 #include <thread>
 #include <atomic>
 
@@ -15,7 +15,7 @@ static std::thread pipeThread;
 static std::atomic<bool> pipeRunning{false};
 
 static void PipeServerLoop() {
-    std::cout << "[+] Pipe server starting on " << PIPE_NAME << "\n";
+    Log("[+] Pipe server starting on %s", PIPE_NAME);
 
     while (pipeRunning.load()) {
       HANDLE hPipe = CreateNamedPipeA(
@@ -25,12 +25,12 @@ static void PipeServerLoop() {
             1, PIPE_BUFFER_SIZE, PIPE_BUFFER_SIZE, 0, NULL);
 
         if (hPipe == INVALID_HANDLE_VALUE) {
-  std::cout << "[!] CreateNamedPipe failed: " << GetLastError() << "\n";
+  Log("[!] CreateNamedPipe failed: %lu", GetLastError());
   Sleep(1000);
         continue;
    }
 
-        std::cout << "[+] Waiting for client connection...\n";
+        Log("[+] Waiting for client connection...");
         BOOL connected = ConnectNamedPipe(hPipe, NULL) ?
           TRUE : (GetLastError() == ERROR_PIPE_CONNECTED);
 
@@ -45,7 +45,7 @@ static void PipeServerLoop() {
  DWORD mode = PIPE_READMODE_MESSAGE | PIPE_NOWAIT;
         SetNamedPipeHandleState(hPipe, &mode, NULL, NULL);
 
-        std::cout << "[+] Client connected to pipe\n";
+        Log("[+] Client connected to pipe");
 
   DWORD lastRpmSend = 0;
         double lastMaxRpmSent = 0.0;
@@ -64,7 +64,7 @@ static void PipeServerLoop() {
              if (!WriteFile(hPipe, &msg, sizeof(msg), &written, NULL)) {
        DWORD err = GetLastError();
            if (err == ERROR_BROKEN_PIPE || err == ERROR_NO_DATA) {
-         std::cout << "[!] Pipe write failed, client disconnected\n";
+         Log("[!] Pipe write failed, client disconnected");
         break;
             }
                 }
@@ -109,7 +109,7 @@ uint8_t buf[PIPE_BUFFER_SIZE];
    case MSG_CMD_THROTTLE: {
     if (bytesRead >= sizeof(MsgCmdThrottle)) {
         auto* cmd = (MsgCmdThrottle*)buf;
-      std::cout << "[+] Throttle command: " << cmd->throttle << "\n";
+      Log("[+] Throttle command: %f", cmd->throttle);
        ApplyThrottleDirect(cmd->throttle);
             {
        std::lock_guard<std::mutex> lock(State::throttleMutex);
@@ -141,14 +141,12 @@ uint8_t buf[PIPE_BUFFER_SIZE];
   break;
    }
     case MSG_CMD_KILL: {
-             std::cout << "[+] Kill command received\n";
+             Log("[+] Kill command received");
           pipeRunning.store(false);
      break;
          }
    default:
-                std::cout << "[!] Unknown msg: 0x"
-    << std::hex << (int)msgType << std::dec
-   << " (" << bytesRead << " bytes)\n";
+                Log("[!] Unknown msg: 0x%X (%lu bytes)", (int)msgType, bytesRead);
  break;
    }
       }
@@ -159,7 +157,7 @@ uint8_t buf[PIPE_BUFFER_SIZE];
         std::lock_guard<std::mutex> lock(State::throttleMutex);
         State::throttleOverride = false;
     }
-       std::cout << "[+] Client disconnected\n";
+       Log("[+] Client disconnected");
         break;
                 }
        // ERROR_NO_DATA is normal for non-blocking read with no data
@@ -172,7 +170,7 @@ uint8_t buf[PIPE_BUFFER_SIZE];
         CloseHandle(hPipe);
   }
 
-    std::cout << "[+] Pipe server stopped\n";
+    Log("[+] Pipe server stopped");
 }
 
 void StartPipeServer() {

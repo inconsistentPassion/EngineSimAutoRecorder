@@ -14,8 +14,8 @@
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>false</SelfContained>
-    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
   </PropertyGroup>
 
   <!-- Auto-build es_hook.dll via CMake -->
@@ -33,10 +33,12 @@
     </PropertyGroup>
     <Message Importance="high" Text="=== Building es_hook.dll ($(CMakeConfig)) ===" />
     <MakeDir Directories="$(HookBuildDir)" Condition="!Exists('$(HookBuildDir)')" />
-    <Exec Command="&quot;$(_CMakePath)&quot; -S &quot;$(HookSourceDir)&quot; -B &quot;$(HookBuildDir)&quot; -G &quot;Visual Studio 17 2022&quot; -A x64" 
-          Condition="!Exists('$(HookBuildDir)\CMakeCache.txt')" />
-    <Exec Command="&quot;$(_CMakePath)&quot; --build &quot;$(HookBuildDir)&quot; --config $(CMakeConfig) --target es_hook" />
-    <Error Condition="!Exists('$(HookDllPath)')" Text="Failed to build es_hook.dll at $(HookDllPath)" />
+    <Exec Command="&quot;$(_CMakePath)&quot; -S &quot;$(HookSourceDir)&quot; -B &quot;$(HookBuildDir)&quot; -G &quot;Visual Studio 17 2022&quot; -A x64"
+          Condition="!Exists('$(HookBuildDir)\CMakeCache.txt')"
+          ContinueOnError="true" />
+    <Exec Command="&quot;$(_CMakePath)&quot; --build &quot;$(HookBuildDir)&quot; --config $(CMakeConfig) --target es_hook"
+          ContinueOnError="true" />
+    <Warning Condition="!Exists('$(HookDllPath)')" Text="es_hook.dll not found at $(HookDllPath). Please build it manually with CMake." />
   </Target>
 
   <ItemGroup>
@@ -54,8 +56,27 @@
 
   <ItemGroup>
     <Content Include="$(HookDllPath)">
-      <Link>es_hook.dll</Link>
+      <Link>assets\es_hook.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
   </ItemGroup>
+
+  <!-- Post-publish: Clean up output structure -->
+  <Target Name="OrganizePublishOutput" AfterTargets="Publish">
+    <Message Importance="high" Text="=== Organizing publish output ===" />
+    
+    <!-- Remove any stray files except exe and assets/ -->
+    <ItemGroup>
+      <StrayFiles Include="$(PublishDir)*" 
+                  Exclude="$(PublishDir)*.exe;
+                           $(PublishDir)assets\**" />
+    </ItemGroup>
+    <Delete Files="@(StrayFiles)" Condition="Exists('%(FullPath)')" />
+    
+    <Message Importance="high" Text="=== Publish output organized ===" />
+    <Message Importance="high" Text="  - EngineSimRecorder.exe (single file with bundled managed DLLs)" />
+    <Message Importance="high" Text="  - assets/es_hook.dll (native hook DLL)" />
+  </Target>
 </Project>

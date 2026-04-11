@@ -38,3 +38,6 @@ settings.json
 
 # Profiles (user-specific)
 profiles/
+
+# Publish profiles (contain machine-specific output paths)
+Properties/PublishProfiles/

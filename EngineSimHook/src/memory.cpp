@@ -89,4 +89,28 @@ namespace Memory {
         ss << std::hex << std::uppercase << addr;
         std::cout << "[+] " << name << " : 0x" << ss.str() << "\n";
     }
+
+    bool SafeReadDouble(uintptr_t base, uintptr_t offset, double& out) {
+        if (!base) return false;
+        __try { out = *(double*)(base + offset); return true; }
+        __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+    }
+
+    bool SafeReadUintptr(uintptr_t base, uintptr_t offset, uintptr_t& out) {
+        if (!base) return false;
+        __try { out = *(uintptr_t*)(base + offset); return true; }
+        __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+    }
+
+    bool SafeWriteDouble(uintptr_t base, uintptr_t offset, double value) {
+        if (!base) return false;
+        __try { *(double*)(base + offset) = value; return true; }
+        __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+    }
+
+    bool SafeWriteBool(uintptr_t base, uintptr_t offset, bool value) {
+        if (!base) return false;
+        __try { *(bool*)(base + offset) = value; return true; }
+        __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+    }
 }

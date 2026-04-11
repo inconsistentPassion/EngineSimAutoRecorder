@@ -17,6 +17,11 @@ namespace Memory {
     bool ValidateFunctionProlog(uintptr_t addr);
 
     void WriteLog(const char* name, uintptr_t addr);
+
+    bool SafeReadDouble(uintptr_t base, uintptr_t offset, double& out);
+    bool SafeReadUintptr(uintptr_t base, uintptr_t offset, uintptr_t& out);
+    bool SafeWriteDouble(uintptr_t base, uintptr_t offset, double value);
+    bool SafeWriteBool(uintptr_t base, uintptr_t offset, bool value);
 }
 
 #endif
