@@ -69,7 +69,7 @@ namespace EngineSimRecorder.Core
         /// <param name="targetRpm">Target RPM for this recording (0 = RPM-aware disabled)</param>
         public ExteriorProcessor(int sampleRate, int channels,
             ExteriorPreset preset = ExteriorPreset.Raw, int targetRpm = 0)
-            : this(sampleRate, channels, GetPresetParams(preset), targetRpm) { }
+            : this(sampleRate, channels, GetPresetParams(preset), rpm: null, targetRpm: targetRpm) { }
 
         /// <summary>Custom-params constructor.</summary>
         /// <param name="targetRpm">Target RPM for this recording (0 = RPM-aware disabled)</param>

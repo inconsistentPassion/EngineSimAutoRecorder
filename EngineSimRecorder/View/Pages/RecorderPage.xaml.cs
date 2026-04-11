@@ -766,7 +766,7 @@ public partial class RecorderPage : Page
                     i.CutoffHz, i.StereoWidth, i.RumbleHz, i.RumbleDb,
                     i.Res1Hz, i.Res1Db, i.Res2Hz, i.Res2Db,
                     i.ReverbMs, i.ReverbMix, i.CompRatio, i.CompThreshDb,
-                    i.CharacterHz, i.CharacterDb, i.SatDrive,
+                    i.CharacterHz, i.CharacterBoostDb, i.SatDrive,
                     targetRpm, cfg.RpmProcessing);
             }
             else
