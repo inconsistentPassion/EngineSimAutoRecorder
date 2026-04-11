@@ -1,0 +1,92 @@
+#include "memory.h"
+#include <Psapi.h>
+#include <iostream>
+#include <sstream>
+#include <vector>
+
+#pragma comment(lib, "Psapi.lib")
+
+#define INRANGE(x, a, b) (x >= a && x <= b)
+#define getBits(x) (INRANGE((x & (~0x20)), 'A', 'F') ? ((x & (~0x20)) - 'A' + 0xa) : (INRANGE(x, '0', '9') ? x - '0' : 0))
+#define get_byte(x) (getBits(x[0]) << 4 | getBits(x[1]))
+
+namespace Memory {
+
+    uintptr_t getBase() {
+        return (uintptr_t)GetModuleHandleA(NULL);
+    }
+
+    uintptr_t FindPatternIDA(const char* szSignature) {
+        auto all = FindPatternAll(szSignature);
+        return all.empty() ? 0 : all[0];
+    }
+
+    std::vector<uintptr_t> FindPatternAll(const char* szSignature) {
+        std::vector<uintptr_t> matches;
+        MODULEINFO modInfo;
+        GetModuleInformation(GetCurrentProcess(), GetModuleHandleA(NULL), &modInfo, sizeof(MODULEINFO));
+        uintptr_t startAddress = (uintptr_t)GetModuleHandleA(NULL);
+        uintptr_t endAddress = startAddress + (uintptr_t)modInfo.SizeOfImage;
+        const char* pat = szSignature;
+        uintptr_t firstMatch = 0;
+
+        for (uintptr_t pCur = startAddress; pCur < endAddress; pCur++) {
+            if (!*pat) {
+                // Full pattern matched
+                matches.push_back(firstMatch);
+                pat = szSignature;
+                firstMatch = 0;
+                continue;
+            }
+            if (*(PBYTE)pat == '?' || *(BYTE*)pCur == get_byte(pat)) {
+                if (!firstMatch) firstMatch = pCur;
+                if (!pat[2]) {
+                    // Last byte of pattern matched
+                    matches.push_back(firstMatch);
+                    pat = szSignature;
+                    firstMatch = 0;
+                    continue;
+                }
+                if (*(PWORD)pat == ('??') || *(PBYTE)pat != '?') pat += 3;
+                else pat += 2;
+            }
+            else {
+                pat = szSignature;
+                firstMatch = 0;
+            }
+        }
+        return matches;
+    }
+
+    bool ValidateFunctionProlog(uintptr_t addr) {
+        if (!addr) return false;
+        uint8_t* p = (uint8_t*)addr;
+
+        // Common x64 function prolog patterns:
+        // 48 89 5C 24 XX       = mov [rsp+XX], rbx
+        // 48 83 EC XX          = sub rsp, XX
+        // 48 8B C4             = mov rax, rsp
+        // 40 53                = push rbx
+        // 40 55                = push rbp
+        // 48 89                = various mov [rsp+...], reg
+        // 4C 89                = various mov [rsp+...], rXX
+        // 55                   = push rbp
+        // 48 81 EC             = sub rsp, imm32
+
+        // Check first byte is a known x64 prolog start
+        if (p[0] == 0x48 || p[0] == 0x40 || p[0] == 0x4C || p[0] == 0x55 || p[0] == 0x53) {
+            // Second byte should be a common follow-up
+            if (p[1] == 0x89 || p[1] == 0x83 || p[1] == 0x8B || p[1] == 0x81 ||
+                p[1] == 0x53 || p[1] == 0x55 || p[1] == 0x57 || p[1] == 0x56) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void WriteLog(const char* name, uintptr_t addr) {
+        std::stringstream ss;
+        ss << std::hex << std::uppercase << addr;
+        std::cout << "[+] " << name << " : 0x" << ss.str() << "\n";
+    }
+}
