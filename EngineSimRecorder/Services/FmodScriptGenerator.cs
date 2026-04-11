@@ -450,6 +450,29 @@ function bindSound(track, param, snd) {
     }
 }
 
+function addFadeCurve(snd, isFadeIn, startRpm, endRpm) {
+    if (startRpm >= endRpm) return;
+    var fade = project.create('FadeCurve');
+    var p1 = project.create('AutomationPoint');
+    p1.position = startRpm;
+    p1.value = isFadeIn ? 0 : 1;
+    // 0.7 approximates equal-power S-curve (was 0.45)
+    p1.curveShape = isFadeIn ? -0.7 : 0.7;
+
+    var p2 = project.create('AutomationPoint');
+    p2.position = endRpm;
+    p2.value = isFadeIn ? 1 : 0;
+    
+    fade.relationships.startPoint.add(p1);
+    fade.relationships.endPoint.add(p2);
+    
+    if (isFadeIn) {
+        snd.relationships.fadeInCurve.add(fade);
+    } else {
+        snd.relationships.fadeOutCurve.add(fade);
+    }
+}
+
 function clearTrack(track) {
     // Remove all existing SingleSound modules so we can replace with new recordings
     if (!track || !track.relationships || !track.relationships.modules) return;
@@ -534,13 +557,13 @@ function buildSmoothBand(evt, wavPaths) {
             ap.root = currentRpm;
             snd.relationships.modulators.add(ap);
 
-            // Equal-power crossfade (shape=2 S-curve) — eliminates the -6dB volume
-            // dip at crossover that linear fades cause.
-            if (i > 0 && snd.relationships.fadeInCurve) {
-                snd.relationships.fadeInCurve.shape = 2;
+            // Fade in: from prevRpm to currentRpm (with overlap buffer)
+            if (i > 0) {
+                addFadeCurve(snd, true, Math.max(0, prevRpm - inBuffer), currentRpm);
             }
-            if (i < wavList.length - 1 && snd.relationships.fadeOutCurve) {
-                snd.relationships.fadeOutCurve.shape = 2;
+            // Fade out: from currentRpm to nextRpm (with overlap buffer)
+            if (i < wavList.length - 1) {
+                addFadeCurve(snd, false, currentRpm, Math.min(10000, nextRpm + outBuffer));
             }
         }
     }
