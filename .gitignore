@@ -1,15 +1,17 @@
-# Visual Studio / CMake caches
+# Visual Studio / IDE
 .vs/
 *.user
 *.suo
 *.userosscache
 *.sln.docstates
+
+# CMake
 CMakeSettings.json
 CMakeCache.txt
 CMakeFiles/
 out/
 
-# C++ Build outputs
+# C++ build outputs
 EngineSimHook/build/
 EngineSimHook/out/
 *.obj
@@ -24,7 +26,18 @@ EngineSimHook/out/
 *.tlog
 *.lastbuildstate
 
-# C# (.NET) Build outputs
-[Bb]in/
-[Oo]bj/
-*.nupkg
+# C# (.NET) build outputs
+bin/
+obj/
+
+# NuGet
+packages/
+
+# Settings (per-machine)
+settings.json
+
+# Profiles (user-specific)
+profiles/
+
+# Publish profiles (contain machine-specific output paths)
+Properties/PublishProfiles/

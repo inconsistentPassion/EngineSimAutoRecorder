@@ -23,10 +23,17 @@ add_library(es_hook SHARED
     src/hooks.cpp
     src/memory.cpp
     src/pipe.cpp
+    src/log.cpp
 )
 
 target_include_directories(es_hook PRIVATE src)
 target_link_libraries(es_hook PRIVATE minhook Psapi)
+
+# /EHa enables async (SEH) exception handling so __try/__except works correctly
+# in Release builds where MSVC optimizations otherwise break SEH in C++ code.
+if (MSVC)
+    target_compile_options(es_hook PRIVATE /EHa)
+endif()
 
 # Output to a predictable location
 set_target_properties(es_hook PROPERTIES

@@ -1,10 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
-    <UseWindowsForms>true</UseWindowsForms>
+    <UseWPF>true</UseWPF>
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>EngineSimRecorder</AssemblyName>
     <RootNamespace>EngineSimRecorder</RootNamespace>
@@ -12,56 +11,72 @@
     <ApplicationIcon>icon.ico</ApplicationIcon>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>false</SelfContained>
-    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-    <PublishTrimmed>false</PublishTrimmed>
     <DebugType>none</DebugType>
     <DebugSymbols>false</DebugSymbols>
   </PropertyGroup>
 
-  <ItemGroup>
-    <!-- NAudio: WASAPI loopback capture + FFT -->
-    <PackageReference Include="NAudio" Version="2.2.1" />
-  </ItemGroup>
-
-  <!-- Auto-build es_hook.dll via CMake before C# compilation -->
+  <!-- Auto-build es_hook.dll via CMake -->
   <PropertyGroup>
-    <EngineSimHookBuildDir>$(MSBuildThisFileDirectory)..\EngineSimHook\build</EngineSimHookBuildDir>
-    <EngineSimHookDll>$(MSBuildThisFileDirectory)..\EngineSimHook\bin\$(Configuration)\es_hook.dll</EngineSimHookDll>
-    <!-- Try cmake from VS installation, fall back to PATH -->
-    <_CMakePath Condition="'$(_CMakePath)' == '' AND Exists('$(VsInstallRoot)\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe')">$(VsInstallRoot)\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe</_CMakePath>
-    <_CMakePath Condition="'$(_CMakePath)' == ''">cmake</_CMakePath>
+    <HookSourceDir>$(MSBuildProjectDirectory)\..\EngineSimHook</HookSourceDir>
+    <HookBuildDir>$(HookSourceDir)\build</HookBuildDir>
+    <HookDllPath>$(HookSourceDir)\bin\$(Configuration)\es_hook.dll</HookDllPath>
+    <_CMakePath Condition="Exists('$(VsInstallRoot)\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe')">$(VsInstallRoot)\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe</_CMakePath>
+    <_CMakePath Condition="'$(_CMakePath)'==''">cmake</_CMakePath>
   </PropertyGroup>
 
-  <Target Name="BuildEngineSimHook" BeforeTargets="BeforeBuild"
-          Inputs="..\EngineSimHook\CMakeLists.txt;..\EngineSimHook\src\dllmain.cpp;..\EngineSimHook\src\hooks.cpp;..\EngineSimHook\src\memory.cpp;..\EngineSimHook\src\pipe.cpp"
-          Outputs="$(EngineSimHookDll)">
-    <Message Importance="high" Text="=== Building es_hook.dll via CMake ===" />
-    <Message Importance="high" Text="Using CMake: $(_CMakePath)" />
-    <Exec Command="&quot;$(_CMakePath)&quot; -S &quot;$(MSBuildThisFileDirectory)..\EngineSimHook&quot; -B &quot;$(EngineSimHookBuildDir)&quot; -G &quot;Visual Studio 17 2022&quot; -A x64"
-          ConsoleToMSBuild="true" />
-    <Exec Command="&quot;$(_CMakePath)&quot; --build &quot;$(EngineSimHookBuildDir)&quot; --config $(Configuration)"
-          ConsoleToMSBuild="true" />
-    <Message Importance="high" Text="=== es_hook.dll built successfully ===" />
+  <Target Name="BuildHookDll" BeforeTargets="BeforeBuild">
+    <PropertyGroup>
+      <CMakeConfig>$(Configuration)</CMakeConfig>
+    </PropertyGroup>
+    <Message Importance="high" Text="=== Building es_hook.dll ($(CMakeConfig)) ===" />
+    <MakeDir Directories="$(HookBuildDir)" Condition="!Exists('$(HookBuildDir)')" />
+    <Exec Command="&quot;$(_CMakePath)&quot; -S &quot;$(HookSourceDir)&quot; -B &quot;$(HookBuildDir)&quot; -G &quot;Visual Studio 17 2022&quot; -A x64"
+          Condition="!Exists('$(HookBuildDir)\CMakeCache.txt')"
+          ContinueOnError="true" />
+    <Exec Command="&quot;$(_CMakePath)&quot; --build &quot;$(HookBuildDir)&quot; --config $(CMakeConfig) --target es_hook"
+          ContinueOnError="true" />
+    <Warning Condition="!Exists('$(HookDllPath)')" Text="es_hook.dll not found at $(HookDllPath). Please build it manually with CMake." />
   </Target>
 
   <ItemGroup>
-    <None Include="$(EngineSimHookDll)" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="icon.ico" CopyToOutputDirectory="PreserveNewest" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.0" />
+    <PackageReference Include="NAudio" Version="2.2.1" />
+    <PackageReference Include="WPF-UI" Version="4.2.0" />
+    <PackageReference Include="WPF-UI.DependencyInjection" Version="4.2.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Update="Form1.cs">
-  <SubType>Form</SubType>
-  </Compile>
-    <Compile Update="Form1.Designer.cs">
-      <DependentUpon>Form1.cs</DependentUpon>
- <SubType>Code</SubType>
-    </Compile>
-  <EmbeddedResource Update="Form1.resx">
-    <DependentUpon>Form1.cs</DependentUpon>
-    </EmbeddedResource>
+    <Resource Include="icon.ico" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="$(HookDllPath)">
+      <Link>assets\es_hook.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+
+  <!-- Post-publish: Clean up output structure -->
+  <Target Name="OrganizePublishOutput" AfterTargets="Publish">
+    <Message Importance="high" Text="=== Organizing publish output ===" />
+    
+    <!-- Remove any stray files except exe and assets/ -->
+    <ItemGroup>
+      <StrayFiles Include="$(PublishDir)*" 
+                  Exclude="$(PublishDir)*.exe;
+                           $(PublishDir)assets\**" />
+    </ItemGroup>
+    <Delete Files="@(StrayFiles)" Condition="Exists('%(FullPath)')" />
+    
+    <Message Importance="high" Text="=== Publish output organized ===" />
+    <Message Importance="high" Text="  - EngineSimRecorder.exe (single file with bundled managed DLLs)" />
+    <Message Importance="high" Text="  - assets/es_hook.dll (native hook DLL)" />
+  </Target>
 </Project>

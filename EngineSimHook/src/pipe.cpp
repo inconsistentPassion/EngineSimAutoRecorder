@@ -1,7 +1,7 @@
 #include "pipe.h"
 #include "common.h"
 #include <Windows.h>
-#include <iostream>
+#include "log.h"
 #include <thread>
 #include <atomic>
 
@@ -15,7 +15,7 @@ static std::thread pipeThread;
 static std::atomic<bool> pipeRunning{false};
 
 static void PipeServerLoop() {
-    std::cout << "[+] Pipe server starting on " << PIPE_NAME << "\n";
+    Log("[+] Pipe server starting on %s", PIPE_NAME);
 
     while (pipeRunning.load()) {
       HANDLE hPipe = CreateNamedPipeA(
@@ -25,12 +25,12 @@ static void PipeServerLoop() {
             1, PIPE_BUFFER_SIZE, PIPE_BUFFER_SIZE, 0, NULL);
 
         if (hPipe == INVALID_HANDLE_VALUE) {
-  std::cout << "[!] CreateNamedPipe failed: " << GetLastError() << "\n";
+  Log("[!] CreateNamedPipe failed: %lu", GetLastError());
   Sleep(1000);
         continue;
    }
 
-        std::cout << "[+] Waiting for client connection...\n";
+        Log("[+] Waiting for client connection...");
         BOOL connected = ConnectNamedPipe(hPipe, NULL) ?
           TRUE : (GetLastError() == ERROR_PIPE_CONNECTED);
 
@@ -45,15 +45,17 @@ static void PipeServerLoop() {
  DWORD mode = PIPE_READMODE_MESSAGE | PIPE_NOWAIT;
         SetNamedPipeHandleState(hPipe, &mode, NULL, NULL);
 
-        std::cout << "[+] Client connected to pipe\n";
+        Log("[+] Client connected to pipe");
 
   DWORD lastRpmSend = 0;
+        double lastMaxRpmSent = 0.0;
+        double lastTorqueSent = 0.0;
 
         while (pipeRunning.load()) {
         DWORD now = GetTickCount();
 
-    // ── Send RPM every 50ms ──────────────────────────────────
-        if (now - lastRpmSend >= 50) {
+    // ── Send RPM every 10ms (~100Hz) ──────────────────────────
+        if (now - lastRpmSend >= 10) {
     MsgRpmUpdate msg;
       msg.type = MSG_RPM_UPDATE;
          msg.rpm = State::currentRpm.load();
@@ -62,12 +64,38 @@ static void PipeServerLoop() {
              if (!WriteFile(hPipe, &msg, sizeof(msg), &written, NULL)) {
        DWORD err = GetLastError();
            if (err == ERROR_BROKEN_PIPE || err == ERROR_NO_DATA) {
-         std::cout << "[!] Pipe write failed, client disconnected\n";
+         Log("[!] Pipe write failed, client disconnected");
         break;
             }
                 }
      lastRpmSend = now;
    }
+
+    // ── Send max RPM when it changes (once after hook reads it) ──
+    {
+        double curMax = State::maxRpm.load();
+        if (curMax > 0 && curMax != lastMaxRpmSent) {
+            MsgMaxRpm maxMsg;
+            maxMsg.type = MSG_MAX_RPM;
+            maxMsg.maxRpm = curMax;
+            DWORD written;
+            WriteFile(hPipe, &maxMsg, sizeof(maxMsg), &written, NULL);
+            lastMaxRpmSent = curMax;
+        }
+    }
+
+    // ── Send torque when it changes significantly ──────────────
+    {
+        double curTorque = State::torqueLbft.load();
+        if (std::abs(curTorque - lastTorqueSent) > 0.5) {
+            MsgTorqueUpdate tMsg;
+            tMsg.type = MSG_TORQUE_UPDATE;
+            tMsg.torqueLbft = curTorque;
+            DWORD written;
+            WriteFile(hPipe, &tMsg, sizeof(tMsg), &written, NULL);
+            lastTorqueSent = curTorque;
+        }
+    }
 
       // ── Read incoming commands (non-blocking) ─────────────────
 uint8_t buf[PIPE_BUFFER_SIZE];
@@ -81,13 +109,13 @@ uint8_t buf[PIPE_BUFFER_SIZE];
    case MSG_CMD_THROTTLE: {
     if (bytesRead >= sizeof(MsgCmdThrottle)) {
         auto* cmd = (MsgCmdThrottle*)buf;
-      std::cout << "[+] Throttle command: " << cmd->throttle << "\n";
+      Log("[+] Throttle command: %f", cmd->throttle);
        ApplyThrottleDirect(cmd->throttle);
             {
        std::lock_guard<std::mutex> lock(State::throttleMutex);
     State::targetThrottle = cmd->throttle;
-   }
            State::throttleOverride = true;
+   }
          }
         break;
           }
@@ -113,22 +141,23 @@ uint8_t buf[PIPE_BUFFER_SIZE];
   break;
    }
     case MSG_CMD_KILL: {
-             std::cout << "[+] Kill command received\n";
+             Log("[+] Kill command received");
           pipeRunning.store(false);
      break;
          }
    default:
-                std::cout << "[!] Unknown msg: 0x"
-    << std::hex << (int)msgType << std::dec
-   << " (" << bytesRead << " bytes)\n";
+                Log("[!] Unknown msg: 0x%X (%lu bytes)", (int)msgType, bytesRead);
  break;
    }
       }
         else if (!ok) {
       DWORD err = GetLastError();
      if (err == ERROR_BROKEN_PIPE) {
-    State::throttleOverride = false;
-       std::cout << "[+] Client disconnected\n";
+    {
+        std::lock_guard<std::mutex> lock(State::throttleMutex);
+        State::throttleOverride = false;
+    }
+       Log("[+] Client disconnected");
         break;
                 }
        // ERROR_NO_DATA is normal for non-blocking read with no data
@@ -141,7 +170,7 @@ uint8_t buf[PIPE_BUFFER_SIZE];
         CloseHandle(hPipe);
   }
 
-    std::cout << "[+] Pipe server stopped\n";
+    Log("[+] Pipe server stopped");
 }
 
 void StartPipeServer() {

@@ -18,6 +18,12 @@ namespace State {
     // Latest RPM from ignition hook
     extern std::atomic<double> currentRpm;
 
+    // Max RPM (redline) from ignition instance
+    extern std::atomic<double> maxRpm;
+
+    // Torque (lb·ft) from updateHpAndTorque hook
+    extern std::atomic<double> torqueLbft;
+
     // Throttle override (written by pipe thread, applied in simProcess hook)
     extern std::mutex throttleMutex;
     extern double targetThrottle;
@@ -33,6 +39,8 @@ namespace State {
 #pragma pack(push, 1)
 
 constexpr uint8_t MSG_RPM_UPDATE    = 0x01;
+constexpr uint8_t MSG_MAX_RPM       = 0x02;
+constexpr uint8_t MSG_TORQUE_UPDATE  = 0x03;
 constexpr uint8_t MSG_CMD_THROTTLE  = 0x10;
 constexpr uint8_t MSG_CMD_STARTER   = 0x11;
 constexpr uint8_t MSG_CMD_IGNITION  = 0x12;
@@ -42,6 +50,16 @@ constexpr uint8_t MSG_CMD_KILL      = 0x1F;
 struct MsgRpmUpdate {
     uint8_t type;       // MSG_RPM_UPDATE
     double rpm;
+};
+
+struct MsgMaxRpm {
+    uint8_t type;       // MSG_MAX_RPM
+    double maxRpm;
+};
+
+struct MsgTorqueUpdate {
+    uint8_t type;       // MSG_TORQUE_UPDATE
+    double torqueLbft;
 };
 
 struct MsgCmdThrottle {

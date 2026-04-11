@@ -1,0 +1,182 @@
+<Page x:Class="EngineSimRecorder.View.Pages.RecorderPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      xmlns:helpers="clr-namespace:EngineSimRecorder.Helpers"
+      Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+      ScrollViewer.CanContentScroll="False">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                      Padding="20,12,20,0"
+                      helpers:MouseWheelHelper.EnableForwarding="True"
+                      ScrollViewer.PanningMode="VerticalOnly"
+                      ScrollViewer.CanContentScroll="False">
+            <ScrollViewer.Resources>
+                <Storyboard x:Key="SmoothScroll">
+                    <DoubleAnimation Storyboard.TargetProperty="(ScrollViewer.VerticalOffset)"
+                                   Duration="0:0:0.3"
+                                   To="0" />
+                </Storyboard>
+            </ScrollViewer.Resources>
+            <StackPanel MinWidth="0">
+                <TextBlock FontSize="20" FontWeight="Bold" Margin="0,0,0,2" Text="ES Recorder" />
+                <TextBlock FontSize="12" Opacity="0.6" Margin="0,0,0,12" Text="Smart engine audio capture for Assetto Corsa" />
+
+                <!-- Process / Connection -->
+                <ui:Card Margin="0,0,0,8">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Connection" FontSize="14" FontWeight="SemiBold" Grid.Column="0" />
+                            <!-- Status dot -->
+                            <Border x:Name="borderConnStatus" Grid.Column="1"
+                                    Background="#40FF4040" CornerRadius="4" Padding="8,3" VerticalAlignment="Center">
+                                <TextBlock x:Name="lblConnStatus" Text="Disconnected" FontSize="10"
+                                           FontWeight="SemiBold" Foreground="#FF8080" />
+                            </Border>
+                        </Grid>
+
+                        <TextBlock FontSize="11" Opacity="0.5" Margin="0,0,0,12" TextWrapping="Wrap"
+                                   Text="Engine Simulator must be open. Click Connect to automatically link with the simulator." />
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock x:Name="lblConnDetail" Grid.Column="0" FontSize="11" Opacity="0.5"
+                                       VerticalAlignment="Center" />
+                            <ui:Button x:Name="btnConnect" Grid.Column="1" Content="Connect" Appearance="Primary"
+                                       FontSize="12" />
+                        </Grid>
+                    </StackPanel>
+                </ui:Card>
+
+                <!-- Output -->
+                <ui:Card Margin="0,0,0,8">
+                    <StackPanel>
+                        <TextBlock Text="Output" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8" />
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="100" />
+                                <ColumnDefinition Width="*" MinWidth="100" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Directory:" Grid.Column="0" VerticalAlignment="Center" FontSize="12" Opacity="0.6" />
+                            <TextBox x:Name="txtOutputDir" Grid.Column="1" Text="recordings" VerticalAlignment="Center" FontSize="12" />
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="8,0,0,0">
+                                <ui:Button x:Name="btnBrowse" Content="Browse" FontSize="12" />
+                                <ui:Button x:Name="btnOpenFolder" Content="Open" Margin="4,0,0,0" FontSize="12" />
+                            </StackPanel>
+                        </Grid>
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="100" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Car Name:" Grid.Column="0" VerticalAlignment="Center" FontSize="12" Opacity="0.6" />
+                            <TextBox x:Name="txtCarName" Grid.Column="1" VerticalAlignment="Center" FontSize="12" />
+                        </Grid>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="100" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Prefix:" Grid.Column="0" VerticalAlignment="Center" FontSize="12" Opacity="0.6" />
+                            <TextBox x:Name="txtPrefix" Grid.Column="1" VerticalAlignment="Center" FontSize="12" />
+                        </Grid>
+                    </StackPanel>
+                </ui:Card>
+
+                <!-- RPM Targets -->
+                <ui:Card Margin="0,0,0,8">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <TextBlock Text="RPM Targets" FontSize="14" FontWeight="SemiBold" />
+                            <TextBlock x:Name="lblRedline" FontSize="11" Opacity="0.5" Margin="8,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <WrapPanel Margin="0,0,0,8">
+                            <TextBlock Text="Quick:" VerticalAlignment="Center" Margin="0,0,6,0" Opacity="0.5" FontSize="11" />
+                            <ui:Button Content="1K" FontSize="11" Padding="10,4" Tag="1000" />
+                            <ui:Button Content="2K" FontSize="11" Padding="10,4" Tag="2000" Margin="3,0,0,0" />
+                            <ui:Button Content="3K" FontSize="11" Padding="10,4" Tag="3000" Margin="3,0,0,0" />
+                            <ui:Button Content="4K" FontSize="11" Padding="10,4" Tag="4000" Margin="3,0,0,0" />
+                            <ui:Button Content="5K" FontSize="11" Padding="10,4" Tag="5000" Margin="3,0,0,0" />
+                            <ui:Button Content="6K" FontSize="11" Padding="10,4" Tag="6000" Margin="3,0,0,0" />
+                            <ui:Button Content="7K" FontSize="11" Padding="10,4" Tag="7000" Margin="3,0,0,0" />
+                            <ui:Button Content="8K" FontSize="11" Padding="10,4" Tag="8000" Margin="3,0,0,0" />
+                            <ui:Button Content="9K" FontSize="11" Padding="10,4" Tag="9000" Margin="3,0,0,0" />
+                            <ui:Button Content="10K" FontSize="11" Padding="10,4" Tag="10000" Margin="3,0,0,0" />
+                        </WrapPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" MinWidth="120" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <ListBox x:Name="lstRpm" Grid.Column="0" FontFamily="Consolas" FontSize="11" MaxHeight="160" />
+                            <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Top">
+                                <TextBlock Text="Quick Edit" FontSize="10" Opacity="0.5" Margin="0,0,0,4" />
+                                <UniformGrid Columns="3" HorizontalAlignment="Stretch">
+                                    <ui:Button x:Name="btnNudgeDown" Content="-250" FontSize="11" HorizontalAlignment="Stretch" Margin="0,0,2,0" />
+                                    <ui:Button x:Name="btnNudgeUp" Content="+250" FontSize="11" HorizontalAlignment="Stretch" Margin="1,0" />
+                                    <ui:Button x:Name="btnAuto" Content="Auto" FontSize="11" HorizontalAlignment="Stretch" Margin="2,0,0,0" />
+                                </UniformGrid>
+                                <TextBlock Text="RPM value" FontSize="10" Opacity="0.5" Margin="0,10,0,4" />
+                                <TextBox x:Name="txtRpm" Text="1000" HorizontalAlignment="Stretch" FontFamily="Consolas" FontSize="12" />
+                                <UniformGrid Columns="2" HorizontalAlignment="Stretch" Margin="0,4,0,0">
+                                    <ui:Button x:Name="btnAdd" Content="Add" Appearance="Primary" FontSize="11" HorizontalAlignment="Stretch" Margin="0,0,2,0" />
+                                    <ui:Button x:Name="btnEdit" Content="Edit" FontSize="11" HorizontalAlignment="Stretch" Margin="2,0,0,0" />
+                                </UniformGrid>
+                                <UniformGrid Columns="2" HorizontalAlignment="Stretch" Margin="0,2,0,0">
+                                    <ui:Button x:Name="btnRemove" Content="Remove" FontSize="11" HorizontalAlignment="Stretch" Margin="0,0,2,0" />
+                                    <ui:Button x:Name="btnSort" Content="Sort" FontSize="11" HorizontalAlignment="Stretch" Margin="2,0,0,0" />
+                                </UniformGrid>
+                                <ui:Button x:Name="btnClear" Content="Clear All" FontSize="11" Margin="0,2,0,0" HorizontalAlignment="Stretch" />
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </ui:Card>
+
+                <!-- Status -->
+                <ui:Card Margin="0,0,0,8">
+                    <StackPanel>
+                        <TextBlock Text="Status" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8" />
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                            <TextBlock x:Name="lblStatus" Text="Idle..." VerticalAlignment="Center" FontSize="12" Opacity="0.6" />
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
+                                <TextBlock x:Name="lblEta" VerticalAlignment="Center" FontSize="11" Opacity="0.5" Margin="0,0,8,0" />
+                                <TextBlock x:Name="lblRpm" Text="RPM: ---" FontFamily="Consolas" FontSize="13" FontWeight="Bold" />
+                            </StackPanel>
+                        </Grid>
+                        <ProgressBar x:Name="pbar" Height="5" Margin="0,6,0,0" Minimum="0" Maximum="1" Value="0" />
+                    </StackPanel>
+                </ui:Card>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Actions pinned bottom -->
+        <Border Grid.Row="1" Padding="20,8,20,8" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <ui:Button x:Name="btnStart" Content="Start" Appearance="Success" FontSize="15" Padding="24,10" />
+                    <ui:Button x:Name="btnStop" Content="Stop" Appearance="Danger" FontSize="15" Padding="24,10" Margin="10,0,0,0" IsEnabled="False" />
+                </StackPanel>
+                <CheckBox Grid.Column="1" x:Name="chkTop" Content="Stay on Top" HorizontalAlignment="Right" VerticalAlignment="Center" Opacity="0.6" />
+            </Grid>
+        </Border>
+    </Grid>
+</Page>

@@ -8,6 +8,18 @@ namespace EngineSimRecorder.Core
     {
         public int SampleRate { get; set; } = 44100;
         public int Channels { get; set; } = 2; // 1=mono, 2=stereo
+        public string LastProfile { get; set; } = "";
+        public bool InteriorMode { get; set; } = false;
+        public bool SoundExpanderExpanded { get; set; } = true;
+        public string CarType { get; set; } = "Sedan";
+        public bool RecordLimiter { get; set; } = false;
+        public bool GeneratePowerLut { get; set; } = false;
+        public string Theme { get; set; } = "Dark";
+        public ExteriorPreset ExteriorPreset { get; set; } = ExteriorPreset.Raw;
+        public ExteriorSettings Exterior { get; set; } = new();
+
+        /// <summary>FMOD automation workspace (car name, paths, generation mode).</summary>
+        public AutomationWorkspace Automation { get; set; } = new();
 
         private static string FilePath =>
             Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json");
