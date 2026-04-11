@@ -813,12 +813,16 @@ public partial class RecorderPage : Page
         int frames = samples.Length / channels;
         if (frames <= 4) return samples;
 
+        // 1. Remove DC offset — eliminates constant-offset clicks at loop boundaries
         RemoveDcOffset(samples, channels);
 
-        // Snap to nearest zero-crossing at start and end (use channel 0 as reference)
+        // 2. Normalize BEFORE crossfade so the fade operates on full-range signal
+        NormalizeIfNeededInPlace(samples);
+
+        // 3. Snap to positive-going zero crossings at start and end (use channel 0 as reference)
         int searchFrames = Math.Max(8, (int)(sampleRate * 0.02)); // 20ms window
-        int startFrame = FindNearestZeroCrossingFrame(samples, channels, 0, searchFrames);
-        int endFrame = FindNearestZeroCrossingFrame(samples, channels, frames - 1, searchFrames);
+        int startFrame = FindPositiveGoingZeroCrossingFrame(samples, channels, 0, searchFrames);
+        int endFrame = FindPositiveGoingZeroCrossingFrame(samples, channels, frames - 1, searchFrames);
         if (endFrame <= startFrame + 4) { startFrame = 0; endFrame = frames - 1; }
 
         if (startFrame != 0 || endFrame != frames - 1)
@@ -829,8 +833,8 @@ public partial class RecorderPage : Page
             samples = trimmed;
         }
 
-        ApplyLoopCrossfadeInPlace(samples, sampleRate, channels, 0.010);
-        NormalizeIfNeededInPlace(samples);
+        // 4. Cosine crossfade — C1 continuous (no derivative discontinuity at endpoints)
+        ApplyCosineLoopCrossfadeInPlace(samples, sampleRate, channels, 0.010);
         return samples;
     }
 
@@ -852,7 +856,13 @@ public partial class RecorderPage : Page
         }
     }
 
-    private static int FindNearestZeroCrossingFrame(float[] samples, int channels, int frameIndex, int searchRadiusFrames)
+    /// <summary>
+    /// Finds the nearest POSITIVE-GOING zero crossing to frameIndex.
+    /// Positive-going means sample[f-1] <= 0 and sample[f] >= 0.
+    /// This ensures the waveform starts/ends at a consistent phase,
+    /// which is critical for seamless looping.
+    /// </summary>
+    private static int FindPositiveGoingZeroCrossingFrame(float[] samples, int channels, int frameIndex, int searchRadiusFrames)
     {
         int frames = samples.Length / channels;
         frameIndex = Math.Clamp(frameIndex, 0, frames - 1);
@@ -862,13 +872,13 @@ public partial class RecorderPage : Page
         int best = frameIndex;
         int bestDist = int.MaxValue;
 
+        // First pass: look for positive-going crossings only
         for (int f = start; f <= end; f++)
         {
             float a = samples[(f - 1) * channels];
             float b = samples[f * channels];
 
-            // sign change or exact zero indicates a crossing
-            if ((a <= 0f && b >= 0f) || (a >= 0f && b <= 0f))
+            if (a <= 0f && b > 0f) // strictly positive-going
             {
                 int dist = Math.Abs(f - frameIndex);
                 if (dist < bestDist)
@@ -880,10 +890,35 @@ public partial class RecorderPage : Page
             }
         }
 
+        // Fallback: accept any sign change if no positive-going crossing found
+        if (best == frameIndex)
+        {
+            for (int f = start; f <= end; f++)
+            {
+                float a = samples[(f - 1) * channels];
+                float b = samples[f * channels];
+
+                if ((a <= 0f && b >= 0f) || (a >= 0f && b <= 0f))
+                {
+                    int dist = Math.Abs(f - frameIndex);
+                    if (dist < bestDist)
+                    {
+                        bestDist = dist;
+                        best = f;
+                    }
+                }
+            }
+        }
+
         return best;
     }
 
-    private static void ApplyLoopCrossfadeInPlace(float[] samples, int sampleRate, int channels, double seconds)
+    /// <summary>
+    /// Cosine (raised-cosine) crossfade at the loop boundary.
+    /// Unlike a linear fade, cosine is C1-continuous — the derivative is zero
+    /// at both endpoints, eliminating the subtle click that linear fades produce.
+    /// </summary>
+    private static void ApplyCosineLoopCrossfadeInPlace(float[] samples, int sampleRate, int channels, double seconds)
     {
         int frames = samples.Length / channels;
         int fadeFrames = (int)Math.Round(sampleRate * seconds);
@@ -894,18 +929,23 @@ public partial class RecorderPage : Page
 
         for (int i = 0; i < fadeFrames; i++)
         {
+            // Raised-cosine window: 0.5 * (1 - cos(π * t)), t ∈ [0, 1]
             float t = fadeFrames == 1 ? 1f : (float)i / (fadeFrames - 1);
-            int headFrame = i;
-            int tailFrame = tailStart + i;
-            int headIdx = headFrame * channels;
-            int tailIdx = tailFrame * channels;
+            float fadeIn = 0.5f * (1f - (float)Math.Cos(Math.PI * t));
+            float fadeOut = 1f - fadeIn;
+
+            int headIdx = i * channels;
+            int tailIdx = (tailStart + i) * channels;
 
             for (int c = 0; c < channels; c++)
             {
                 float head = samples[headIdx + c];
                 float tail = samples[tailIdx + c];
-                samples[headIdx + c] = head * t + tail * (1f - t);
-                samples[tailIdx + c] = tail * t + head * (1f - t);
+
+                // Tail region: fade out tail, fade in head
+                samples[tailIdx + c] = tail * fadeIn + head * fadeOut;
+                // Head region: fade in head, fade out tail
+                samples[headIdx + c] = head * fadeIn + tail * fadeOut;
             }
         }
     }

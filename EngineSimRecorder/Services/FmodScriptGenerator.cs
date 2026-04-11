@@ -476,13 +476,20 @@ function buildSmoothBand(evt, wavPaths) {
         clearTrack(track);  // remove old recordings before placing new ones
         wavList.sort(function(a, b) { return a.rpm - b.rpm; });
 
+        var overlapPad = 200; // RPM — each clip extends ±200 into neighbors for smooth crossfade
+
         for (var i = 0; i < wavList.length; i++) {
             var currentRpm = wavList[i].rpm;
             var prevRpm    = (i > 0) ? wavList[i-1].rpm : 0;
             var nextRpm    = (i < wavList.length - 1) ? wavList[i+1].rpm : 10000;
-            var startPos   = (i === 0) ? 0 : prevRpm;
-            var endPos     = (i === wavList.length - 1) ? 10000 : nextRpm;
-            var len        = endPos - startPos;
+
+            // Clip spans midpoint-to-prev through midpoint-to-next, plus overlap padding.
+            // This guarantees adjacent clips overlap by ~400 RPM so the crossfade
+            // always has content from both sides — no pitch reversal at the boundary.
+            var midPrev = (i === 0) ? 0 : (prevRpm + currentRpm) / 2;
+            var midNext = (i === wavList.length - 1) ? 10000 : (currentRpm + nextRpm) / 2;
+            var startPos = Math.max(0, midPrev - overlapPad);
+            var endPos   = Math.min(10000, midNext + overlapPad);
 
             var audioObj = project.importAudioFile(wavList[i].path);
             if (!audioObj) continue;
@@ -490,7 +497,7 @@ function buildSmoothBand(evt, wavPaths) {
             var snd = project.create('SingleSound');
             snd.audioFile = audioObj;
             snd.start = startPos;
-            snd.length = len;
+            snd.length = endPos - startPos;
             snd.looping = true;
             addSoundToTrack(track, snd);
 
@@ -499,13 +506,13 @@ function buildSmoothBand(evt, wavPaths) {
             ap.root = currentRpm;
             snd.relationships.modulators.add(ap);
 
-            // Fade in: first clip has no fade-in, others fade in from prevRpm
+            // Equal-power fade curves (shape=2 S-curve) — eliminates the -6dB volume
+            // dip at crossover that linear fades (shape=1) cause.
             if (i > 0 && snd.relationships.fadeInCurve) {
-                snd.relationships.fadeInCurve.shape = 1;
+                snd.relationships.fadeInCurve.shape = 2;
             }
-            // Fade out: last clip has no fade-out, others fade out to nextRpm
             if (i < wavList.length - 1 && snd.relationships.fadeOutCurve) {
-                snd.relationships.fadeOutCurve.shape = 1;
+                snd.relationships.fadeOutCurve.shape = 2;
             }
         }
     }

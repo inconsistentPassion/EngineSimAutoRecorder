@@ -14,6 +14,7 @@ namespace EngineSimRecorder.Core
     /// </summary>
     public sealed class InteriorProcessor
     {
+        private readonly NAudio.Dsp.BiQuadFilter _dcBlocker; // HPF 20Hz — kills DC offset at source
         private readonly NAudio.Dsp.BiQuadFilter _lpf;
         private readonly NAudio.Dsp.BiQuadFilter _res180;
         private readonly NAudio.Dsp.BiQuadFilter _res350;
@@ -61,6 +62,9 @@ namespace EngineSimRecorder.Core
             _channels = channels;
             _stereoWidth = width;
 
+            // 0. DC blocker — high-pass at 20Hz, first in chain to prevent loop clicks at source
+            _dcBlocker = NAudio.Dsp.BiQuadFilter.HighPassFilter(sampleRate, 20f, 0.707f);
+
             // 1. Structure-borne rumble
             _rumble = NAudio.Dsp.BiQuadFilter.PeakingEQ(sampleRate, rumbleHz, 1.2f, rumbleDb);
 
@@ -102,6 +106,10 @@ namespace EngineSimRecorder.Core
                     float L = samples[i];
                     float R = samples[i + 1];
 
+                    // DC blocker first — prevents offset accumulation
+                    L = _dcBlocker.Transform(L);
+                    R = _dcBlocker.Transform(R);
+
                     // EQ chain on each channel
                     L = _rumble.Transform(L);
                     L = _res180.Transform(L);
@@ -140,6 +148,7 @@ namespace EngineSimRecorder.Core
                 for (int i = 0; i < count; i++)
                 {
                     float s = samples[i];
+                    s = _dcBlocker.Transform(s);
                     s = _rumble.Transform(s);
                     s = _res180.Transform(s);
                     s = _res350.Transform(s);

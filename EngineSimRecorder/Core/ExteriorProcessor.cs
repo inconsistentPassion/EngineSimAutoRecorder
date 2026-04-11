@@ -17,6 +17,7 @@ namespace EngineSimRecorder.Core
     public sealed class ExteriorProcessor
     {
         // ── EQ filters ───────────────────────────────────────────────────────
+        private readonly NAudio.Dsp.BiQuadFilter _dcBlocker; // HPF 20Hz — kills DC offset at source
         private readonly NAudio.Dsp.BiQuadFilter _lpf;
         private readonly NAudio.Dsp.BiQuadFilter _hiShelf;
         private readonly NAudio.Dsp.BiQuadFilter _warmth;
@@ -72,6 +73,9 @@ namespace EngineSimRecorder.Core
         {
             _sampleRate = sampleRate;
             _channels = channels;
+
+            // 0. DC blocker — high-pass at 20Hz, first in chain to prevent loop clicks at source
+            _dcBlocker = NAudio.Dsp.BiQuadFilter.HighPassFilter(sampleRate, 20f, 0.707f);
 
             // 1. Low-pass - gentle air absorption simulation
             _lpf = NAudio.Dsp.BiQuadFilter.LowPassFilter(sampleRate, p.LpHz, p.LpQ);
@@ -139,6 +143,10 @@ namespace EngineSimRecorder.Core
                     float L = samples[i];
                     float R = samples[i + 1];
 
+                    // DC blocker first — prevents offset accumulation
+                    L = _dcBlocker.Transform(L);
+                    R = _dcBlocker.Transform(R);
+
                     // 1-3. EQ chain (analog-style warmth)
                     L = _lpf.Transform(L);
                     L = _hiShelf.Transform(L);
@@ -183,6 +191,7 @@ namespace EngineSimRecorder.Core
                 {
                     float s = samples[i];
 
+                    s = _dcBlocker.Transform(s);
                     s = _lpf.Transform(s);
                     s = _hiShelf.Transform(s);
                     s = _warmth.Transform(s);
