@@ -368,39 +368,45 @@ function findFolderByName(name) {
     return walk(project.workspace.masterEventFolder);
 }
 
-function findBestTrack(evt, keyword, fallbackName) {
-    var rel = evt.relationships;
-    if (!rel || !rel.groupTracks) return createTrack(evt, fallbackName);
+function findBestTrack(evt, kw1, kw2, fallbackName) {
+    // FMOD 1.08: track items are directly on evt.groupTracks
+    var items = evt.groupTracks;
+    if (!items || items.length === 0) return createTrack(evt, fallbackName);
     
-    // FMOD 1.08: relationship.groupTracks may be a Relationship object -
-    // the actual array of GroupTrack items is under .items.
-    var items = rel.groupTracks.items || rel.groupTracks;
-    
-    // Safety: if we can't determine length, bail to creation
-    if (!items || typeof items.length !== 'number') return createTrack(evt, fallbackName);
-    
-    // 1. Exact match on full track name (e.g. ""fa01 load"")
+    // 1. Exact match on full track name
     for (var i = 0; i < items.length; i++) {
         var t = items[i];
         if (t && t.mixerGroup && t.mixerGroup.name === fallbackName)
             return t;
     }
-    // 2. Fuzzy match - track name contains the keyword (""load"" / ""coast"")
-    var kw = keyword.toLowerCase();
+    // 2. Fuzzy match - track name contains kw1 (""load"" / ""coast"") or kw2 (""on"" / ""off"")
+    // We prioritize tracks that ALREADY HAVE automation/modulators if possible
+    var k1 = kw1.toLowerCase();
+    var k2 = kw2.toLowerCase();
+    
+    var candidates = [];
     for (var i = 0; i < items.length; i++) {
         var t = items[i];
         if (!t || !t.mixerGroup) continue;
         var name = t.mixerGroup.name.toLowerCase();
-        if (name.indexOf(kw) !== -1)
-            return t;
+        if (name.indexOf(k1) !== -1 || name.indexOf(k2) !== -1) {
+            candidates.push(t);
+        }
     }
-    // 3. Final safety: don't create a duplicate if a track with fallbackName
-    //    already exists but we somehow missed it above.
-    for (var i = 0; i < items.length; i++) {
-        var t = items[i];
-        if (t && t.mixerGroup && t.mixerGroup.name === fallbackName)
-            return t;
+
+    if (candidates.length > 0) {
+        // If multiple candidates, pick the one that likely belongs to the template
+        // (usually the one created first or the one with existing volume automation)
+        return candidates[0];
     }
+
+    // 3. Last ditch: if there's only 2 tracks and we are looking for load/coast
+    // and they are named something generic like ""Audio 1"", ""Audio 2""
+    if (items.length >= 2) {
+        if (kw1 === 'load') return items[0];
+        if (kw1 === 'coast') return items[1];
+    }
+
     // 4. Fallback to creation
     return createTrack(evt, fallbackName);
 }
@@ -426,12 +432,44 @@ function getOrCreateGroupTrack(evt, trackName) {
     return createTrack(evt, trackName);
 }
 
-function addSoundToTrack(track, snd) {
-    // FMOD 1.08: modules is the correct relationship for SingleSound on GroupTrack
+function bindSound(track, param, snd) {
+    // FMOD 1.08 manual binding
     if (track.relationships && track.relationships.modules) {
         track.relationships.modules.add(snd);
     } else if (track.relationships && track.relationships.sounds) {
         track.relationships.sounds.add(snd);
+    }
+    
+    // Bind to the parameter sheet (if this is on a parameter and not the main timeline)
+    if (param) {
+        if (param.relationships && param.relationships.modules) {
+            param.relationships.modules.add(snd);
+        } else if (param.relationships && param.relationships.sounds) {
+            param.relationships.sounds.add(snd);
+        }
+    }
+}
+
+function addFadeCurve(snd, isFadeIn, startRpm, endRpm) {
+    if (startRpm >= endRpm) return;
+    var fade = project.create('FadeCurve');
+    var p1 = project.create('AutomationPoint');
+    p1.position = startRpm;
+    p1.value = isFadeIn ? 0 : 1;
+    // Inverting curvature as requested
+    p1.curveShape = isFadeIn ? -0.45 : 0.45;
+
+    var p2 = project.create('AutomationPoint');
+    p2.position = endRpm;
+    p2.value = isFadeIn ? 1 : 0;
+    
+    fade.relationships.startPoint.add(p1);
+    fade.relationships.endPoint.add(p2);
+    
+    if (isFadeIn) {
+        snd.relationships.fadeInCurve.add(fade);
+    } else {
+        snd.relationships.fadeOutCurve.add(fade);
     }
 }
 
@@ -453,14 +491,29 @@ function clearTrack(track) {
 function buildSmoothBand(evt, wavPaths) {
     if (!evt || wavPaths.length === 0) return;
 
-    // Ensure rpms parameter exists
+    // Ensure rpms parameter exists (FMOD 1.08 compatible)
     var param = null;
-    var params = evt.parameters;
-    for (var i = 0; i < params.length; i++) {
-        if (params[i].name === 'rpms') { param = params[i]; break; }
+    var params = evt.parameters.items || evt.parameters;
+    if (params && params.length > 0) {
+        for (var i = 0; i < params.length; i++) {
+            var pName = params[i].name.toLowerCase();
+            if (pName === 'rpms' || pName === 'rpm') { 
+                param = params[i]; 
+                break; 
+            }
+        }
     }
+
     if (!param) {
-        param = evt.addGameParameter({ name: 'rpms', type: 0, minimum: 0, maximum: 10000 });
+        // Manually create parameter if missing (addGameParameter is missing in some 1.08 builds)
+        param = project.create('GameParameter');
+        param.name = 'rpms';
+        param.maximum = 10000;
+        param.seekSpeed = 100000; // Adding smoothing to eliminate jerks
+        evt.relationships.parameters.add(param);
+    } else {
+        // Apply smoothing to existing template parameter
+        param.seekSpeed = 100000;
     }
 
     var onWavs = [];
@@ -469,10 +522,10 @@ function buildSmoothBand(evt, wavPaths) {
         if (wavPaths[i].isOn) onWavs.push(wavPaths[i]); else offWavs.push(wavPaths[i]);
     }
 
-    function processTrack(keyword, wavList) {
+    function processTrack(keyword1, keyword2, wavList) {
         if (wavList.length === 0) return;
-        var defaultName = carName + ' ' + keyword;
-        var track = findBestTrack(evt, keyword, defaultName);
+        var defaultName = carName + ' ' + keyword1;
+        var track = findBestTrack(evt, keyword1, keyword2, defaultName);
         clearTrack(track);  // remove old recordings before placing new ones
         wavList.sort(function(a, b) { return a.rpm - b.rpm; });
 
@@ -480,6 +533,11 @@ function buildSmoothBand(evt, wavPaths) {
             var currentRpm = wavList[i].rpm;
             var prevRpm    = (i > 0) ? wavList[i-1].rpm : 0;
             var nextRpm    = (i < wavList.length - 1) ? wavList[i+1].rpm : 10000;
+            
+            // Add a 20% buffer to broaden the overlap for smoother crossfading
+            var inBuffer   = (currentRpm - prevRpm) * 0.2;
+            var outBuffer  = (nextRpm - currentRpm) * 0.2;
+            
             var startPos   = (i === 0) ? 0 : prevRpm;
             var endPos     = (i === wavList.length - 1) ? 10000 : nextRpm;
             var len        = endPos - startPos;
@@ -492,26 +550,26 @@ function buildSmoothBand(evt, wavPaths) {
             snd.start = startPos;
             snd.length = len;
             snd.looping = true;
-            addSoundToTrack(track, snd);
+            bindSound(track, param, snd);
 
             // Autopitch modulator: FMOD 1.08 uses AutopitchModulator with root=RPM
             var ap = project.create('AutopitchModulator');
             ap.root = currentRpm;
             snd.relationships.modulators.add(ap);
 
-            // Fade in: first clip has no fade-in, others fade in from prevRpm
-            if (i > 0 && snd.relationships.fadeInCurve) {
-                snd.relationships.fadeInCurve.shape = 1;
+            // Fade in: from prevRpm to currentRpm (shifted by buffer)
+            if (i > 0) {
+                addFadeCurve(snd, true, prevRpm, currentRpm - inBuffer);
             }
-            // Fade out: last clip has no fade-out, others fade out to nextRpm
-            if (i < wavList.length - 1 && snd.relationships.fadeOutCurve) {
-                snd.relationships.fadeOutCurve.shape = 1;
+            // Fade out: from currentRpm to nextRpm (shifted by buffer)
+            if (i < wavList.length - 1) {
+                addFadeCurve(snd, false, currentRpm + outBuffer, nextRpm);
             }
         }
     }
 
-    processTrack('load',  onWavs);
-    processTrack('coast', offWavs);
+    processTrack('load', 'on', onWavs);
+    processTrack('coast', 'off', offWavs);
 }
 
 ");
@@ -555,13 +613,13 @@ buildSmoothBand(eventInt, intWavPaths);
 if (limiterPath !== '') {
     var limAudio = project.importAudioFile(limiterPath);
     if (limAudio) {
-        var limTrack = getOrCreateGroupTrack(eventLimiter, 'limiter');
+        var limTrack = findBestTrack(eventLimiter, 'limiter', 'limiter', 'limiter');
         var limSnd = project.create('SingleSound');
         limSnd.audioFile = limAudio;
         limSnd.start = 0;
         limSnd.length = 10000;
         limSnd.looping = false;
-        addSoundToTrack(limTrack, limSnd);
+        bindSound(limTrack, null, limSnd);
     }
 }
 ");
@@ -604,13 +662,14 @@ if (limiterPath !== '') {
     if (eventLimiter) {
         var limAudio = project.importAudioFile(limiterPath);
         if (limAudio) {
-            var limTrack = getOrCreateGroupTrack(eventLimiter, 'limiter');
+            var limTrack = findBestTrack(eventLimiter, 'limiter', 'limiter', 'limiter');
+            clearTrack(limTrack);
             var limSnd = project.create('SingleSound');
             limSnd.audioFile = limAudio;
             limSnd.start = 0;
             limSnd.length = 10000;
             limSnd.looping = false;
-            addSoundToTrack(limTrack, limSnd);
+            bindSound(limTrack, null, limSnd);
         }
     }
 }
