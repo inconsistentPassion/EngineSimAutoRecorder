@@ -418,12 +418,24 @@ namespace EngineSimRecorder.Backends.Keyboard
             };
         }
 
+        // Replace your existing InjectDll method with this
         private bool InjectDll(int pid, string dllPath)
         {
             string full = Path.GetFullPath(dllPath);
             if (!File.Exists(full))
             {
                 _log?.Invoke($"DLL not found: {full}");
+                return false;
+            }
+            // Copy to short ASCII temp path to avoid Unicode/sandbox/path length issues
+            string dest = Path.Combine(Path.GetTempPath(), "es_hook.dll");
+            try
+            {
+                File.Copy(full, dest, true);
+            }
+            catch (Exception ex)
+            {
+                _log?.Invoke($"Failed to copy DLL to temp: {ex.Message}");
                 return false;
             }
 
@@ -434,15 +446,37 @@ namespace EngineSimRecorder.Backends.Keyboard
                 return false;
             }
 
-            IntPtr loadLib = GetProcAddress(GetModuleHandle("kernel32.dll"), "LoadLibraryA");
-            byte[] pathBytes = Encoding.ASCII.GetBytes(full + '\0');
-            IntPtr mem = VirtualAllocEx(hProc, IntPtr.Zero, (uint)pathBytes.Length, MEM_COMMIT_RESERVE, PAGE_READWRITE);
-            WriteProcessMemory(hProc, mem, pathBytes, (uint)pathBytes.Length, out _);
-            IntPtr thread = CreateRemoteThread(hProc, IntPtr.Zero, 0, loadLib, mem, 0, out _);
+            IntPtr loadLib = GetProcAddress(GetModuleHandle("kernel32.dll"), "LoadLibraryW");
+            if (loadLib == IntPtr.Zero)
+            {
+                _log?.Invoke("Failed to get LoadLibraryW address");
+                CloseHandle(hProc);
+                return false;
+            }
 
+            // Write UTF-16 (little-endian) string into the remote process
+            byte[] pathBytes = Encoding.Unicode.GetBytes(dest + '\0');
+            IntPtr mem = VirtualAllocEx(hProc, IntPtr.Zero, (uint)pathBytes.Length, MEM_COMMIT_RESERVE, PAGE_READWRITE);
+            if (mem == IntPtr.Zero)
+            {
+                _log?.Invoke("VirtualAllocEx failed");
+                CloseHandle(hProc);
+                return false;
+            }
+
+            if (!WriteProcessMemory(hProc, mem, pathBytes, (uint)pathBytes.Length, out _))
+            {
+                _log?.Invoke("WriteProcessMemory failed");
+                VirtualFreeEx(hProc, mem, 0, 0x8000);
+                CloseHandle(hProc);
+                return false;
+            }
+
+            IntPtr thread = CreateRemoteThread(hProc, IntPtr.Zero, 0, loadLib, mem, 0, out _);
             if (thread == IntPtr.Zero)
             {
                 _log?.Invoke("Failed to create remote thread");
+                VirtualFreeEx(hProc, mem, 0, 0x8000);
                 CloseHandle(hProc);
                 return false;
             }
@@ -459,7 +493,7 @@ namespace EngineSimRecorder.Backends.Keyboard
 
             if (!GetExitCodeThread(thread, out uint exitCode) || exitCode == 0)
             {
-                _log?.Invoke($"DLL init failed — LoadLibraryA returned 0x{exitCode:X} (bad path or missing deps?)");
+                _log?.Invoke($"DLL init failed — LoadLibraryW returned 0x{exitCode:X} (bad path or missing deps?)");
                 CloseHandle(thread);
                 VirtualFreeEx(hProc, mem, 0, 0x8000);
                 CloseHandle(hProc);
